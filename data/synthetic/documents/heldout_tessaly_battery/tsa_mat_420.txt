@@ -1,0 +1,22 @@
+TESSALY AUTOMOTIVE
+Material Specification for Battery Module Components
+Document ID: TSA-MAT-420
+Revision: C
+Effective Date: 2025-12-01
+All names, companies and document identifiers in this document are fictional.
+
+1 Scope
+1.1 This specification applies to materials used in battery module assemblies.
+
+2 Adhesives
+2.1 Cell housing adhesives shall be cured at a minimum temperature of 80 °C for 20 minutes.
+
+2.2 Adhesive lot certificates shall be retained for at least 5 years.
+
+3 Coatings
+3.1 Cell coatings shall meet the dielectric strength requirements of Specification
+TSA-CT-077.
+
+3.2 Coating thickness shall be measured according to TSA-CT-080 at a frequency of one sample
+per shift.
+

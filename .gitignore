@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- csr-relationship-lab ---
+# Experiment outputs (representative examples live in data/examples/)
+outputs/
+*.sqlite
+*.sqlite3
+.venv/

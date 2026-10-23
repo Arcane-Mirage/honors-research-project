@@ -1,0 +1,561 @@
+{
+  "schema_version": "0.1.0",
+  "dataset_name": "synthetic_csr",
+  "dataset_version": "1.0.0",
+  "case_id": "heldout_tessaly_battery",
+  "split": "heldout",
+  "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts.",
+  "documents": [
+    {
+      "document_id": "DOC-TSA-CSR-400",
+      "canonical_identifier": "TSA-CSR-400",
+      "filename": "tsa_csr_400.txt",
+      "title": "Customer-Specific Requirements for Battery Module Suppliers",
+      "revision": "B"
+    },
+    {
+      "document_id": "DOC-TSA-PPAP-410",
+      "canonical_identifier": "TSA-PPAP-410",
+      "filename": "tsa_ppap_410.txt",
+      "title": "Production Part Approval Procedure",
+      "revision": "F"
+    },
+    {
+      "document_id": "DOC-TSA-MAT-420",
+      "canonical_identifier": "TSA-MAT-420",
+      "filename": "tsa_mat_420.txt",
+      "title": "Material Specification for Battery Module Components",
+      "revision": "C"
+    }
+  ],
+  "requirements": [
+    {
+      "gold_id": "TSA-CSR-400#1.2",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "1.2",
+      "requirement_text": "Production part approval shall be obtained according to the Production Part Approval\nProcedure TSA-PPAP-410 before the first production shipment.",
+      "start_offset": 332,
+      "end_offset": 477,
+      "references": [
+        {
+          "canonical_identifier": "TSA-PPAP-410",
+          "revision": null,
+          "mention_text": "TSA-PPAP-410",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "available_document",
+        "named_identifier"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#1.3",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "1.3",
+      "requirement_text": "Materials used in battery modules shall conform to TSA-MAT-420.",
+      "start_offset": 483,
+      "end_offset": 546,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MAT-420",
+          "revision": null,
+          "mention_text": "TSA-MAT-420",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "available_document"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#1.4",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "1.4",
+      "requirement_text": "Where this document conflicts with TSA-PPAP-410, the requirements of this document shall\ntake precedence.",
+      "start_offset": 552,
+      "end_offset": 657,
+      "references": [
+        {
+          "canonical_identifier": "TSA-PPAP-410",
+          "revision": null,
+          "mention_text": "TSA-PPAP-410",
+          "relation": "takes_precedence_over",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "precedence"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#2.1",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "2.1",
+      "requirement_text": "Specification TSA-CT-077 does not apply to battery modules and shall not be used for\ncell coatings.",
+      "start_offset": 675,
+      "end_offset": 774,
+      "references": [
+        {
+          "canonical_identifier": "TSA-CT-077",
+          "revision": null,
+          "mention_text": "TSA-CT-077",
+          "relation": "excludes",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "exclusion",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#2.2",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "2.2",
+      "requirement_text": "Cell housing adhesives shall have a maximum curing temperature of 60 °C.",
+      "start_offset": 780,
+      "end_offset": 852,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#2.3",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "2.3",
+      "requirement_text": "Thermal interface materials shall be qualified according to TSA-MAT-425, and the\nqualification report shall be included in the production part approval package described in\nTSA-PPAP-410.",
+      "start_offset": 858,
+      "end_offset": 1044,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MAT-425",
+          "revision": null,
+          "mention_text": "TSA-MAT-425",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-PPAP-410",
+          "revision": null,
+          "mention_text": "TSA-PPAP-410",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "multiple_references",
+        "missing_external"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#3.1",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "3.1",
+      "requirement_text": "The supplier shall submit the production part approval package at least 20 working days\nbefore the planned start of production.",
+      "start_offset": 1061,
+      "end_offset": 1188,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#3.2",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "3.2",
+      "requirement_text": "The approval package shall include the dimensional results report described in the\nProduction Part Approval Procedure.",
+      "start_offset": 1194,
+      "end_offset": 1312,
+      "references": [
+        {
+          "canonical_identifier": "TSA-PPAP-410",
+          "revision": null,
+          "mention_text": "Production Part Approval Procedure",
+          "relation": "references",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "name_alias"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#3.3",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "3.3",
+      "requirement_text": "Run-at-rate results shall be documented on form TSA-QF-031A.",
+      "start_offset": 1318,
+      "end_offset": 1378,
+      "references": [
+        {
+          "canonical_identifier": "TSA-QF-031A",
+          "revision": null,
+          "mention_text": "TSA-QF-031A",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "simple"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-400#3.4",
+      "source_document_id": "DOC-TSA-CSR-400",
+      "chapter": "3.4",
+      "requirement_text": "The supplier shall perform the run-at-rate verification during the first week of series\nproduction.",
+      "start_offset": 1384,
+      "end_offset": 1483,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "ambiguous"
+      ]
+    },
+    {
+      "gold_id": "TSA-PPAP-410#2.1",
+      "source_document_id": "DOC-TSA-PPAP-410",
+      "chapter": "2.1",
+      "requirement_text": "The production part approval package shall be submitted no earlier than 10 working days\nbefore the planned start of production.",
+      "start_offset": 326,
+      "end_offset": 453,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-PPAP-410#2.2",
+      "source_document_id": "DOC-TSA-PPAP-410",
+      "chapter": "2.2",
+      "requirement_text": "The package shall contain material certifications according to TSA-MAT-420 and a control\nplan prepared according to TSA-QP-020.",
+      "start_offset": 459,
+      "end_offset": 586,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MAT-420",
+          "revision": null,
+          "mention_text": "TSA-MAT-420",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-QP-020",
+          "revision": null,
+          "mention_text": "TSA-QP-020",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "nested_reference",
+        "multiple_references"
+      ]
+    },
+    {
+      "gold_id": "TSA-PPAP-410#2.3",
+      "source_document_id": "DOC-TSA-PPAP-410",
+      "chapter": "2.3",
+      "requirement_text": "Dimensional results shall be reported for all characteristics shown on drawing\nTSA-DRW-2210.",
+      "start_offset": 592,
+      "end_offset": 684,
+      "references": [
+        {
+          "canonical_identifier": "TSA-DRW-2210",
+          "revision": null,
+          "mention_text": "TSA-DRW-2210",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "simple"
+      ]
+    },
+    {
+      "gold_id": "TSA-PPAP-410#2.4",
+      "source_document_id": "DOC-TSA-PPAP-410",
+      "chapter": "2.4",
+      "requirement_text": "Run-at-rate verification shall be completed before the production part approval package\nis submitted.",
+      "start_offset": 690,
+      "end_offset": 791,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "ambiguous"
+      ]
+    },
+    {
+      "gold_id": "TSA-PPAP-410#3.1",
+      "source_document_id": "DOC-TSA-PPAP-410",
+      "chapter": "3.1",
+      "requirement_text": "Where this procedure conflicts with any customer-specific requirements document,\nincluding TSA-CSR-400, this procedure shall govern.",
+      "start_offset": 810,
+      "end_offset": 942,
+      "references": [
+        {
+          "canonical_identifier": "TSA-CSR-400",
+          "revision": null,
+          "mention_text": "TSA-CSR-400",
+          "relation": "takes_precedence_over",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "precedence"
+      ]
+    },
+    {
+      "gold_id": "TSA-MAT-420#2.1",
+      "source_document_id": "DOC-TSA-MAT-420",
+      "chapter": "2.1",
+      "requirement_text": "Cell housing adhesives shall be cured at a minimum temperature of 80 °C for 20 minutes.",
+      "start_offset": 319,
+      "end_offset": 406,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-MAT-420#2.2",
+      "source_document_id": "DOC-TSA-MAT-420",
+      "chapter": "2.2",
+      "requirement_text": "Adhesive lot certificates shall be retained for at least 5 years.",
+      "start_offset": 412,
+      "end_offset": 477,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    },
+    {
+      "gold_id": "TSA-MAT-420#3.1",
+      "source_document_id": "DOC-TSA-MAT-420",
+      "chapter": "3.1",
+      "requirement_text": "Cell coatings shall meet the dielectric strength requirements of Specification\nTSA-CT-077.",
+      "start_offset": 494,
+      "end_offset": 584,
+      "references": [
+        {
+          "canonical_identifier": "TSA-CT-077",
+          "revision": null,
+          "mention_text": "TSA-CT-077",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-MAT-420#3.2",
+      "source_document_id": "DOC-TSA-MAT-420",
+      "chapter": "3.2",
+      "requirement_text": "Coating thickness shall be measured according to TSA-CT-080 at a frequency of one sample\nper shift.",
+      "start_offset": 590,
+      "end_offset": 689,
+      "references": [
+        {
+          "canonical_identifier": "TSA-CT-080",
+          "revision": null,
+          "mention_text": "TSA-CT-080",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "simple"
+      ]
+    }
+  ],
+  "referenced_documents": [
+    {
+      "canonical_identifier": "TSA-CSR-400",
+      "revision": null,
+      "content_available": true,
+      "document_type": "customer_specification"
+    },
+    {
+      "canonical_identifier": "TSA-CT-077",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-CT-080",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-DRW-2210",
+      "revision": null,
+      "content_available": false,
+      "document_type": "engineering_drawing"
+    },
+    {
+      "canonical_identifier": "TSA-MAT-420",
+      "revision": null,
+      "content_available": true,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-MAT-425",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-PPAP-410",
+      "revision": null,
+      "content_available": true,
+      "document_type": "procedure"
+    },
+    {
+      "canonical_identifier": "TSA-QF-031A",
+      "revision": null,
+      "content_available": false,
+      "document_type": "form"
+    },
+    {
+      "canonical_identifier": "TSA-QP-020",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    }
+  ],
+  "conflicts": [
+    {
+      "gold_conflict_id": "heldout_tessaly_battery-C01",
+      "requirement_ids": [
+        "TSA-CSR-400#1.4",
+        "TSA-PPAP-410#3.1"
+      ],
+      "conflict_type": "potential_precedence_conflict",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-400#1.4",
+          "quoted_text": "the requirements of this document shall take precedence"
+        },
+        {
+          "requirement_id": "TSA-PPAP-410#3.1",
+          "quoted_text": "this procedure shall govern"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_battery-C02",
+      "requirement_ids": [
+        "TSA-CSR-400#2.1",
+        "TSA-MAT-420#3.1"
+      ],
+      "conflict_type": "applicability_conflict",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-400#2.1",
+          "quoted_text": "Specification TSA-CT-077 does not apply to battery modules"
+        },
+        {
+          "requirement_id": "TSA-MAT-420#3.1",
+          "quoted_text": "Cell coatings shall meet the dielectric strength requirements of Specification TSA-CT-077"
+        }
+      ],
+      "note": "exclusion in the CSR contradicted by a document the CSR references"
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_battery-C03",
+      "requirement_ids": [
+        "TSA-CSR-400#2.2",
+        "TSA-MAT-420#2.1"
+      ],
+      "conflict_type": "numeric_incompatibility",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-400#2.2",
+          "quoted_text": "maximum curing temperature of 60 °C"
+        },
+        {
+          "requirement_id": "TSA-MAT-420#2.1",
+          "quoted_text": "cured at a minimum temperature of 80 °C"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_battery-C04",
+      "requirement_ids": [
+        "TSA-CSR-400#3.1",
+        "TSA-PPAP-410#2.1"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-400#3.1",
+          "quoted_text": "at least 20 working days before the planned start of production"
+        },
+        {
+          "requirement_id": "TSA-PPAP-410#2.1",
+          "quoted_text": "no earlier than 10 working days before the planned start of production"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_battery-C05",
+      "requirement_ids": [
+        "TSA-CSR-400#3.4",
+        "TSA-PPAP-410#2.4"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "ambiguous",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-400#3.4",
+          "quoted_text": "during the first week of series production"
+        },
+        {
+          "requirement_id": "TSA-PPAP-410#2.4",
+          "quoted_text": "completed before the production part approval package is submitted"
+        }
+      ],
+      "note": "order of run-at-rate and submission is unclear rather than strictly contradictory"
+    }
+  ],
+  "non_conflicting_pairs": [
+    {
+      "requirement_ids": [
+        "TSA-CSR-400#1.2",
+        "TSA-CSR-400#2.3"
+      ],
+      "note": "both cite TSA-PPAP-410 without contradiction"
+    },
+    {
+      "requirement_ids": [
+        "TSA-CSR-400#1.3",
+        "TSA-PPAP-410#2.2"
+      ],
+      "note": "both require TSA-MAT-420"
+    }
+  ],
+  "notes": []
+}

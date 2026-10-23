@@ -1,0 +1,101 @@
+# Experiments override parts of configs/default.yaml (llm, processing, evaluation).
+# Run one with:  csr-lab experiment <name>
+#
+# `strategies:` (bottom) defines extra strategies as variants of existing ones.
+# They are registered at start-up, so they can be used in any experiment or
+# with `csr-lab analyze --strategy <name>` without code changes.
+
+experiments:
+  demo_mock:
+    description: Offline demonstration of the four conditions on held-out cases with the mock model.
+    dataset: data/synthetic/manifest.json
+    split: heldout
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    base_seed: 1000
+    llm: {provider: mock}
+
+  dev_mock:
+    description: Mock run on the development cases (use these for debugging prompts and code).
+    split: dev
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 1
+    llm: {provider: mock}
+
+  ablation_mock:
+    description: Graph-assisted ablations (offline). Isolates alias resolution, graph rules and verification.
+    split: all
+    strategies: [staged_verified, graph_assisted, graph_assisted_no_alias, graph_assisted_no_rules, graph_assisted_no_verification]
+    repetitions: 3
+    llm: {provider: mock}
+
+  candidate_selection_mock:
+    description: Forces topic-based candidate selection (no all-pairs) to measure graph-derived candidate recall.
+    split: all
+    strategies: [staged_verified_topic_candidates, graph_assisted_topic_candidates]
+    repetitions: 3
+    llm: {provider: mock}
+
+  local_llama_dev:
+    description: Local model through llama.cpp `llama-server` (OpenAI-compatible API) on the dev split.
+    split: dev
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    llm:
+      provider: openai_compatible
+      base_url: http://localhost:8080/v1
+      model: local-model            # llama-server ignores the name; record the GGUF file in `description`
+      api_key_env: LOCAL_LLM_API_KEY
+      structured_output: json_schema
+      temperature: 0.0
+      timeout_seconds: 900
+      max_output_tokens: 4096
+
+  api_model_heldout:
+    description: Commercial OpenAI-compatible API on the held-out split. Set the model ID before running.
+    split: heldout
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    llm:
+      provider: openai_compatible
+      base_url: https://api.openai.com/v1
+      model: REPLACE_WITH_MODEL_ID
+      api_key_env: OPENAI_API_KEY
+      structured_output: json_schema
+      temperature: 0.0
+      pricing:                      # fill in from the provider's price list to get cost estimates
+        input_usd_per_million_tokens: null
+        output_usd_per_million_tokens: null
+
+strategies:
+  graph_assisted_no_alias:
+    base: graph_assisted
+    description: Condition D without graph alias resolution (isolates name-to-identifier resolution).
+    options: {graph: {alias_resolution: false}}
+
+  graph_assisted_no_rules:
+    base: graph_assisted
+    description: Condition D without deterministic exclusion/precedence flagging.
+    options: {graph: {applicability_rules: false, precedence_rules: false}}
+
+  graph_assisted_no_verification:
+    base: graph_assisted
+    description: Graph-informed processing without the verification stage.
+    options:
+      verification: {enabled: false}
+      conflicts: {validate_evidence: false}
+
+  staged_verified_single_attempt:
+    base: staged_verified
+    description: Condition C with one targeted re-extraction round instead of two.
+    options: {verification: {max_attempts: 1}}
+
+  staged_verified_topic_candidates:
+    base: staged_verified
+    description: Condition C with topic-overlap candidate selection instead of all pairs.
+    options: {conflicts: {all_pairs_max: 0}}
+
+  graph_assisted_topic_candidates:
+    base: graph_assisted
+    description: Condition D with topic-overlap plus graph-derived candidate selection instead of all pairs.
+    options: {conflicts: {all_pairs_max: 0}}

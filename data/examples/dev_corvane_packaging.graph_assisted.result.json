@@ -1,0 +1,4594 @@
+{
+  "schema_version": "0.1.0",
+  "analysis_id": "ANL-1b28d496c7115e0a",
+  "status": "completed",
+  "input_documents": [
+    {
+      "document_id": "DOC-CVM-CSR-200",
+      "canonical_identifier": "CVM-CSR-200",
+      "identifier_source": "header",
+      "filename": "cvm_csr_200.txt",
+      "title": "Logistics and Packaging Requirements for Production Suppliers",
+      "revision": "A",
+      "format": "txt",
+      "sha256": "e23fedf28ca31562c07c6c993b02b88f415e0522ee1aa721b88db2a63676276f",
+      "char_count": 1420,
+      "pages": [],
+      "parse_status": "ok",
+      "warnings": [],
+      "text": "CORVANE MOTORS\nLogistics and Packaging Requirements for Production Suppliers\nDocument ID: CVM-CSR-200\nRevision: A\nEffective Date: 2026-01-10\nAll names, companies and document identifiers in this document are fictional.\n\n1 General\n1.1 This document applies to all shipments of production parts to Corvane Motors assembly\nplants.\n\n1.2 The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.\n\n1.3 Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.\n\n1.4 The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.\n\n2 Labels\n2.1 Each container shall carry a shipping label that conforms to CVM-LBL-220.\n\n2.2 Container labels shall be printed with a minimum barcode height of 25 mm.\n\n3 Containers\n3.1 Production parts shall be shipped only in returnable containers approved by Corvane\nLogistics.\n\n4 Deliveries\n4.1 The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.\n\n4.2 Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.\n\n5 Precedence\n5.1 Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.\n\n"
+    },
+    {
+      "document_id": "DOC-CVM-PKG-210",
+      "canonical_identifier": "CVM-PKG-210",
+      "identifier_source": "header",
+      "filename": "cvm_pkg_210.txt",
+      "title": "Packaging and Labeling Specification",
+      "revision": "D",
+      "format": "txt",
+      "sha256": "7f57b1e9d26cb9d1317da37fc100be0ff08cfdc1e2f47cb4e72168113d3e008a",
+      "char_count": 889,
+      "pages": [],
+      "parse_status": "ok",
+      "warnings": [],
+      "text": "CORVANE MOTORS\nPackaging and Labeling Specification\nDocument ID: CVM-PKG-210\nRevision: D\nEffective Date: 2025-11-03\nAll names, companies and document identifiers in this document are fictional.\n\n1 Scope\n1.1 This specification defines packaging and labeling requirements for production parts\ndelivered to Corvane Motors.\n\n2 Packaging Design\n2.1 Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.\n\n2.2 Expendable (one-way) cardboard containers shall be used for all parts weighing less than 2\nkg.\n\n3 Labeling\n3.1 Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.\n\n3.2 Label data content shall follow the requirements of the Corvane Supplier Quality Manual.\n\n4 Precedence\n4.1 In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.\n\n"
+    }
+  ],
+  "requirements": [
+    {
+      "requirement_id": "REQ-CVM-CSR-200-001",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "1.2",
+      "requirement_text": "The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "1.2",
+        "section_path": [
+          "1 General"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 333,
+        "end_offset": 453,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-PKG-210"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0001",
+          "document_id": "DOC-CVM-PKG-210",
+          "raw_identifier": "CVM-PKG-210",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-001",
+            "quoted_text": "The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "1.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 333,
+              "end_offset": 453,
+              "match": "exact"
+            },
+            "start_offset": 333,
+            "end_offset": 453,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0004"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-002",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "1.3",
+      "requirement_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "1.3",
+        "section_path": [
+          "1 General"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 459,
+        "end_offset": 585,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-PKG-050"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0003",
+          "document_id": "DOC-CVM-PKG-050",
+          "raw_identifier": "CVM-PKG-050",
+          "relation": "excludes",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-002",
+            "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "1.3",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 459,
+              "end_offset": 585,
+              "match": "exact"
+            },
+            "start_offset": 459,
+            "end_offset": 585,
+            "verified": true,
+            "verification": "exact",
+            "repaired": true
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0005"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-003",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "1.4",
+      "requirement_text": "The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "1.4",
+        "section_path": [
+          "1 General"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 591,
+        "end_offset": 699,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-SQM-001"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0005",
+          "document_id": "DOC-CVM-SQM-001",
+          "raw_identifier": "CVM-SQM-001",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-003",
+            "quoted_text": "The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "1.4",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 591,
+              "end_offset": 699,
+              "match": "exact"
+            },
+            "start_offset": 591,
+            "end_offset": 699,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0006"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-004",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "2.1",
+      "requirement_text": "Each container shall carry a shipping label that conforms to CVM-LBL-220.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "2.1",
+        "section_path": [
+          "2 Labels"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 714,
+        "end_offset": 787,
+        "match": "exact"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-LBL-220"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0006",
+          "document_id": "DOC-CVM-LBL-220",
+          "raw_identifier": "CVM-LBL-220",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-004",
+            "quoted_text": "Each container shall carry a shipping label that conforms to CVM-LBL-220.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "2.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 714,
+              "end_offset": 787,
+              "match": "exact"
+            },
+            "start_offset": 714,
+            "end_offset": 787,
+            "verified": true,
+            "verification": "exact",
+            "repaired": true
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0008"
+        ],
+        "verbatim_match": "exact",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-005",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "2.2",
+      "requirement_text": "Container labels shall be printed with a minimum barcode height of 25 mm.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "2.2",
+        "section_path": [
+          "2 Labels"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 793,
+        "end_offset": 866,
+        "match": "exact"
+      },
+      "referenced_document_ids": [],
+      "reference_mentions": [],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0009"
+        ],
+        "verbatim_match": "exact",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-006",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "3.1",
+      "requirement_text": "Production parts shall be shipped only in returnable containers approved by Corvane\nLogistics.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "3.1",
+        "section_path": [
+          "3 Containers"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 885,
+        "end_offset": 979,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [],
+      "reference_mentions": [],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0011"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-007",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "4.1",
+      "requirement_text": "The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "4.1",
+        "section_path": [
+          "4 Deliveries"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 998,
+        "end_offset": 1148,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-LG-140"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0008",
+          "document_id": "DOC-CVM-LG-140",
+          "raw_identifier": "CVM-LG-140",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-007",
+            "quoted_text": "The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "4.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 998,
+              "end_offset": 1148,
+              "match": "exact"
+            },
+            "start_offset": 998,
+            "end_offset": 1148,
+            "verified": true,
+            "verification": "exact",
+            "repaired": true
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0013"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-008",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "4.2",
+      "requirement_text": "Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "4.2",
+        "section_path": [
+          "4 Deliveries"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 1154,
+        "end_offset": 1295,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-PKG-210"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0009",
+          "document_id": "DOC-CVM-PKG-210",
+          "raw_identifier": "Packaging and Labeling Specification",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-008",
+            "quoted_text": "Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "4.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 1154,
+              "end_offset": 1295,
+              "match": "exact"
+            },
+            "start_offset": 1154,
+            "end_offset": 1295,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "name_alias",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0014"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-CSR-200-009",
+      "source_document_id": "DOC-CVM-CSR-200",
+      "chapter": "5.1",
+      "requirement_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-CSR-200",
+        "chapter": "5.1",
+        "section_path": [
+          "5 Precedence"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 1314,
+        "end_offset": 1418,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-PKG-210"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0010",
+          "document_id": "DOC-CVM-PKG-210",
+          "raw_identifier": "CVM-PKG-210",
+          "relation": "takes_precedence_over",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-009",
+            "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "5.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 1314,
+              "end_offset": 1418,
+              "match": "exact"
+            },
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-CSR-200-0016"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-PKG-210-001",
+      "source_document_id": "DOC-CVM-PKG-210",
+      "chapter": "2.1",
+      "requirement_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-PKG-210",
+        "chapter": "2.1",
+        "section_path": [
+          "2 Packaging Design"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 344,
+        "end_offset": 435,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-PKG-050"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0011",
+          "document_id": "DOC-CVM-PKG-050",
+          "raw_identifier": "CVM-PKG-050",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-001",
+            "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "2.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 344,
+              "end_offset": 435,
+              "match": "exact"
+            },
+            "start_offset": 344,
+            "end_offset": 435,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-PKG-210-0005"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-PKG-210-002",
+      "source_document_id": "DOC-CVM-PKG-210",
+      "chapter": "2.2",
+      "requirement_text": "Expendable (one-way) cardboard containers shall be used for all parts weighing less than 2\nkg.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-PKG-210",
+        "chapter": "2.2",
+        "section_path": [
+          "2 Packaging Design"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 441,
+        "end_offset": 535,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [],
+      "reference_mentions": [],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-PKG-210-0006"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-PKG-210-003",
+      "source_document_id": "DOC-CVM-PKG-210",
+      "chapter": "3.1",
+      "requirement_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-PKG-210",
+        "chapter": "3.1",
+        "section_path": [
+          "3 Labeling"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 552,
+        "end_offset": 642,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-LBL-220"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0012",
+          "document_id": "DOC-CVM-LBL-220",
+          "raw_identifier": "CVM-LBL-220",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-003",
+            "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "3.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 552,
+              "end_offset": 642,
+              "match": "exact"
+            },
+            "start_offset": 552,
+            "end_offset": 642,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-PKG-210-0008"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-PKG-210-004",
+      "source_document_id": "DOC-CVM-PKG-210",
+      "chapter": "3.2",
+      "requirement_text": "Label data content shall follow the requirements of the Corvane Supplier Quality Manual.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-PKG-210",
+        "chapter": "3.2",
+        "section_path": [
+          "3 Labeling"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 648,
+        "end_offset": 736,
+        "match": "exact"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-SQM-001"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0013",
+          "document_id": "DOC-CVM-SQM-001",
+          "raw_identifier": "Corvane Supplier Quality Manual",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-004",
+            "quoted_text": "Label data content shall follow the requirements of the Corvane Supplier Quality Manual.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "3.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 648,
+              "end_offset": 736,
+              "match": "exact"
+            },
+            "start_offset": 648,
+            "end_offset": 736,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "name_alias",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-PKG-210-0009"
+        ],
+        "verbatim_match": "exact",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "REQ-CVM-PKG-210-005",
+      "source_document_id": "DOC-CVM-PKG-210",
+      "chapter": "4.1",
+      "requirement_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+      "source_location": {
+        "source_document_id": "DOC-CVM-PKG-210",
+        "chapter": "4.1",
+        "section_path": [
+          "4 Precedence"
+        ],
+        "page_start": null,
+        "page_end": null,
+        "start_offset": 755,
+        "end_offset": 887,
+        "match": "whitespace_normalized"
+      },
+      "referenced_document_ids": [
+        "DOC-CVM-CSR-200"
+      ],
+      "reference_mentions": [
+        {
+          "mention_id": "MEN-0014",
+          "document_id": "DOC-CVM-CSR-200",
+          "raw_identifier": "CVM-CSR-200",
+          "relation": "takes_precedence_over",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-005",
+            "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "4.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 755,
+              "end_offset": 887,
+              "match": "exact"
+            },
+            "start_offset": 755,
+            "end_offset": 887,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": true
+        }
+      ],
+      "department": null,
+      "department_status": "deferred",
+      "extraction_metadata": {
+        "strategy": "graph_assisted",
+        "chunk_ids": [
+          "CHUNK-001"
+        ],
+        "segment_ids": [
+          "SEG-CVM-PKG-210-0011"
+        ],
+        "verbatim_match": "whitespace_normalized",
+        "segmentation_confidence": "high",
+        "reference_analysis_status": "verified",
+        "notes": []
+      }
+    }
+  ],
+  "referenced_documents": [
+    {
+      "document_id": "DOC-CVM-CSR-200",
+      "raw_identifiers": [
+        "CVM-CSR-200"
+      ],
+      "canonical_identifier": "CVM-CSR-200",
+      "document_name": "Logistics and Packaging Requirements for Production Suppliers",
+      "revision": null,
+      "document_type": "unknown",
+      "content_available": true,
+      "metadata": {
+        "key": "CVM-CSR-200",
+        "names": [],
+        "is_input_document": true,
+        "resolution": [
+          "identifier"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-PKG-210-005"
+        ]
+      }
+    },
+    {
+      "document_id": "DOC-CVM-LBL-220",
+      "raw_identifiers": [
+        "CVM-LBL-220"
+      ],
+      "canonical_identifier": "CVM-LBL-220",
+      "document_name": null,
+      "revision": null,
+      "document_type": "unknown",
+      "content_available": false,
+      "metadata": {
+        "key": "CVM-LBL-220",
+        "names": [],
+        "is_input_document": false,
+        "resolution": [
+          "identifier"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-003"
+        ]
+      }
+    },
+    {
+      "document_id": "DOC-CVM-LG-140",
+      "raw_identifiers": [
+        "CVM-LG-140"
+      ],
+      "canonical_identifier": "CVM-LG-140",
+      "document_name": null,
+      "revision": null,
+      "document_type": "unknown",
+      "content_available": false,
+      "metadata": {
+        "key": "CVM-LG-140",
+        "names": [],
+        "is_input_document": false,
+        "resolution": [
+          "identifier"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-CSR-200-007"
+        ]
+      }
+    },
+    {
+      "document_id": "DOC-CVM-PKG-050",
+      "raw_identifiers": [
+        "CVM-PKG-050"
+      ],
+      "canonical_identifier": "CVM-PKG-050",
+      "document_name": null,
+      "revision": null,
+      "document_type": "standard",
+      "content_available": false,
+      "metadata": {
+        "key": "CVM-PKG-050",
+        "names": [],
+        "is_input_document": false,
+        "resolution": [
+          "identifier"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-001"
+        ]
+      }
+    },
+    {
+      "document_id": "DOC-CVM-PKG-210",
+      "raw_identifiers": [
+        "CVM-PKG-210",
+        "Packaging and Labeling Specification"
+      ],
+      "canonical_identifier": "CVM-PKG-210",
+      "document_name": "Packaging and\nLabeling Specification",
+      "revision": null,
+      "document_type": "technical_specification",
+      "content_available": true,
+      "metadata": {
+        "key": "CVM-PKG-210",
+        "names": [
+          "Packaging and\nLabeling Specification",
+          "Packaging and Labeling Specification"
+        ],
+        "is_input_document": true,
+        "resolution": [
+          "identifier",
+          "name_alias"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-CSR-200-009"
+        ]
+      }
+    },
+    {
+      "document_id": "DOC-CVM-SQM-001",
+      "raw_identifiers": [
+        "CVM-SQM-001",
+        "Corvane Supplier Quality Manual"
+      ],
+      "canonical_identifier": "CVM-SQM-001",
+      "document_name": "Corvane Supplier Quality\nManual",
+      "revision": null,
+      "document_type": "quality_manual",
+      "content_available": false,
+      "metadata": {
+        "key": "CVM-SQM-001",
+        "names": [
+          "Corvane Supplier Quality\nManual",
+          "Corvane Supplier Quality Manual"
+        ],
+        "is_input_document": false,
+        "resolution": [
+          "identifier",
+          "name_alias"
+        ],
+        "referencing_requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-004"
+        ]
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "relationship_id": "REL-0f47b7027334",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-001",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-5c896370a985",
+      "source_node_id": "REQ-CVM-CSR-200-001",
+      "target_node_id": "DOC-CVM-PKG-210",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-001",
+          "quoted_text": "The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 333,
+            "end_offset": 453,
+            "match": "exact"
+          },
+          "start_offset": 333,
+          "end_offset": 453,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0001"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-1c84546785c7",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-002",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-ce3beef3c3e3",
+      "source_node_id": "REQ-CVM-CSR-200-002",
+      "target_node_id": "DOC-CVM-PKG-050",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.3",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 459,
+            "end_offset": 585,
+            "match": "exact"
+          },
+          "start_offset": 459,
+          "end_offset": 585,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0003"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-c829775f0e58",
+      "source_node_id": "REQ-CVM-CSR-200-002",
+      "target_node_id": "DOC-CVM-PKG-050",
+      "relationship_type": "explicitly_excludes",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.3",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 459,
+            "end_offset": 585,
+            "match": "exact"
+          },
+          "start_offset": 459,
+          "end_offset": 585,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0003"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-cf403458c193",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-003",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-c23b87346c3b",
+      "source_node_id": "REQ-CVM-CSR-200-003",
+      "target_node_id": "DOC-CVM-SQM-001",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-003",
+          "quoted_text": "The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.4",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 591,
+            "end_offset": 699,
+            "match": "exact"
+          },
+          "start_offset": 591,
+          "end_offset": 699,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0005"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-070f33150d29",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-004",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-f6c1a16435ee",
+      "source_node_id": "REQ-CVM-CSR-200-004",
+      "target_node_id": "DOC-CVM-LBL-220",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-004",
+          "quoted_text": "Each container shall carry a shipping label that conforms to CVM-LBL-220.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 714,
+            "end_offset": 787,
+            "match": "exact"
+          },
+          "start_offset": 714,
+          "end_offset": 787,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0006"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-927f210f4172",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-005",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-791d14823910",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-006",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-799914f2eb79",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-007",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-0f530bb6122b",
+      "source_node_id": "REQ-CVM-CSR-200-007",
+      "target_node_id": "DOC-CVM-LG-140",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-007",
+          "quoted_text": "The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 998,
+            "end_offset": 1148,
+            "match": "exact"
+          },
+          "start_offset": 998,
+          "end_offset": 1148,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0008"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-97c9e6f372cc",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-008",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-2f6c703a75b5",
+      "source_node_id": "REQ-CVM-CSR-200-008",
+      "target_node_id": "DOC-CVM-PKG-210",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-008",
+          "quoted_text": "Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "4.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1154,
+            "end_offset": 1295,
+            "match": "exact"
+          },
+          "start_offset": 1154,
+          "end_offset": 1295,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0009"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-3b260c5d1ab3",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "REQ-CVM-CSR-200-009",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-ffc52d3ba038",
+      "source_node_id": "REQ-CVM-CSR-200-009",
+      "target_node_id": "DOC-CVM-PKG-210",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "5.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "match": "exact"
+          },
+          "start_offset": 1314,
+          "end_offset": 1418,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0010"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-f685f90e8042",
+      "source_node_id": "REQ-CVM-CSR-200-009",
+      "target_node_id": "DOC-CVM-PKG-210",
+      "relationship_type": "explicitly_takes_precedence_over",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "5.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "match": "exact"
+          },
+          "start_offset": 1314,
+          "end_offset": 1418,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0010"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-4854a70516b9",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "REQ-CVM-PKG-210-001",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-376887c835ce",
+      "source_node_id": "REQ-CVM-PKG-210-001",
+      "target_node_id": "DOC-CVM-PKG-050",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-001",
+          "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 344,
+            "end_offset": 435,
+            "match": "exact"
+          },
+          "start_offset": 344,
+          "end_offset": 435,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0011"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-a79b5ad1fb95",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "REQ-CVM-PKG-210-002",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-ad3ec0367027",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "REQ-CVM-PKG-210-003",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-7ae89015fbd2",
+      "source_node_id": "REQ-CVM-PKG-210-003",
+      "target_node_id": "DOC-CVM-LBL-220",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-003",
+          "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 552,
+            "end_offset": 642,
+            "match": "exact"
+          },
+          "start_offset": 552,
+          "end_offset": 642,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0012"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-6b726f4ef8d2",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "REQ-CVM-PKG-210-004",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-0902142152ec",
+      "source_node_id": "REQ-CVM-PKG-210-004",
+      "target_node_id": "DOC-CVM-SQM-001",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-004",
+          "quoted_text": "Label data content shall follow the requirements of the Corvane Supplier Quality Manual.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 648,
+            "end_offset": 736,
+            "match": "exact"
+          },
+          "start_offset": 648,
+          "end_offset": 736,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0013"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-4453f2dc110e",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "REQ-CVM-PKG-210-005",
+      "relationship_type": "contains",
+      "evidence": [],
+      "metadata": {
+        "origin": "document_structure"
+      }
+    },
+    {
+      "relationship_id": "REL-3ef5f043f18e",
+      "source_node_id": "REQ-CVM-PKG-210-005",
+      "target_node_id": "DOC-CVM-CSR-200",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 755,
+            "end_offset": 887,
+            "match": "exact"
+          },
+          "start_offset": 755,
+          "end_offset": 887,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0014"
+        ],
+        "statuses": [
+          "found_initially"
+        ],
+        "verified": true
+      }
+    },
+    {
+      "relationship_id": "REL-f7300d96f843",
+      "source_node_id": "REQ-CVM-PKG-210-005",
+      "target_node_id": "DOC-CVM-CSR-200",
+      "relationship_type": "explicitly_takes_precedence_over",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 755,
+            "end_offset": 887,
+            "match": "exact"
+          },
+          "start_offset": 755,
+          "end_offset": 887,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "extraction",
+        "mention_ids": [
+          "MEN-0014"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-861eef1c1afc",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "DOC-CVM-LBL-220",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-004",
+          "quoted_text": "Each container shall carry a shipping label that conforms to CVM-LBL-220.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 714,
+            "end_offset": 787,
+            "match": "exact"
+          },
+          "start_offset": 714,
+          "end_offset": 787,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-CSR-200-004"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-d3ed0e5f55c7",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "DOC-CVM-LG-140",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-007",
+          "quoted_text": "The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 998,
+            "end_offset": 1148,
+            "match": "exact"
+          },
+          "start_offset": 998,
+          "end_offset": 1148,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-CSR-200-007"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-50ea83a2ae11",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "DOC-CVM-PKG-050",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.3",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 459,
+            "end_offset": 585,
+            "match": "exact"
+          },
+          "start_offset": 459,
+          "end_offset": 585,
+          "verified": true,
+          "verification": "exact",
+          "repaired": true
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-CSR-200-002"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-e821aaa96bb8",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "DOC-CVM-PKG-210",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-001",
+          "quoted_text": "The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 333,
+            "end_offset": 453,
+            "match": "exact"
+          },
+          "start_offset": 333,
+          "end_offset": 453,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-008",
+          "quoted_text": "Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "4.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1154,
+            "end_offset": 1295,
+            "match": "exact"
+          },
+          "start_offset": 1154,
+          "end_offset": 1295,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "5.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "match": "exact"
+          },
+          "start_offset": 1314,
+          "end_offset": 1418,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-CSR-200-009"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-fdcdbfa37d46",
+      "source_node_id": "DOC-CVM-CSR-200",
+      "target_node_id": "DOC-CVM-SQM-001",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-003",
+          "quoted_text": "The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.4",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 591,
+            "end_offset": 699,
+            "match": "exact"
+          },
+          "start_offset": 591,
+          "end_offset": 699,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-CSR-200-003"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-22022b3c9537",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "DOC-CVM-CSR-200",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 755,
+            "end_offset": 887,
+            "match": "exact"
+          },
+          "start_offset": 755,
+          "end_offset": 887,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-PKG-210-005"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-f94f9ff26551",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "DOC-CVM-LBL-220",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-003",
+          "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 552,
+            "end_offset": 642,
+            "match": "exact"
+          },
+          "start_offset": 552,
+          "end_offset": 642,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-PKG-210-003"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-a134dc37aa65",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "DOC-CVM-PKG-050",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-001",
+          "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 344,
+            "end_offset": 435,
+            "match": "exact"
+          },
+          "start_offset": 344,
+          "end_offset": 435,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-PKG-210-001"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-f1c3558f31aa",
+      "source_node_id": "DOC-CVM-PKG-210",
+      "target_node_id": "DOC-CVM-SQM-001",
+      "relationship_type": "references",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-004",
+          "quoted_text": "Label data content shall follow the requirements of the Corvane Supplier Quality Manual.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 648,
+            "end_offset": 736,
+            "match": "exact"
+          },
+          "start_offset": 648,
+          "end_offset": 736,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "aggregation",
+        "derived": true,
+        "via_requirement_ids": [
+          "REQ-CVM-PKG-210-004"
+        ]
+      }
+    },
+    {
+      "relationship_id": "REL-4a204fcd5a75",
+      "source_node_id": "REQ-CVM-CSR-200-002",
+      "target_node_id": "REQ-CVM-PKG-210-001",
+      "relationship_type": "potentially_conflicts_with",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.3",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 459,
+            "end_offset": 585,
+            "match": "exact"
+          },
+          "start_offset": 459,
+          "end_offset": 585,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-001",
+          "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 344,
+            "end_offset": 435,
+            "match": "exact"
+          },
+          "start_offset": 344,
+          "end_offset": 435,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "analysis",
+        "analytical_hypothesis": true,
+        "conflict_id": "CON-09f1275918",
+        "conflict_type": "applicability_conflict",
+        "review_status": "requires_human_review"
+      }
+    },
+    {
+      "relationship_id": "REL-30b1d19495ec",
+      "source_node_id": "REQ-CVM-CSR-200-005",
+      "target_node_id": "REQ-CVM-PKG-210-003",
+      "relationship_type": "potentially_conflicts_with",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-005",
+          "quoted_text": "Container labels shall be printed with a minimum barcode height of 25 mm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "2.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 793,
+            "end_offset": 866,
+            "match": "exact"
+          },
+          "start_offset": 793,
+          "end_offset": 866,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-003",
+          "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 552,
+            "end_offset": 642,
+            "match": "exact"
+          },
+          "start_offset": 552,
+          "end_offset": 642,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "analysis",
+        "analytical_hypothesis": true,
+        "conflict_id": "CON-d36e88dd18",
+        "conflict_type": "numeric_incompatibility",
+        "review_status": "requires_human_review"
+      }
+    },
+    {
+      "relationship_id": "REL-c5f3f4fb8d7b",
+      "source_node_id": "REQ-CVM-CSR-200-006",
+      "target_node_id": "REQ-CVM-PKG-210-002",
+      "relationship_type": "potentially_conflicts_with",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-006",
+          "quoted_text": "Production parts shall be shipped only in returnable containers approved by Corvane\nLogistics.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 885,
+            "end_offset": 979,
+            "match": "exact"
+          },
+          "start_offset": 885,
+          "end_offset": 979,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-002",
+          "quoted_text": "Expendable (one-way) cardboard containers shall be used for all parts weighing less than 2\nkg.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 441,
+            "end_offset": 535,
+            "match": "exact"
+          },
+          "start_offset": 441,
+          "end_offset": 535,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "analysis",
+        "analytical_hypothesis": true,
+        "conflict_id": "CON-8975c98ab2",
+        "conflict_type": "process_incompatibility",
+        "review_status": "requires_human_review"
+      }
+    },
+    {
+      "relationship_id": "REL-2a6773b46e7d",
+      "source_node_id": "REQ-CVM-CSR-200-009",
+      "target_node_id": "REQ-CVM-PKG-210-005",
+      "relationship_type": "potentially_conflicts_with",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 755,
+            "end_offset": 887,
+            "match": "exact"
+          },
+          "start_offset": 755,
+          "end_offset": 887,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "5.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "match": "exact"
+          },
+          "start_offset": 1314,
+          "end_offset": 1418,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "metadata": {
+        "origin": "analysis",
+        "analytical_hypothesis": true,
+        "conflict_id": "CON-304b34aa19",
+        "conflict_type": "potential_precedence_conflict",
+        "review_status": "requires_human_review"
+      }
+    }
+  ],
+  "potential_conflicts": [
+    {
+      "conflict_id": "CON-09f1275918",
+      "related_requirement_ids": [
+        "REQ-CVM-CSR-200-002",
+        "REQ-CVM-PKG-210-001"
+      ],
+      "related_document_ids": [
+        "DOC-CVM-CSR-200",
+        "DOC-CVM-PKG-050",
+        "DOC-CVM-PKG-210"
+      ],
+      "related_relationship_ids": [
+        "REL-c829775f0e58",
+        "REL-376887c835ce",
+        "REL-e821aaa96bb8",
+        "REL-22022b3c9537"
+      ],
+      "conflict_type": "applicability_conflict",
+      "description": "One requirement states that CVM-PKG-050 does not apply; the other requires it.",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "quoted_text": "Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "1.3",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 459,
+            "end_offset": 585,
+            "match": "exact"
+          },
+          "start_offset": 459,
+          "end_offset": 585,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-001",
+          "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 344,
+            "end_offset": 435,
+            "match": "exact"
+          },
+          "start_offset": 344,
+          "end_offset": 435,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "review_status": "requires_human_review",
+      "reason_for_review": "Automatically flagged potential incompatibility. Requires engineering review and, where contractual, negotiation with the customer. Not resolved by the system.",
+      "assessment": "apparent_incompatibility",
+      "detection_methods": [
+        "llm_pairwise",
+        "graph_applicability_rule"
+      ],
+      "evidence_valid": true,
+      "metadata": {
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-PKG-050",
+          "relation_statement:applicability",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_informed": true
+      }
+    },
+    {
+      "conflict_id": "CON-d36e88dd18",
+      "related_requirement_ids": [
+        "REQ-CVM-CSR-200-005",
+        "REQ-CVM-PKG-210-003"
+      ],
+      "related_document_ids": [
+        "DOC-CVM-CSR-200",
+        "DOC-CVM-PKG-210"
+      ],
+      "related_relationship_ids": [],
+      "conflict_type": "numeric_incompatibility",
+      "description": "Limits lower 25 mm and upper 20 mm cannot both be met for what appears to be the same characteristic.",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-005",
+          "quoted_text": "Container labels shall be printed with a minimum barcode height of 25 mm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "2.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 793,
+            "end_offset": 866,
+            "match": "exact"
+          },
+          "start_offset": 793,
+          "end_offset": 866,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-003",
+          "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 552,
+            "end_offset": 642,
+            "match": "exact"
+          },
+          "start_offset": 552,
+          "end_offset": 642,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "review_status": "requires_human_review",
+      "reason_for_review": "Automatically flagged potential incompatibility. Requires engineering review and, where contractual, negotiation with the customer. Not resolved by the system.",
+      "assessment": "apparent_incompatibility",
+      "detection_methods": [
+        "llm_pairwise"
+      ],
+      "evidence_valid": true,
+      "metadata": {
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_informed": true
+      }
+    },
+    {
+      "conflict_id": "CON-8975c98ab2",
+      "related_requirement_ids": [
+        "REQ-CVM-CSR-200-006",
+        "REQ-CVM-PKG-210-002"
+      ],
+      "related_document_ids": [
+        "DOC-CVM-CSR-200",
+        "DOC-CVM-PKG-210"
+      ],
+      "related_relationship_ids": [],
+      "conflict_type": "process_incompatibility",
+      "description": "'returnable' and 'expendable' requirements appear to be incompatible.",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-006",
+          "quoted_text": "Production parts shall be shipped only in returnable containers approved by Corvane\nLogistics.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "3.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 885,
+            "end_offset": 979,
+            "match": "exact"
+          },
+          "start_offset": 885,
+          "end_offset": 979,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-002",
+          "quoted_text": "Expendable (one-way) cardboard containers shall be used for all parts weighing less than 2\nkg.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "2.2",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 441,
+            "end_offset": 535,
+            "match": "exact"
+          },
+          "start_offset": 441,
+          "end_offset": 535,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "review_status": "requires_human_review",
+      "reason_for_review": "Automatically flagged potential incompatibility. Requires engineering review and, where contractual, negotiation with the customer. Not resolved by the system.",
+      "assessment": "apparent_incompatibility",
+      "detection_methods": [
+        "llm_pairwise"
+      ],
+      "evidence_valid": true,
+      "metadata": {
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_informed": true
+      }
+    },
+    {
+      "conflict_id": "CON-304b34aa19",
+      "related_requirement_ids": [
+        "REQ-CVM-CSR-200-009",
+        "REQ-CVM-PKG-210-005"
+      ],
+      "related_document_ids": [
+        "DOC-CVM-CSR-200",
+        "DOC-CVM-PKG-210"
+      ],
+      "related_relationship_ids": [
+        "REL-f685f90e8042",
+        "REL-f7300d96f843"
+      ],
+      "conflict_type": "potential_precedence_conflict",
+      "description": "Each document states that it takes precedence over the other.",
+      "evidence": [
+        {
+          "source_document_id": "DOC-CVM-PKG-210",
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "chapter": "4.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 755,
+            "end_offset": 887,
+            "match": "exact"
+          },
+          "start_offset": 755,
+          "end_offset": 887,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        },
+        {
+          "source_document_id": "DOC-CVM-CSR-200",
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+          "source_location": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "chapter": "5.1",
+            "section_path": [],
+            "page_start": null,
+            "page_end": null,
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "match": "exact"
+          },
+          "start_offset": 1314,
+          "end_offset": 1418,
+          "verified": true,
+          "verification": "exact",
+          "repaired": false
+        }
+      ],
+      "review_status": "requires_human_review",
+      "reason_for_review": "Automatically flagged potential incompatibility. Requires engineering review and, where contractual, negotiation with the customer. Not resolved by the system.",
+      "assessment": "apparent_incompatibility",
+      "detection_methods": [
+        "llm_pairwise",
+        "graph_precedence_rule"
+      ],
+      "evidence_valid": true,
+      "metadata": {
+        "selectors": [
+          "all_pairs",
+          "relation_statement:precedence",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "unverifiable_quotes_removed": 1,
+        "graph_informed": true
+      }
+    }
+  ],
+  "coverage": {
+    "documents": [
+      {
+        "document_id": "DOC-CVM-CSR-200",
+        "status": "analyzed",
+        "chars_total": 1420,
+        "chars_processed": 1393,
+        "segments_total": 16,
+        "segments_processed": 16,
+        "notes": []
+      },
+      {
+        "document_id": "DOC-CVM-PKG-210",
+        "status": "analyzed",
+        "chars_total": 889,
+        "chars_processed": 871,
+        "segments_total": 11,
+        "segments_processed": 11,
+        "notes": []
+      }
+    ],
+    "referenced_documents": [
+      {
+        "document_id": "DOC-CVM-CSR-200",
+        "content_available": true,
+        "conflict_analysis_status": "examined"
+      },
+      {
+        "document_id": "DOC-CVM-LBL-220",
+        "content_available": false,
+        "conflict_analysis_status": "not_examined_source_unavailable"
+      },
+      {
+        "document_id": "DOC-CVM-LG-140",
+        "content_available": false,
+        "conflict_analysis_status": "not_examined_source_unavailable"
+      },
+      {
+        "document_id": "DOC-CVM-PKG-050",
+        "content_available": false,
+        "conflict_analysis_status": "not_examined_source_unavailable"
+      },
+      {
+        "document_id": "DOC-CVM-PKG-210",
+        "content_available": true,
+        "conflict_analysis_status": "examined"
+      },
+      {
+        "document_id": "DOC-CVM-SQM-001",
+        "content_available": false,
+        "conflict_analysis_status": "not_examined_source_unavailable"
+      }
+    ],
+    "unresolved_identifiers": [],
+    "conflict_analysis": {
+      "status": "completed",
+      "outcome": "potential_conflicts_found",
+      "candidate_pairs": 91,
+      "pairs_analyzed": 91,
+      "pairs_failed": 0,
+      "total_possible_pairs": 91,
+      "notes": []
+    },
+    "limitations": [
+      {
+        "kind": "unavailable_referenced_document",
+        "message": "CVM-LBL-220 is referenced but its content was not provided; it was not examined for conflicts",
+        "document_id": "DOC-CVM-LBL-220",
+        "requirement_id": null,
+        "chunk_id": null
+      },
+      {
+        "kind": "unavailable_referenced_document",
+        "message": "CVM-LG-140 is referenced but its content was not provided; it was not examined for conflicts",
+        "document_id": "DOC-CVM-LG-140",
+        "requirement_id": null,
+        "chunk_id": null
+      },
+      {
+        "kind": "unavailable_referenced_document",
+        "message": "CVM-PKG-050 is referenced but its content was not provided; it was not examined for conflicts",
+        "document_id": "DOC-CVM-PKG-050",
+        "requirement_id": null,
+        "chunk_id": null
+      },
+      {
+        "kind": "unavailable_referenced_document",
+        "message": "CVM-SQM-001 is referenced but its content was not provided; it was not examined for conflicts",
+        "document_id": "DOC-CVM-SQM-001",
+        "requirement_id": null,
+        "chunk_id": null
+      }
+    ]
+  },
+  "metadata": {
+    "strategy": "graph_assisted",
+    "strategy_description": "Condition D: staged_verified plus graph-informed alias resolution, known-document audit, conflict candidate selection, context retrieval and exclusion/precedence rules.",
+    "strategy_options": {
+      "workflow": "staged",
+      "reference_batch_size": 8,
+      "verification": {
+        "enabled": true,
+        "audit_enabled": true,
+        "max_attempts": 2,
+        "max_candidates_per_requirement": 8,
+        "repair_evidence": true,
+        "reject_distractors": true
+      },
+      "conflicts": {
+        "enabled": true,
+        "all_pairs_max": 400,
+        "pairs_per_call": 8,
+        "attribute_min_score": 0.12,
+        "max_candidate_pairs": 400,
+        "validate_evidence": true
+      },
+      "graph": {
+        "enabled": true,
+        "alias_resolution": true,
+        "reference_audit": true,
+        "candidate_selection": true,
+        "context_retrieval": true,
+        "applicability_rules": true,
+        "precedence_rules": true,
+        "related_document_hops": 1,
+        "max_context_items": 6,
+        "max_shared_reference_fanout": 8
+      }
+    },
+    "created_at": "2026-10-23T17:07:06+00:00",
+    "package_version": "0.1.0",
+    "provider": {
+      "provider": "mock",
+      "model": "mock-heuristic-v1",
+      "run_seed": 1000,
+      "requirement_miss_rate": 0.0,
+      "reference_miss_rate": 0.15,
+      "hallucination_rate": 0.08,
+      "quote_paraphrase_rate": 0.1,
+      "conflict_miss_rate": 0.2,
+      "conflict_false_positive_rate": 0.05,
+      "invalid_json_rate": 0.0,
+      "seed": 0
+    },
+    "provider_is_mock": true,
+    "prompt_versions": {
+      "single_pass_extraction": "baseline.v1@0a89f0a0",
+      "requirement_identification": "requirements.v1@85e5ac7d",
+      "reference_extraction": "references.v1@0391b766",
+      "reference_verification": "verification.v1@70e3a4cd",
+      "conflict_analysis": "conflicts.v1@091d1fb3"
+    },
+    "run_seed": 1000,
+    "case_id": "dev_corvane_packaging",
+    "operational": {
+      "total_seconds": 0.0361,
+      "stage_seconds": {
+        "prepare_input": 0.000253,
+        "identify_requirements": 0.000884,
+        "extract_references": 0.002641,
+        "verify_references": 0.000608,
+        "build_graph": 0.000793,
+        "graph_reference_audit": 0.001537,
+        "select_conflict_candidates": 0.003131,
+        "analyze_conflicts": 0.022706
+      },
+      "llm_calls": 15,
+      "llm_failed_calls": 0,
+      "json_validation_failures": 0,
+      "retries": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "input_chars": 144246,
+      "output_chars": 13426,
+      "estimated_cost_usd": null,
+      "graph_informed_calls": 12
+    },
+    "reference_verification": {
+      "enabled": true,
+      "attempts_used": 0,
+      "initial_mentions": [
+        {
+          "mention_id": "MEN-0001",
+          "document_id": "DOC-CVM-PKG-210",
+          "raw_identifier": "CVM-PKG-210",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-001",
+            "quoted_text": "The supplier shall package all production parts in accordance with the Packaging and\nLabeling Specification CVM-PKG-210.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "1.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 333,
+              "end_offset": 453,
+              "match": "exact"
+            },
+            "start_offset": 333,
+            "end_offset": 453,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0002",
+          "document_id": "DOC-GEN-SPEC-001",
+          "raw_identifier": "GEN-SPEC-001",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-001",
+            "quoted_text": "according to GEN-SPEC-001",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0003",
+          "document_id": "DOC-CVM-PKG-050",
+          "raw_identifier": "CVM-PKG-050",
+          "relation": "excludes",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-002",
+            "quoted_text": "refers to CVM-PKG-050 as required",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0004",
+          "document_id": "DOC-CVM-PKG-051",
+          "raw_identifier": "CVM-PKG-051",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-002",
+            "quoted_text": "according to CVM-PKG-051",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0005",
+          "document_id": "DOC-CVM-SQM-001",
+          "raw_identifier": "CVM-SQM-001",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-003",
+            "quoted_text": "The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "1.4",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 591,
+              "end_offset": 699,
+              "match": "exact"
+            },
+            "start_offset": 591,
+            "end_offset": 699,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0006",
+          "document_id": "DOC-CVM-LBL-220",
+          "raw_identifier": "CVM-LBL-220",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-004",
+            "quoted_text": "refers to CVM-LBL-220 as required",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0007",
+          "document_id": "DOC-GEN-SPEC-001",
+          "raw_identifier": "GEN-SPEC-001",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-006",
+            "quoted_text": "according to GEN-SPEC-001",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0008",
+          "document_id": "DOC-CVM-LG-140",
+          "raw_identifier": "CVM-LG-140",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-007",
+            "quoted_text": "refers to CVM-LG-140 as required",
+            "source_location": null,
+            "start_offset": null,
+            "end_offset": null,
+            "verified": false,
+            "verification": "not_found",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0009",
+          "document_id": "DOC-NAME-PACKAGING-AND-LABELING-SPECIFICATION",
+          "raw_identifier": "Packaging and Labeling Specification",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-008",
+            "quoted_text": "Damaged packaging shall be reported to Corvane Logistics using the reporting procedure\ndescribed in the Packaging and Labeling Specification.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "4.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 1154,
+              "end_offset": 1295,
+              "match": "exact"
+            },
+            "start_offset": 1154,
+            "end_offset": 1295,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "unresolved_name",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0010",
+          "document_id": "DOC-CVM-PKG-210",
+          "raw_identifier": "CVM-PKG-210",
+          "relation": "takes_precedence_over",
+          "evidence": {
+            "source_document_id": "DOC-CVM-CSR-200",
+            "requirement_id": "REQ-CVM-CSR-200-009",
+            "quoted_text": "Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-CSR-200",
+              "chapter": "5.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 1314,
+              "end_offset": 1418,
+              "match": "exact"
+            },
+            "start_offset": 1314,
+            "end_offset": 1418,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0011",
+          "document_id": "DOC-CVM-PKG-050",
+          "raw_identifier": "CVM-PKG-050",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-001",
+            "quoted_text": "Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "2.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 344,
+              "end_offset": 435,
+              "match": "exact"
+            },
+            "start_offset": 344,
+            "end_offset": 435,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0012",
+          "document_id": "DOC-CVM-LBL-220",
+          "raw_identifier": "CVM-LBL-220",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-003",
+            "quoted_text": "Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "3.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 552,
+              "end_offset": 642,
+              "match": "exact"
+            },
+            "start_offset": 552,
+            "end_offset": 642,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0013",
+          "document_id": "DOC-NAME-CORVANE-SUPPLIER-QUALITY-MANUAL",
+          "raw_identifier": "Corvane Supplier Quality Manual",
+          "relation": "references",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-004",
+            "quoted_text": "Label data content shall follow the requirements of the Corvane Supplier Quality Manual.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "3.2",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 648,
+              "end_offset": 736,
+              "match": "exact"
+            },
+            "start_offset": 648,
+            "end_offset": 736,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "unresolved_name",
+          "verified": false
+        },
+        {
+          "mention_id": "MEN-0014",
+          "document_id": "DOC-CVM-CSR-200",
+          "raw_identifier": "CVM-CSR-200",
+          "relation": "takes_precedence_over",
+          "evidence": {
+            "source_document_id": "DOC-CVM-PKG-210",
+            "requirement_id": "REQ-CVM-PKG-210-005",
+            "quoted_text": "In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence.",
+            "source_location": {
+              "source_document_id": "DOC-CVM-PKG-210",
+              "chapter": "4.1",
+              "section_path": [],
+              "page_start": null,
+              "page_end": null,
+              "start_offset": 755,
+              "end_offset": 887,
+              "match": "exact"
+            },
+            "start_offset": 755,
+            "end_offset": 887,
+            "verified": true,
+            "verification": "exact",
+            "repaired": false
+          },
+          "status": "found_initially",
+          "resolution": "identifier",
+          "verified": false
+        }
+      ],
+      "events": [
+        {
+          "requirement_id": "REQ-CVM-CSR-200-001",
+          "raw_identifier": "CVM-PKG-210",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0001"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-001",
+          "raw_identifier": "GEN-SPEC-001",
+          "action": "rejected",
+          "reason": "identifier not found in its requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0002"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "raw_identifier": "CVM-PKG-050",
+          "action": "evidence_repaired",
+          "reason": "model quote not found in requirement",
+          "attempt": 0,
+          "mention_id": "MEN-0003"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "raw_identifier": "CVM-PKG-050",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0003"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-002",
+          "raw_identifier": "CVM-PKG-051",
+          "action": "rejected",
+          "reason": "identifier not found in its requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0004"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-003",
+          "raw_identifier": "CVM-SQM-001",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0005"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-004",
+          "raw_identifier": "CVM-LBL-220",
+          "action": "evidence_repaired",
+          "reason": "model quote not found in requirement",
+          "attempt": 0,
+          "mention_id": "MEN-0006"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-004",
+          "raw_identifier": "CVM-LBL-220",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0006"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-006",
+          "raw_identifier": "GEN-SPEC-001",
+          "action": "rejected",
+          "reason": "identifier not found in its requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0007"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-007",
+          "raw_identifier": "CVM-LG-140",
+          "action": "evidence_repaired",
+          "reason": "model quote not found in requirement",
+          "attempt": 0,
+          "mention_id": "MEN-0008"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-007",
+          "raw_identifier": "CVM-LG-140",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0008"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-008",
+          "raw_identifier": "Packaging and Labeling Specification",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0009"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-009",
+          "raw_identifier": "CVM-PKG-210",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0010"
+        },
+        {
+          "requirement_id": "REQ-CVM-PKG-210-001",
+          "raw_identifier": "CVM-PKG-050",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0011"
+        },
+        {
+          "requirement_id": "REQ-CVM-PKG-210-003",
+          "raw_identifier": "CVM-LBL-220",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0012"
+        },
+        {
+          "requirement_id": "REQ-CVM-PKG-210-004",
+          "raw_identifier": "Corvane Supplier Quality Manual",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0013"
+        },
+        {
+          "requirement_id": "REQ-CVM-PKG-210-005",
+          "raw_identifier": "CVM-CSR-200",
+          "action": "kept",
+          "reason": "identifier present in requirement text",
+          "attempt": 0,
+          "mention_id": "MEN-0014"
+        },
+        {
+          "requirement_id": "REQ-CVM-CSR-200-008",
+          "raw_identifier": "Packaging and Labeling Specification",
+          "action": "resolved_by_alias",
+          "reason": "name is used for CVM-PKG-210 elsewhere in the graph",
+          "attempt": 0,
+          "mention_id": "MEN-0009"
+        },
+        {
+          "requirement_id": "REQ-CVM-PKG-210-004",
+          "raw_identifier": "Corvane Supplier Quality Manual",
+          "action": "resolved_by_alias",
+          "reason": "name is used for CVM-SQM-001 elsewhere in the graph",
+          "attempt": 0,
+          "mention_id": "MEN-0013"
+        }
+      ],
+      "counts": {
+        "found_initially": 14,
+        "kept_from_initial": 11,
+        "added_during_verification": 0,
+        "added_by_graph_audit": 0,
+        "rejected_unsupported": 3,
+        "merged_duplicates": 0,
+        "evidence_repaired": 3,
+        "unresolved": 0,
+        "near_duplicate_flags": 0
+      }
+    },
+    "conflict_candidates": [
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-006"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-PKG-210"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-PKG-210"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-001",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-006"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-PKG-050",
+          "relation_statement:applicability",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-006"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-SQM-001",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-003",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-CSR-200-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-CSR-200-006"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-LBL-220",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-004",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-CSR-200-006"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-005",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-CSR-200-007"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-006",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-CSR-200-008"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-007",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-CSR-200-009"
+        ],
+        "selectors": [
+          "all_pairs",
+          "shared_reference:DOC-CVM-PKG-210"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-008",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-001"
+        ],
+        "selectors": [
+          "all_pairs",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs",
+          "relation_statement:precedence",
+          "linked_documents:DOC-CVM-CSR-200->DOC-CVM-PKG-210",
+          "linked_documents:DOC-CVM-PKG-210->DOC-CVM-CSR-200"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-001",
+          "REQ-CVM-PKG-210-002"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-001",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-001",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-001",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-002",
+          "REQ-CVM-PKG-210-003"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-002",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-002",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-003",
+          "REQ-CVM-PKG-210-004"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-003",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      },
+      {
+        "requirement_ids": [
+          "REQ-CVM-PKG-210-004",
+          "REQ-CVM-PKG-210-005"
+        ],
+        "selectors": [
+          "all_pairs"
+        ],
+        "graph_derived": false,
+        "analyzed": true
+      }
+    ],
+    "graph_decisions": [
+      {
+        "decision_type": "alias_resolved",
+        "detail": "'Packaging and Labeling Specification' in REQ-CVM-CSR-200-008 resolved to CVM-PKG-210",
+        "node_ids": [
+          "REQ-CVM-CSR-200-008",
+          "DOC-CVM-PKG-210"
+        ]
+      },
+      {
+        "decision_type": "alias_resolved",
+        "detail": "'Corvane Supplier Quality Manual' in REQ-CVM-PKG-210-004 resolved to CVM-SQM-001",
+        "node_ids": [
+          "REQ-CVM-PKG-210-004",
+          "DOC-CVM-SQM-001"
+        ]
+      },
+      {
+        "decision_type": "context_retrieved",
+        "detail": "graph context added to 91 of 91 pairs",
+        "node_ids": []
+      },
+      {
+        "decision_type": "rule_flagged_conflict",
+        "detail": "REQ-CVM-CSR-200-002 states DOC-CVM-PKG-050 does not apply; REQ-CVM-PKG-210-001 (DOC-CVM-PKG-210) references DOC-CVM-PKG-050.",
+        "node_ids": [
+          "REQ-CVM-CSR-200-002",
+          "REQ-CVM-PKG-210-001"
+        ]
+      },
+      {
+        "decision_type": "rule_flagged_conflict",
+        "detail": "DOC-CVM-CSR-200 and DOC-CVM-PKG-210 each state that they take precedence over the other.",
+        "node_ids": [
+          "REQ-CVM-CSR-200-009",
+          "REQ-CVM-PKG-210-005"
+        ]
+      }
+    ],
+    "llm_calls": [
+      {
+        "call_id": "CALL-0001",
+        "stage": "identify_requirements",
+        "task": "requirement_identification",
+        "prompt_version": "requirements.v1@85e5ac7d",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 7145,
+        "output_chars": 2650,
+        "latency_seconds": 0.0002,
+        "graph_informed": false,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0002",
+        "stage": "extract_references",
+        "task": "reference_extraction",
+        "prompt_version": "references.v1@0391b766",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 3565,
+        "output_chars": 2440,
+        "latency_seconds": 0.0005,
+        "graph_informed": false,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0003",
+        "stage": "extract_references",
+        "task": "reference_extraction",
+        "prompt_version": "references.v1@0391b766",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 3102,
+        "output_chars": 1638,
+        "latency_seconds": 0.0003,
+        "graph_informed": false,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0004",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11020,
+        "output_chars": 417,
+        "latency_seconds": 0.0011,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0005",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11721,
+        "output_chars": 417,
+        "latency_seconds": 0.001,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0006",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11094,
+        "output_chars": 933,
+        "latency_seconds": 0.001,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0007",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11247,
+        "output_chars": 417,
+        "latency_seconds": 0.0011,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0008",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11666,
+        "output_chars": 417,
+        "latency_seconds": 0.001,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0009",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11551,
+        "output_chars": 417,
+        "latency_seconds": 0.0009,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0010",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11292,
+        "output_chars": 902,
+        "latency_seconds": 0.0009,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0011",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 11555,
+        "output_chars": 896,
+        "latency_seconds": 0.0009,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0012",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 12401,
+        "output_chars": 417,
+        "latency_seconds": 0.0013,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0013",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 12324,
+        "output_chars": 417,
+        "latency_seconds": 0.0011,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0014",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 9476,
+        "output_chars": 881,
+        "latency_seconds": 0.0009,
+        "graph_informed": true,
+        "errors": []
+      },
+      {
+        "call_id": "CALL-0015",
+        "stage": "analyze_conflicts",
+        "task": "conflict_analysis",
+        "prompt_version": "conflicts.v1@091d1fb3",
+        "success": true,
+        "attempts": 1,
+        "input_tokens": null,
+        "output_tokens": null,
+        "input_chars": 5087,
+        "output_chars": 167,
+        "latency_seconds": 0.0004,
+        "graph_informed": true,
+        "errors": []
+      }
+    ],
+    "warnings": [],
+    "errors": []
+  }
+}

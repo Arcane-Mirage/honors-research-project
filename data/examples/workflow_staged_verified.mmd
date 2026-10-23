@@ -1,0 +1,30 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	prepare_input(prepare_input)
+	identify_requirements(identify_requirements)
+	extract_references(extract_references)
+	finalize(finalize)
+	verify_references(verify_references)
+	targeted_reextraction(targeted_reextraction)
+	select_conflict_candidates(select_conflict_candidates)
+	analyze_conflicts(analyze_conflicts)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> prepare_input;
+	analyze_conflicts --> finalize;
+	extract_references --> verify_references;
+	identify_requirements --> extract_references;
+	prepare_input -. &nbsp;fatal&nbsp; .-> finalize;
+	prepare_input -. &nbsp;ok&nbsp; .-> identify_requirements;
+	select_conflict_candidates --> analyze_conflicts;
+	targeted_reextraction --> verify_references;
+	verify_references -. &nbsp;done&nbsp; .-> select_conflict_candidates;
+	verify_references -. &nbsp;reextract&nbsp; .-> targeted_reextraction;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
