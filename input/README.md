@@ -13,5 +13,4 @@ csr-lab build-graph --llm lmstudio      # analyse and merge into graphs/main.jso
 - Files already merged into the graph (same bytes) are skipped; `--force` re-analyses them.
 - `--graph PATH` picks a different graph; `--no-update-graph` reads it without changing it.
 
-Everything in this folder except this README is git-ignored, so documents dropped here are
-never committed.
+Everything in this folder except this README is git-ignored.
