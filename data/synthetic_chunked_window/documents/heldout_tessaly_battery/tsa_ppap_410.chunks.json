@@ -1,0 +1,24 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-window(words=60)",
+  "source": {
+    "file": "tsa_ppap_410.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "W001",
+      "title": null,
+      "content": "TESSALY AUTOMOTIVE\nProduction Part Approval Procedure\nDocument ID: TSA-PPAP-410\nRevision: F\nEffective Date: 2025-09-12\nAll names, companies and document identifiers in this document are fictional.\n\n1 Purpose\n1.1 This procedure describes the production part approval process for Tessaly Automotive\nsuppliers.\n\n2 Submission\n2.1 The production part approval package shall be submitted no earlier than 10 working days\nbefore the planned"
+    },
+    {
+      "chunk_id": "W002",
+      "title": null,
+      "content": "start of production.\n\n2.2 The package shall contain material certifications according to TSA-MAT-420 and a control\nplan prepared according to TSA-QP-020.\n\n2.3 Dimensional results shall be reported for all characteristics shown on drawing\nTSA-DRW-2210.\n\n2.4 Run-at-rate verification shall be completed before the production part approval package\nis submitted.\n\n3 Precedence\n3.1 Where this procedure conflicts with any customer-specific requirements document,"
+    },
+    {
+      "chunk_id": "W003",
+      "title": null,
+      "content": "including TSA-CSR-400, this procedure shall govern."
+    }
+  ]
+}

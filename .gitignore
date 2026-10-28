@@ -225,3 +225,7 @@ outputs/
 *.sqlite
 *.sqlite3
 .venv/
+# Documents dropped in for `csr-lab build-graph`, and the graphs built from them
+input/*
+!input/README.md
+graphs/

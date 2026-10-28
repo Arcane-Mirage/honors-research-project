@@ -1,4 +1,7 @@
-"""Stage prompt: assess candidate requirement pairs for potential conflicts."""
+"""src/csr_lab/prompts/conflicts.py
+
+Stage prompt: assess candidate requirement pairs for potential conflicts.
+"""
 
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ class ConflictAnalysisResponse(BaseModel):
 
 SPEC = PromptSpec(
     name="conflict_analysis",
-    version="conflicts.v1",
+    version="conflicts.v2",
     system=(
         "You flag potentially conflicting requirements in customer-specific requirements (CSR) "
         "documents for human review. You do not resolve conflicts, decide precedence, or give legal "
@@ -50,8 +53,10 @@ SPEC = PromptSpec(
     instructions=(
         "Assess each requirement pair below. Return one assessment per pair_id. For a potential "
         "conflict, give the conflict_type, a one-sentence description of why the statements may be "
-        "incompatible, and a verbatim quote from each requirement. If a pair has related_context, it "
-        "lists relationships taken from the document relationship graph; use it as background only "
-        "and base every conclusion on the quoted requirement text."
+        "incompatible, and a verbatim quote from each requirement (requirement_id 'A' or 'B' says "
+        "which requirement the quote is from). If a pair has related_context, it "
+        "lists relationships taken from the document relationship graph, where A and B mean the two "
+        "requirements of that pair; use it as background only and base every conclusion on the "
+        "quoted requirement text."
     ),
 )

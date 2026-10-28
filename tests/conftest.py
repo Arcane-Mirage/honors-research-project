@@ -1,3 +1,10 @@
+"""tests/conftest.py
+
+Shared pytest fixtures: mock-model configs, the synthetic dataset and a sample CSR.
+
+Every test runs on the offline mock model, whatever the default LLM profile is.
+"""
+
 from __future__ import annotations
 
 import sys
@@ -30,6 +37,12 @@ CVM-TM-320.
 temperature of 105 °C.
 2.5 The supplier shall keep records for five years.
 """
+
+
+@pytest.fixture(autouse=True)
+def _offline_llm(monkeypatch):
+    """CLI tests use the mock model even if the default profile in configs/llms.yaml is a real server."""
+    monkeypatch.setenv("CSR_LAB_LLM", "mock")
 
 
 @pytest.fixture

@@ -1,0 +1,29 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-window(words=60)",
+  "source": {
+    "file": "tsa_csr_400.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "W001",
+      "title": null,
+      "content": "TESSALY AUTOMOTIVE\nCustomer-Specific Requirements for Battery Module Suppliers\nDocument ID: TSA-CSR-400\nRevision: B\nEffective Date: 2026-03-20\nAll names, companies and document identifiers in this document are fictional.\n\n1 General\n1.1 This document applies to suppliers of high-voltage battery modules for Tessaly\nAutomotive.\n\n1.2 Production part approval shall be obtained according to the Production Part Approval\nProcedure TSA-PPAP-410 before the first"
+    },
+    {
+      "chunk_id": "W002",
+      "title": null,
+      "content": "production shipment.\n\n1.3 Materials used in battery modules shall conform to TSA-MAT-420.\n\n1.4 Where this document conflicts with TSA-PPAP-410, the requirements of this document shall\ntake precedence.\n\n2 Materials\n2.1 Specification TSA-CT-077 does not apply to battery modules and shall not be used for\ncell coatings.\n\n2.2 Cell housing adhesives shall have a maximum curing temperature of 60 °C.\n\n2.3"
+    },
+    {
+      "chunk_id": "W003",
+      "title": null,
+      "content": "Thermal interface materials shall be qualified according to TSA-MAT-425, and the\nqualification report shall be included in the production part approval package described in\nTSA-PPAP-410.\n\n3 Approval\n3.1 The supplier shall submit the production part approval package at least 20 working days\nbefore the planned start of production.\n\n3.2 The approval package shall include the dimensional results report described in"
+    },
+    {
+      "chunk_id": "W004",
+      "title": null,
+      "content": "the\nProduction Part Approval Procedure.\n\n3.3 Run-at-rate results shall be documented on form TSA-QF-031A.\n\n3.4 The supplier shall perform the run-at-rate verification during the first week of series\nproduction."
+    }
+  ]
+}

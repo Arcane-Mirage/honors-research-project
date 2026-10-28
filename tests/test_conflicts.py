@@ -1,3 +1,8 @@
+"""tests/test_conflicts.py
+
+Conflict candidate selection, evidence validation and the graph flagging rules.
+"""
+
 from csr_lab.config import ConflictSettings, GraphSettings
 from csr_lab.conflicts.candidate_selection import attribute_score, select_candidates
 from csr_lab.conflicts.detector import graph_rule_conflicts, merge_conflicts, validate_conflict_evidence

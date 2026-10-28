@@ -1,0 +1,62 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2562 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (TESSALY AUTOMOTIVE | TSA-CSR-400 Rev B | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (TESSALY AUTOMOTIVE) Tj ET
+BT /F1 10 Tf 50.0 700 Td (Customer-Specific Requirements for Battery Module Suppliers) Tj ET
+BT /F1 10 Tf 50.0 686 Td (Document ID: TSA-CSR-400) Tj ET
+BT /F1 10 Tf 50.0 672 Td (Revision: B) Tj ET
+BT /F1 10 Tf 50.0 658 Td (Effective Date: 2026-03-20) Tj ET
+BT /F1 10 Tf 50.0 644 Td (All names, companies and document identifiers in this document are fictional.) Tj ET
+BT /F1 10 Tf 50.0 616 Td (1 General) Tj ET
+BT /F1 10 Tf 50.0 602 Td (1.1 This document applies to suppliers of high-voltage battery modules for Tessaly) Tj ET
+BT /F1 10 Tf 50.0 588 Td (Automotive.) Tj ET
+BT /F1 10 Tf 50.0 560 Td (1.2 Production part approval shall be obtained according to the Production Part Approval) Tj ET
+BT /F1 10 Tf 50.0 546 Td (Procedure TSA-PPAP-410 before the first production shipment.) Tj ET
+BT /F1 10 Tf 50.0 518 Td (1.3 Materials used in battery modules shall conform to TSA-MAT-420.) Tj ET
+BT /F1 10 Tf 50.0 490 Td (1.4 Where this document conflicts with TSA-PPAP-410, the requirements of this document shall) Tj ET
+BT /F1 10 Tf 50.0 476 Td (take precedence.) Tj ET
+BT /F1 10 Tf 50.0 448 Td (2 Materials) Tj ET
+BT /F1 10 Tf 50.0 434 Td (2.1 Specification TSA-CT-077 does not apply to battery modules and shall not be used for) Tj ET
+BT /F1 10 Tf 50.0 420 Td (cell coatings.) Tj ET
+BT /F1 10 Tf 50.0 392 Td (2.2 Cell housing adhesives shall have a maximum curing temperature of 60 °C.) Tj ET
+BT /F1 10 Tf 50.0 364 Td (2.3 Thermal interface materials shall be qualified according to TSA-MAT-425, and the) Tj ET
+BT /F1 10 Tf 50.0 350 Td (qualification report shall be included in the production part approval package described in) Tj ET
+BT /F1 10 Tf 50.0 336 Td (TSA-PPAP-410.) Tj ET
+BT /F1 10 Tf 50.0 308 Td (3 Approval) Tj ET
+BT /F1 10 Tf 50.0 294 Td (3.1 The supplier shall submit the production part approval package at least 20 working days) Tj ET
+BT /F1 10 Tf 50.0 280 Td (before the planned start of production.) Tj ET
+BT /F1 10 Tf 50.0 252 Td (3.2 The approval package shall include the dimensional results report described in the) Tj ET
+BT /F1 10 Tf 50.0 238 Td (Production Part Approval Procedure.) Tj ET
+BT /F1 10 Tf 50.0 210 Td (3.3 Run-at-rate results shall be documented on form TSA-QF-031A.) Tj ET
+BT /F1 10 Tf 50.0 182 Td (3.4 The supplier shall perform the run-at-rate verification during the first week of series) Tj ET
+BT /F1 10 Tf 50.0 168 Td (production.) Tj ET
+BT /F1 10 Tf 430.0 140 Td (Page 1 of 1) Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000212 00000 n 
+0000000338 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2952
+%%EOF

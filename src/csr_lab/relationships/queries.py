@@ -1,8 +1,10 @@
-"""Deterministic queries over the relationship graph.
+"""src/csr_lab/relationships/queries.py
 
-Includes two flagging rules (Section 10.1 of the project brief). They identify
-*where* potentially conflicting relationships occur and attach the edges and
-evidence involved. They do not explain, rank or resolve conflicts:
+Deterministic queries over the relationship graph.
+
+Two flagging rules show *where* potentially conflicting relationships occur and
+attach the edges and evidence involved. They do not explain, rank or resolve
+conflicts; that is left to the human reviewer:
 
 * applicability: a requirement explicitly excludes document X, while a
   requirement in the same or a related (reference-linked) document references X;
@@ -10,6 +12,9 @@ evidence involved. They do not explain, rank or resolve conflicts:
 
 Note: two requirements that merely reference the same document are never
 flagged by these rules.
+
+Revisions: a document node and its revision nodes count as the same document
+(``RelationshipGraph.same_document``); two different revisions do not.
 """
 
 from __future__ import annotations
@@ -92,17 +97,20 @@ def evidence_for(graph: RelationshipGraph, relationship_id: str) -> list[Evidenc
 
 
 def related_documents(graph: RelationshipGraph, document_id: str, hops: int = 1) -> set[str]:
-    """Documents within ``hops`` document-level reference links, in either direction."""
-    frontier, seen = {document_id}, {document_id}
+    """Documents within ``hops`` document-level reference links, in either direction.
+
+    Moving between a document and its revisions costs no hop.
+    """
+    seen = graph.equivalent_documents(document_id)
+    frontier = set(seen)
     for _ in range(hops):
-        nxt = set()
+        nxt: set[str] = set()
         for doc in frontier:
             for e in graph.out_edges(doc, REF) + graph.in_edges(doc, REF):
                 if e.metadata.get("origin") != "aggregation":
                     continue
                 other = e.target_node_id if e.source_node_id == doc else e.source_node_id
-                if other not in seen:
-                    nxt.add(other)
+                nxt |= graph.equivalent_documents(other) - seen
         seen |= nxt
         frontier = nxt
     return seen
@@ -114,8 +122,8 @@ def requirements_in_linked_documents(graph: RelationshipGraph) -> list[tuple[str
     for e in graph.edges:
         if e.relationship_type != REF or e.metadata.get("origin") != "aggregation":
             continue
-        src_reqs = [x.target_node_id for x in graph.out_edges(e.source_node_id, RelationshipType.CONTAINS)]
-        tgt_reqs = [x.target_node_id for x in graph.out_edges(e.target_node_id, RelationshipType.CONTAINS)]
+        src_reqs = graph.requirements_in(e.source_node_id)
+        tgt_reqs = graph.requirements_in(e.target_node_id)
         for a in src_reqs:
             for b in tgt_reqs:
                 pairs.append((a, b, e.source_node_id, e.target_node_id))
@@ -140,11 +148,17 @@ def find_applicability_conflicts(graph: RelationshipGraph, hops: int = 1) -> lis
         if doc_a is None:
             continue
         related = related_documents(graph, doc_a, hops)
-        for ref in graph.in_edges(excluded, REF):
+        refs = [r for target in sorted(graph.equivalent_documents(excluded)) for r in graph.in_edges(target, REF)]
+        for ref in refs:
             req_b = ref.source_node_id
             if ref.metadata.get("origin") != "extraction" or req_b == req_a:
                 continue
-            if any(e.target_node_id == excluded for e in graph.out_edges(req_b, RelationshipType.EXPLICITLY_EXCLUDES)):
+            if not graph.same_document(ref.target_node_id, excluded):
+                continue  # a different revision than the excluded one
+            if any(
+                graph.same_document(e.target_node_id, excluded)
+                for e in graph.out_edges(req_b, RelationshipType.EXPLICITLY_EXCLUDES)
+            ):
                 continue  # both exclude it: consistent
             doc_b = graph.container_of(req_b)
             if doc_b not in related:
@@ -153,7 +167,10 @@ def find_applicability_conflicts(graph: RelationshipGraph, hops: int = 1) -> lis
                 e.relationship_id
                 for e in graph.edges
                 if e.metadata.get("origin") == "aggregation"
-                and {e.source_node_id, e.target_node_id} == {doc_a, doc_b}
+                and (
+                    (graph.same_document(e.source_node_id, doc_a) and graph.same_document(e.target_node_id, doc_b))
+                    or (graph.same_document(e.source_node_id, doc_b) and graph.same_document(e.target_node_id, doc_a))
+                )
             ]
             pair = tuple(sorted((req_a, req_b)))
             flags.setdefault(
@@ -177,9 +194,9 @@ def find_precedence_conflicts(graph: RelationshipGraph) -> list[GraphFlag]:
         doc1 = graph.container_of(e1.source_node_id)
         for e2 in prec:
             doc2 = graph.container_of(e2.source_node_id)
-            if e1 is e2 or doc1 is None or doc2 is None or doc1 == doc2:
+            if e1 is e2 or doc1 is None or doc2 is None or graph.family_of(doc1) == graph.family_of(doc2):
                 continue
-            if e1.target_node_id == doc2 and e2.target_node_id == doc1:
+            if graph.same_document(e1.target_node_id, doc2) and graph.same_document(e2.target_node_id, doc1):
                 pair = tuple(sorted((e1.source_node_id, e2.source_node_id)))
                 flags.setdefault(
                     pair,  # type: ignore[arg-type]
@@ -199,22 +216,58 @@ def export_graph(graph: RelationshipGraph) -> dict:
     return graph.model_dump(mode="json")
 
 
-def to_mermaid(graph: RelationshipGraph, include_contains: bool = False) -> str:
-    """Lightweight Mermaid flowchart for inspection (the JSON graph is the real artifact)."""
+def to_mermaid(graph: RelationshipGraph, include_contains: bool = False, documents_only: bool = False) -> str:
+    """Mermaid flowchart for people (the JSON graph is the real artifact).
+
+    ``documents_only`` draws one box per document and lifts requirement-level statements to
+    their documents (one arrow per document pair and relation): a readable overview.
+    """
 
     def nid(x: str) -> str:
         return "n_" + "".join(c if c.isalnum() else "_" for c in x)
 
-    lines = ["flowchart LR"]
-    for n in graph.nodes:
-        label = n.label.replace('"', "'")[:50]
-        shape = f'["{label}"]' if n.node_type == "requirement" else f'[("{label}")]'
-        lines.append(f"  {nid(n.node_id)}{shape}")
+    def esc(text: str) -> str:
+        return text.replace('"', "'")
+
     styles = {
         RelationshipType.REFERENCES: "-->",
         RelationshipType.CONTAINS: "-.->",
+        RelationshipType.HAS_REVISION: "-.->",
+        RelationshipType.SUPERSEDED_BY: "-.->",
         RelationshipType.POTENTIALLY_CONFLICTS_WITH: "<-.->",
     }
+    lines = ["flowchart LR"]
+    if documents_only:
+        docs = graph.nodes_of_type("document")
+        for n in docs:
+            available = n.attributes.get("analyzed") or n.attributes.get("content_available")
+            label = esc(n.label)[:50] + ("" if available else " (not provided)")
+            lines.append(f'  {nid(n.node_id)}[("{label}")]')
+        doc_ids = {n.node_id for n in docs}
+        seen: set[tuple[str, str, str]] = set()
+        for e in graph.edges:
+            if e.relationship_type == RelationshipType.CONTAINS:
+                continue
+            src = e.source_node_id if e.source_node_id in doc_ids else graph.container_of(e.source_node_id)
+            tgt = e.target_node_id if e.target_node_id in doc_ids else graph.container_of(e.target_node_id)
+            key = (src or "", e.relationship_type.value, tgt or "")
+            if not src or not tgt or key in seen:
+                continue
+            structural = e.relationship_type in (
+                RelationshipType.HAS_REVISION,
+                RelationshipType.SUPERSEDED_BY,
+                RelationshipType.POTENTIALLY_CONFLICTS_WITH,
+            )
+            if not structural and graph.same_document(src, tgt):  # a document referring to itself
+                continue
+            seen.add(key)
+            arrow = styles.get(e.relationship_type, "==>")
+            lines.append(f"  {nid(src)} {arrow}|{e.relationship_type.value}| {nid(tgt)}")
+        return "\n".join(lines) + "\n"
+    for n in graph.nodes:
+        label = esc(n.label)[:50]
+        shape = f'["{label}"]' if n.node_type == "requirement" else f'[("{label}")]'
+        lines.append(f"  {nid(n.node_id)}{shape}")
     for e in graph.edges:
         if e.relationship_type == RelationshipType.CONTAINS and not include_contains:
             continue

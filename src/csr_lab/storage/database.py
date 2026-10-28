@@ -1,4 +1,6 @@
-"""SQLite storage for experiment records.
+"""src/csr_lab/storage/database.py
+
+SQLite storage for experiment records.
 
 Tables:
 * ``experiments``  one row per experiment run of the runner (config, dataset hash, environment)

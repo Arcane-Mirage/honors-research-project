@@ -1,4 +1,6 @@
-"""Choose which requirement pairs are sent to conflict analysis.
+"""src/csr_lab/conflicts/candidate_selection.py
+
+Choose which requirement pairs are sent to conflict analysis.
 
 Non-graph selectors (available to every staged strategy):
 * ``all_pairs`` when the number of pairs is at most ``all_pairs_max``;

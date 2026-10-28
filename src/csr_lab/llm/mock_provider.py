@@ -1,4 +1,6 @@
-"""Deterministic offline mock model.
+"""src/csr_lab/llm/mock_provider.py
+
+Deterministic offline mock model.
 
 The mock implements ``LLMProvider`` exactly like a real provider: it receives
 the rendered prompt messages, reads the ``<input_json>`` block, and returns
@@ -19,10 +21,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 from csr_lab.config import MockSettings
-from csr_lab.ingestion.segmentation import segment_document
+from csr_lab.extraction.normalization import normalize_name, parse_identifier, squash
+from csr_lab.ingestion.segmentation import LABEL_RE, segment_document
 from csr_lab.llm import mock_rules as rules
 from csr_lab.llm.interface import GenerationRequest, GenerationResponse, LLMProvider
 from csr_lab.prompts import parse_input_payload
@@ -67,6 +71,9 @@ class MockProvider(LLMProvider):
             "reference_extraction": self._references,
             "reference_verification": self._verify,
             "conflict_analysis": self._conflicts,
+            "semantic_chunking": self._semantic_chunks,
+            "reference_merging": self._merge_labels,
+            "reference_alias_check": self._alias_check,
         }.get(request.task)
         if handler is None:
             raise ValueError(f"mock provider has no behaviour for task {request.task!r}")
@@ -178,12 +185,131 @@ class MockProvider(LLMProvider):
     def _identify(self, payload: dict[str, Any]) -> dict[str, Any]:
         found = []
         for seg in payload.get("segments", []):
-            if seg.get("context_only") or not rules.has_modal(seg["text"]):
+            if seg.get("context_only"):
                 continue
-            if self._chance(self.settings.requirement_miss_rate, "requirement", hash_text(seg["text"])):
-                continue
-            found.append({"segment_id": seg["segment_id"], "chapter": seg.get("chapter"), "requirement_text": _collapse(seg["text"])})
+            # A unit may hold several requirements (a chunk): report each numbered part separately.
+            for chapter, text in _requirement_parts(seg["text"], seg.get("chapter")):
+                if not rules.has_modal(text):
+                    continue
+                if self._chance(self.settings.requirement_miss_rate, "requirement", hash_text(text)):
+                    continue
+                found.append({"segment_id": seg["segment_id"], "chapter": chapter, "requirement_text": _collapse(text)})
         return {"requirements": found}
+
+    # -- semantic chunking ---------------------------------------------------
+
+    def _semantic_chunks(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Group paragraphs into ~target-size chunks, starting new chunks at top-level headings.
+
+        Chunk text is always copied verbatim from the source.
+        """
+        text = payload["text"]
+        target = int(payload.get("target_chunk_words") or 500)
+        paragraphs = [p.strip("\n") for p in re.split(r"\n[ \t]*\n", text) if p.strip()]
+        groups: list[list[str]] = []
+        words = 0
+        for para in paragraphs:
+            n = len(para.split())
+            first = para.split("\n", 1)[0].strip()
+            m = LABEL_RE.match(first)
+            top_heading = bool(m) and "." not in m.group("label").split()[-1] and len(first.split()) <= 8
+            if groups and (words + n > target or (top_heading and words >= 0.4 * target)):
+                groups.append([])
+                words = 0
+            if not groups:
+                groups.append([])
+            groups[-1].append(para)
+            words += n
+        chunks = []
+        for group in groups:
+            if not group:
+                continue
+            body = "\n\n".join(group)
+            title = " ".join(group[0].split("\n", 1)[0].split()[:8])
+            chunks.append({"title": title, "text": body})
+        return {"chunks": chunks}
+
+    # -- reference merging -----------------------------------------------------
+
+    def _merge_labels(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Group reference labels like a model asked to deduplicate a list.
+
+        Correct: formatting variants of one identifier, and a name-only label whose name
+        appears in another label (unless ``merge_alias_miss_rate``). Errors: revision
+        variants merged without their revision (``merge_revision_drop_rate``) and
+        look-alike identifiers merged (``merge_confusion_rate``).
+        """
+        labels: list[str] = payload.get("labels", [])
+        parsed = {lab: parse_identifier(lab) for lab in labels}
+        parent = {lab: lab for lab in labels}
+
+        def find(x: str) -> str:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: str, b: str) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+
+        dropped_revision: set[str] = set()
+        for i, a in enumerate(labels):
+            pa = parsed[a]
+            for b in labels[i + 1 :]:
+                pb = parsed[b]
+                if pa.canonical and pb.canonical:
+                    if pa.canonical == pb.canonical:
+                        if pa.revision == pb.revision:
+                            union(a, b)
+                        elif self._chance(self.settings.merge_revision_drop_rate, "merge_rev", pa.canonical):
+                            union(a, b)
+                            dropped_revision.add(pa.canonical)
+                    elif _look_alike(pa.canonical, pb.canonical) and self._chance(
+                        self.settings.merge_confusion_rate, "merge_confuse", *sorted([pa.canonical, pb.canonical])
+                    ):
+                        union(a, b)
+                elif (pa.canonical is None) != (pb.canonical is None):
+                    name_label, id_label = (a, b) if pa.canonical is None else (b, a)
+                    name = normalize_name(parsed[name_label].name or name_label)
+                    other = parsed[id_label].name
+                    if other and name and name == normalize_name(other) and not self._chance(
+                        self.settings.merge_alias_miss_rate, "merge_alias", name
+                    ):
+                        union(a, b)
+        groups: dict[str, list[str]] = {}
+        for lab in labels:
+            groups.setdefault(find(lab), []).append(lab)
+        out = []
+        for members in groups.values():
+            with_id = [m for m in members if parsed[m].canonical]
+            canonical = max(with_id, key=len) if with_id else members[0]
+            p = parsed[canonical]
+            if p.canonical in dropped_revision and len({parsed[m].revision for m in members}) > 1:
+                canonical = p.canonical  # the model names the group without a revision
+            out.append({"canonical_name": canonical, "members": members})
+        return {"groups": out}
+
+    def _alias_check(self, payload: dict[str, Any]) -> dict[str, Any]:
+        decisions = []
+        for cand in payload.get("candidates", []):
+            label = cand["label"]
+            answer = None
+            if parse_identifier(label).canonical is None:
+                name = normalize_name(label)
+                for opt in cand.get("options", []):
+                    if any(normalize_name(n) == name for n in opt.get("names", [])):
+                        answer = opt["option_id"]
+                        break
+                if answer and self._chance(self.settings.merge_alias_miss_rate, "alias_check", name):
+                    answer = None
+            else:
+                opt = (cand.get("options") or [None])[0]
+                if opt and self._chance(self.settings.merge_confusion_rate, "alias_confuse", label, opt["identifier"]):
+                    answer = opt["option_id"]
+            decisions.append({"candidate_id": cand["candidate_id"], "same_document_as": answer, "reason": "name matches" if answer else "no clear match"})
+        return {"decisions": decisions}
 
     def _references(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -271,6 +397,34 @@ class MockProvider(LLMProvider):
                 }
             )
         return {"assessments": assessments}
+
+
+def _requirement_parts(text: str, chapter: str | None) -> list[tuple[str | None, str]]:
+    """Numbered parts of a unit's text (the whole text when it has no inner numbering)."""
+    temp = InputDocument(
+        document_id="DOC-MOCK",
+        canonical_identifier=None,
+        identifier_source="manifest",
+        filename="(prompt)",
+        format="txt",
+        sha256="",
+        char_count=len(text),
+        parse_status="ok",
+        text=text,
+    )
+    parts = [(seg.chapter or chapter, seg.text) for seg in segment_document(temp) if seg.is_candidate]
+    return parts or [(chapter, text)]
+
+
+def _look_alike(a: str, b: str) -> bool:
+    """Identifiers a careless reader would take for one document ('TSA-QP-031' / 'TSA-QP-032')."""
+    if squash(a) == squash(b):
+        return True
+    pa, pb = a.split("-"), b.split("-")
+    if len(pa) != len(pb) or pa[:-1] != pb[:-1]:
+        return False
+    x, y = pa[-1], pb[-1]
+    return len(x) == len(y) and sum(c1 != c2 for c1, c2 in zip(x, y)) == 1
 
 
 def hash_text(text: str) -> str:

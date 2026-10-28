@@ -1,4 +1,6 @@
-"""Offline end-to-end demonstration (no API key needed).
+"""scripts/run_demo.py
+
+Offline end-to-end demonstration (no API key needed).
 
 1. Generates the synthetic dataset if it is missing.
 2. Analyses one two-document bundle with every built-in strategy.

@@ -1,4 +1,6 @@
-"""Intermediate prediction records passed between pipeline stages.
+"""src/csr_lab/drafts.py
+
+Intermediate prediction records passed between pipeline stages.
 
 These are working representations. They are converted to the export schema
 (``csr_lab.schemas``) by ``csr_lab.pipelines.assembly`` at the end of every

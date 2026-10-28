@@ -93,6 +93,39 @@
           "title": "Graph Decisions",
           "type": "array"
         },
+        "reference_merges": {
+          "items": {
+            "$ref": "#/$defs/ReferenceMergeDecision"
+          },
+          "title": "Reference Merges",
+          "type": "array"
+        },
+        "input_fidelity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FidelityReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How the analysed text units (provided or model-made chunks) matched the source text."
+        },
+        "saved_graph": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set when a graph-assisted run started from a saved (persistent) graph: its path, fingerprint and size.",
+          "title": "Saved Graph"
+        },
         "llm_calls": {
           "items": {
             "$ref": "#/$defs/LLMCallSummary"
@@ -501,6 +534,268 @@
       "title": "Evidence",
       "type": "object"
     },
+    "FidelityReport": {
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "default": "external",
+          "description": "Who produced the fragments: provided, llm, external ...",
+          "title": "Origin",
+          "type": "string"
+        },
+        "fragments": {
+          "items": {
+            "$ref": "#/$defs/FragmentCheck"
+          },
+          "title": "Fragments",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/SourceGap"
+          },
+          "title": "Gaps",
+          "type": "array"
+        },
+        "summary": {
+          "$ref": "#/$defs/FidelitySummary"
+        }
+      },
+      "title": "FidelityReport",
+      "type": "object"
+    },
+    "FidelitySummary": {
+      "additionalProperties": false,
+      "properties": {
+        "fragments": {
+          "default": 0,
+          "title": "Fragments",
+          "type": "integer"
+        },
+        "exact": {
+          "default": 0,
+          "title": "Exact",
+          "type": "integer"
+        },
+        "whitespace_normalized": {
+          "default": 0,
+          "title": "Whitespace Normalized",
+          "type": "integer"
+        },
+        "fuzzy": {
+          "default": 0,
+          "title": "Fuzzy",
+          "type": "integer"
+        },
+        "not_found": {
+          "default": 0,
+          "title": "Not Found",
+          "type": "integer"
+        },
+        "verbatim_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "(exact + whitespace_normalized) / fragments",
+          "title": "Verbatim Rate"
+        },
+        "mean_fragment_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Fragment Ratio"
+        },
+        "source_coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of the source's words inside some located fragment.",
+          "title": "Source Coverage"
+        },
+        "gaps": {
+          "default": 0,
+          "title": "Gaps",
+          "type": "integer"
+        },
+        "requirement_like_gaps": {
+          "default": 0,
+          "title": "Requirement Like Gaps",
+          "type": "integer"
+        },
+        "pages_checked": {
+          "default": 0,
+          "title": "Pages Checked",
+          "type": "integer"
+        },
+        "pages_agree": {
+          "default": 0,
+          "title": "Pages Agree",
+          "type": "integer"
+        }
+      },
+      "title": "FidelitySummary",
+      "type": "object"
+    },
+    "FragmentCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "fragment_id": {
+          "title": "Fragment Id",
+          "type": "string"
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Id"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "match": {
+          "enum": [
+            "exact",
+            "whitespace_normalized",
+            "fuzzy",
+            "not_found"
+          ],
+          "title": "Match",
+          "type": "string"
+        },
+        "fragment_ratio": {
+          "description": "Share of the fragment's words that are source words, in source order (1.0 = verbatim).",
+          "title": "Fragment Ratio",
+          "type": "number"
+        },
+        "span_ratio": {
+          "description": "Share of the aligned source span's words that the fragment kept (1.0 = nothing dropped).",
+          "title": "Span Ratio",
+          "type": "number"
+        },
+        "start_offset": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Offset"
+        },
+        "end_offset": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Offset"
+        },
+        "page_start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page Start"
+        },
+        "page_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page End"
+        },
+        "reported_pages": {
+          "description": "Pages the producer of the fragment claimed, if any.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Reported Pages",
+          "type": "array"
+        },
+        "pages_agree": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Reported pages equal the located pages (None when either is unknown).",
+          "title": "Pages Agree"
+        },
+        "fragment_words": {
+          "default": 0,
+          "title": "Fragment Words",
+          "type": "integer"
+        },
+        "differences": {
+          "items": {
+            "$ref": "#/$defs/TextDifference"
+          },
+          "title": "Differences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "fragment_id",
+        "match",
+        "fragment_ratio",
+        "span_ratio"
+      ],
+      "title": "FragmentCheck",
+      "type": "object"
+    },
     "GraphDecision": {
       "additionalProperties": false,
       "description": "A processing decision that used the relationship graph (graph_assisted only).",
@@ -590,6 +885,19 @@
           "default": null,
           "title": "Revision"
         },
+        "effective_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "As stated in the header; ISO dates are used to order revisions.",
+          "title": "Effective Date"
+        },
         "format": {
           "enum": [
             "txt",
@@ -643,6 +951,22 @@
           "default": null,
           "description": "Extracted text. Verbatim relative to the parser's output; offsets refer to it.",
           "title": "Text"
+        },
+        "provided_chunks": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ProvidedChunk"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pre-chunked input (not exported; see metadata.input_fidelity for how the chunks matched the source).",
+          "title": "Provided Chunks"
         }
       },
       "required": [
@@ -851,6 +1175,107 @@
           "default": 0,
           "title": "Graph Informed Calls",
           "type": "integer"
+        },
+        "stage_costs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/StageCost"
+          },
+          "title": "Stage Costs",
+          "type": "object"
+        },
+        "token_source": {
+          "default": "none",
+          "enum": [
+            "reported",
+            "estimated_from_chars",
+            "none"
+          ],
+          "title": "Token Source",
+          "type": "string"
+        },
+        "estimated_tokens": {
+          "default": 0,
+          "description": "Total input+output tokens (reported, or characters / 4 when the server reports none).",
+          "title": "Estimated Tokens",
+          "type": "integer"
+        },
+        "pages": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PDF pages; for text input, characters / 3000 (see pages_source).",
+          "title": "Pages"
+        },
+        "pages_source": {
+          "default": "none",
+          "enum": [
+            "pdf",
+            "estimated",
+            "mixed",
+            "none"
+          ],
+          "title": "Pages Source",
+          "type": "string"
+        },
+        "requirements": {
+          "default": 0,
+          "description": "Requirement units in the result (the denominator of the per-requirement figures).",
+          "title": "Requirements",
+          "type": "integer"
+        },
+        "calls_per_page": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calls Per Page"
+        },
+        "tokens_per_page": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tokens Per Page"
+        },
+        "calls_per_requirement": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calls Per Requirement"
+        },
+        "tokens_per_requirement": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tokens Per Requirement"
         }
       },
       "title": "OperationalStats",
@@ -980,6 +1405,46 @@
       "title": "PotentialConflict",
       "type": "object"
     },
+    "ProvidedChunk": {
+      "additionalProperties": false,
+      "description": "A chunk produced outside csr-lab (another chunker), analysed instead of csr-lab's own segmentation.",
+      "properties": {
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "source_pages": {
+          "description": "Pages the chunker said the chunk came from.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Source Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "content"
+      ],
+      "title": "ProvidedChunk",
+      "type": "object"
+    },
     "ReferenceMention": {
       "additionalProperties": false,
       "description": "One occurrence of a document reference inside one requirement.",
@@ -1025,6 +1490,57 @@
         "verified"
       ],
       "title": "ReferenceMention",
+      "type": "object"
+    },
+    "ReferenceMergeDecision": {
+      "additionalProperties": false,
+      "description": "One grouping decision of the reference-merging stage.",
+      "properties": {
+        "method": {
+          "enum": [
+            "llm",
+            "hybrid"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "members": {
+          "description": "Reference labels (as extracted) the decision covers.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "canonical": {
+          "description": "Label the members were renamed to.",
+          "title": "Canonical",
+          "type": "string"
+        },
+        "applied": {
+          "title": "Applied",
+          "type": "boolean"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        },
+        "mention_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mention Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "method",
+        "members",
+        "canonical",
+        "applied"
+      ],
+      "title": "ReferenceMergeDecision",
       "type": "object"
     },
     "ReferenceRelation": {
@@ -1229,7 +1745,9 @@
         "explicitly_supersedes",
         "explicitly_depends_on",
         "explicitly_takes_precedence_over",
-        "potentially_conflicts_with"
+        "potentially_conflicts_with",
+        "has_revision",
+        "superseded_by"
       ],
       "title": "RelationshipType",
       "type": "string"
@@ -1386,10 +1904,59 @@
       "enum": [
         "identifier",
         "name_alias",
-        "unresolved_name"
+        "unresolved_name",
+        "merged"
       ],
       "title": "ResolutionMethod",
       "type": "string"
+    },
+    "SourceGap": {
+      "additionalProperties": false,
+      "description": "Source text that no fragment covered.",
+      "properties": {
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Id"
+        },
+        "start_offset": {
+          "title": "Start Offset",
+          "type": "integer"
+        },
+        "end_offset": {
+          "title": "End Offset",
+          "type": "integer"
+        },
+        "words": {
+          "title": "Words",
+          "type": "integer"
+        },
+        "looks_like_requirement": {
+          "description": "Contains shall/must/required: possibly lost requirement text.",
+          "title": "Looks Like Requirement",
+          "type": "boolean"
+        },
+        "preview": {
+          "title": "Preview",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_offset",
+        "end_offset",
+        "words",
+        "looks_like_requirement",
+        "preview"
+      ],
+      "title": "SourceGap",
+      "type": "object"
     },
     "SourceLocation": {
       "additionalProperties": false,
@@ -1484,6 +2051,95 @@
       "title": "SourceLocation",
       "type": "object"
     },
+    "StageCost": {
+      "additionalProperties": false,
+      "description": "Model usage of one pipeline stage.",
+      "properties": {
+        "calls": {
+          "default": 0,
+          "title": "Calls",
+          "type": "integer"
+        },
+        "failed_calls": {
+          "default": 0,
+          "title": "Failed Calls",
+          "type": "integer"
+        },
+        "input_chars": {
+          "default": 0,
+          "title": "Input Chars",
+          "type": "integer"
+        },
+        "output_chars": {
+          "default": 0,
+          "title": "Output Chars",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Tokens"
+        },
+        "estimated_tokens": {
+          "default": 0,
+          "description": "input+output tokens; reported counts when available, else characters / 4",
+          "title": "Estimated Tokens",
+          "type": "integer"
+        }
+      },
+      "title": "StageCost",
+      "type": "object"
+    },
+    "TextDifference": {
+      "additionalProperties": false,
+      "description": "One edit between the fragment and the source span it was aligned to.",
+      "properties": {
+        "op": {
+          "description": "replace: words changed; insert: words only in the fragment; delete: source words the fragment dropped",
+          "enum": [
+            "replace",
+            "insert",
+            "delete"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "fragment_text": {
+          "default": "",
+          "title": "Fragment Text",
+          "type": "string"
+        },
+        "source_text": {
+          "default": "",
+          "title": "Source Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "title": "TextDifference",
+      "type": "object"
+    },
     "VerificationEvent": {
       "additionalProperties": false,
       "properties": {
@@ -1545,7 +2201,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "default": "0.1.0",
+      "default": "0.3.0",
       "title": "Schema Version",
       "type": "string"
     },

@@ -1,3 +1,9 @@
+"""tests/test_schemas.py
+
+Export schema rules: department deferred, conflicts never resolved, evidence and ID integrity,
+JSON Schema export.
+"""
+
 import pytest
 from pydantic import ValidationError
 

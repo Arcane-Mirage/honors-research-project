@@ -1,27 +1,27 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "dataset_name": "synthetic_csr",
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.1.0",
   "case_id": "heldout_tessaly_battery",
   "split": "heldout",
   "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts.",
   "documents": [
     {
-      "document_id": "DOC-TSA-CSR-400",
+      "document_id": "DOC-TSA-CSR-400-REV-B",
       "canonical_identifier": "TSA-CSR-400",
       "filename": "tsa_csr_400.txt",
       "title": "Customer-Specific Requirements for Battery Module Suppliers",
       "revision": "B"
     },
     {
-      "document_id": "DOC-TSA-PPAP-410",
+      "document_id": "DOC-TSA-PPAP-410-REV-F",
       "canonical_identifier": "TSA-PPAP-410",
       "filename": "tsa_ppap_410.txt",
       "title": "Production Part Approval Procedure",
       "revision": "F"
     },
     {
-      "document_id": "DOC-TSA-MAT-420",
+      "document_id": "DOC-TSA-MAT-420-REV-C",
       "canonical_identifier": "TSA-MAT-420",
       "filename": "tsa_mat_420.txt",
       "title": "Material Specification for Battery Module Components",
@@ -31,7 +31,7 @@
   "requirements": [
     {
       "gold_id": "TSA-CSR-400#1.2",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "1.2",
       "requirement_text": "Production part approval shall be obtained according to the Production Part Approval\nProcedure TSA-PPAP-410 before the first production shipment.",
       "start_offset": 332,
@@ -52,7 +52,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#1.3",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "1.3",
       "requirement_text": "Materials used in battery modules shall conform to TSA-MAT-420.",
       "start_offset": 483,
@@ -72,7 +72,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#1.4",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "1.4",
       "requirement_text": "Where this document conflicts with TSA-PPAP-410, the requirements of this document shall\ntake precedence.",
       "start_offset": 552,
@@ -92,7 +92,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#2.1",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "2.1",
       "requirement_text": "Specification TSA-CT-077 does not apply to battery modules and shall not be used for\ncell coatings.",
       "start_offset": 675,
@@ -113,7 +113,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#2.2",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "2.2",
       "requirement_text": "Cell housing adhesives shall have a maximum curing temperature of 60 °C.",
       "start_offset": 780,
@@ -126,7 +126,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#2.3",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "2.3",
       "requirement_text": "Thermal interface materials shall be qualified according to TSA-MAT-425, and the\nqualification report shall be included in the production part approval package described in\nTSA-PPAP-410.",
       "start_offset": 858,
@@ -154,7 +154,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#3.1",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "3.1",
       "requirement_text": "The supplier shall submit the production part approval package at least 20 working days\nbefore the planned start of production.",
       "start_offset": 1061,
@@ -167,7 +167,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#3.2",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "3.2",
       "requirement_text": "The approval package shall include the dimensional results report described in the\nProduction Part Approval Procedure.",
       "start_offset": 1194,
@@ -187,7 +187,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#3.3",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "3.3",
       "requirement_text": "Run-at-rate results shall be documented on form TSA-QF-031A.",
       "start_offset": 1318,
@@ -207,7 +207,7 @@
     },
     {
       "gold_id": "TSA-CSR-400#3.4",
-      "source_document_id": "DOC-TSA-CSR-400",
+      "source_document_id": "DOC-TSA-CSR-400-REV-B",
       "chapter": "3.4",
       "requirement_text": "The supplier shall perform the run-at-rate verification during the first week of series\nproduction.",
       "start_offset": 1384,
@@ -220,7 +220,7 @@
     },
     {
       "gold_id": "TSA-PPAP-410#2.1",
-      "source_document_id": "DOC-TSA-PPAP-410",
+      "source_document_id": "DOC-TSA-PPAP-410-REV-F",
       "chapter": "2.1",
       "requirement_text": "The production part approval package shall be submitted no earlier than 10 working days\nbefore the planned start of production.",
       "start_offset": 326,
@@ -233,7 +233,7 @@
     },
     {
       "gold_id": "TSA-PPAP-410#2.2",
-      "source_document_id": "DOC-TSA-PPAP-410",
+      "source_document_id": "DOC-TSA-PPAP-410-REV-F",
       "chapter": "2.2",
       "requirement_text": "The package shall contain material certifications according to TSA-MAT-420 and a control\nplan prepared according to TSA-QP-020.",
       "start_offset": 459,
@@ -261,7 +261,7 @@
     },
     {
       "gold_id": "TSA-PPAP-410#2.3",
-      "source_document_id": "DOC-TSA-PPAP-410",
+      "source_document_id": "DOC-TSA-PPAP-410-REV-F",
       "chapter": "2.3",
       "requirement_text": "Dimensional results shall be reported for all characteristics shown on drawing\nTSA-DRW-2210.",
       "start_offset": 592,
@@ -281,7 +281,7 @@
     },
     {
       "gold_id": "TSA-PPAP-410#2.4",
-      "source_document_id": "DOC-TSA-PPAP-410",
+      "source_document_id": "DOC-TSA-PPAP-410-REV-F",
       "chapter": "2.4",
       "requirement_text": "Run-at-rate verification shall be completed before the production part approval package\nis submitted.",
       "start_offset": 690,
@@ -294,7 +294,7 @@
     },
     {
       "gold_id": "TSA-PPAP-410#3.1",
-      "source_document_id": "DOC-TSA-PPAP-410",
+      "source_document_id": "DOC-TSA-PPAP-410-REV-F",
       "chapter": "3.1",
       "requirement_text": "Where this procedure conflicts with any customer-specific requirements document,\nincluding TSA-CSR-400, this procedure shall govern.",
       "start_offset": 810,
@@ -314,7 +314,7 @@
     },
     {
       "gold_id": "TSA-MAT-420#2.1",
-      "source_document_id": "DOC-TSA-MAT-420",
+      "source_document_id": "DOC-TSA-MAT-420-REV-C",
       "chapter": "2.1",
       "requirement_text": "Cell housing adhesives shall be cured at a minimum temperature of 80 °C for 20 minutes.",
       "start_offset": 319,
@@ -327,7 +327,7 @@
     },
     {
       "gold_id": "TSA-MAT-420#2.2",
-      "source_document_id": "DOC-TSA-MAT-420",
+      "source_document_id": "DOC-TSA-MAT-420-REV-C",
       "chapter": "2.2",
       "requirement_text": "Adhesive lot certificates shall be retained for at least 5 years.",
       "start_offset": 412,
@@ -339,7 +339,7 @@
     },
     {
       "gold_id": "TSA-MAT-420#3.1",
-      "source_document_id": "DOC-TSA-MAT-420",
+      "source_document_id": "DOC-TSA-MAT-420-REV-C",
       "chapter": "3.1",
       "requirement_text": "Cell coatings shall meet the dielectric strength requirements of Specification\nTSA-CT-077.",
       "start_offset": 494,
@@ -359,7 +359,7 @@
     },
     {
       "gold_id": "TSA-MAT-420#3.2",
-      "source_document_id": "DOC-TSA-MAT-420",
+      "source_document_id": "DOC-TSA-MAT-420-REV-C",
       "chapter": "3.2",
       "requirement_text": "Coating thickness shall be measured according to TSA-CT-080 at a frequency of one sample\nper shift.",
       "start_offset": 590,

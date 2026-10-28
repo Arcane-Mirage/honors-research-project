@@ -1,0 +1,66 @@
+# Named LLM connections. Pick one per command with `--llm NAME`, e.g.
+#
+#   csr-lab llm-check --llm lmstudio          # is it reachable, which model is loaded?
+#   csr-lab experiment dev --llm lmstudio
+#   csr-lab build-graph --llm lmstudio
+#
+# Without --llm, the profile named by the CSR_LAB_LLM environment variable (it can go in
+# .env) is used, else `default:` below. `csr-lab llms use NAME` changes `default:` for you.
+#
+# Each profile holds any `llm:` settings from configs/default.yaml; anything not set here
+# keeps its value from default.yaml. `model: auto` asks the server which model is loaded
+# (LM Studio, llama-server), so switching models in LM Studio needs no config change. The
+# resolved model name is what gets stored with every result.
+#
+# Experiments that pin a model refer to a profile (`llm: lmstudio` or
+# `llm: {profile: lmstudio, max_output_tokens: 4096}`); `--llm` replaces that choice.
+
+default: mock
+
+profiles:
+  mock:                       # offline, deterministic, no server; results are NOT evidence
+    provider: mock
+    model: mock-heuristic-v1
+
+  lmstudio:                   # LM Studio > Developer > Start Server (default port 1234)
+    provider: openai_compatible
+    base_url: http://localhost:1234/v1
+    model: auto               # or a model key such as qwen/qwen3.5-9b (see `csr-lab llms models lmstudio`)
+    auth: {method: none}
+    structured_output: json_schema
+    temperature: 0.0
+    timeout_seconds: 900
+    max_output_tokens: 8192
+
+  llama_cpp:                  # llama-server -m MODEL.gguf -c 16384 -ngl 99 --port 8080
+    provider: openai_compatible
+    base_url: http://localhost:8080/v1
+    model: auto
+    auth: {method: none}
+    structured_output: json_schema
+    temperature: 0.0
+    timeout_seconds: 900
+    max_output_tokens: 4096
+
+  openai:                     # key in .env as OPENAI_API_KEY
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    model: REPLACE_WITH_MODEL_ID
+    api_key_env: OPENAI_API_KEY
+    structured_output: json_schema
+    temperature: 0.0
+    pricing:                  # fill in from the provider's price list to get cost estimates
+      input_usd_per_million_tokens: null
+      output_usd_per_million_tokens: null
+
+  azure:                      # keyless Entra ID; `pip install azure-identity` and `az login`
+    provider: openai_compatible
+    base_url: https://REPLACE-RESOURCE.openai.azure.com/openai/deployments/REPLACE-DEPLOYMENT
+    query_params: {api-version: "2024-10-21"}
+    model: REPLACE-DEPLOYMENT
+    max_tokens_parameter: max_completion_tokens
+    auth:
+      method: azure_identity  # or: {method: env, header: api-key, scheme: null} with AZURE_OPENAI_API_KEY
+      scope: https://cognitiveservices.azure.com/.default
+    structured_output: json_schema
+    temperature: 0.0

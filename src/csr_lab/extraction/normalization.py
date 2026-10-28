@@ -1,4 +1,6 @@
-"""Conservative, deterministic canonicalisation of document identifiers.
+"""src/csr_lab/extraction/normalization.py
+
+Conservative, deterministic canonicalisation of document identifiers.
 
 The same function is used to build document IDs in every strategy and by the
 evaluator, so formatting differences ("Specification ABC-100" vs "ABC-100")

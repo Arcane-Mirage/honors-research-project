@@ -1,0 +1,29 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-window(words=60)",
+  "source": {
+    "file": "cvm_csr_200.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "W001",
+      "title": null,
+      "content": "CORVANE MOTORS\nLogistics and Packaging Requirements for Production Suppliers\nDocument ID: CVM-CSR-200\nRevision: A\nEffective Date: 2026-01-10\nAll names, companies and document identifiers in this document are fictional.\n\n1 General\n1.1 This document applies to all shipments of production parts to Corvane Motors assembly\nplants.\n\n1.2 The supplier shall package all production parts in accordance with the Packaging and\nLabeling"
+    },
+    {
+      "chunk_id": "W002",
+      "title": null,
+      "content": "Specification CVM-PKG-210.\n\n1.3 Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and\nshall not be used for packaging design.\n\n1.4 The supplier shall comply with the shipping requirements of the Corvane Supplier Quality\nManual CVM-SQM-001.\n\n2 Labels\n2.1 Each container shall carry a shipping label that conforms to CVM-LBL-220.\n\n2.2 Container labels shall be printed with"
+    },
+    {
+      "chunk_id": "W003",
+      "title": null,
+      "content": "a minimum barcode height of 25 mm.\n\n3 Containers\n3.1 Production parts shall be shipped only in returnable containers approved by Corvane\nLogistics.\n\n4 Deliveries\n4.1 The supplier shall transmit an advance shipping notice no later than 2 hours after\nshipment departure, using the message format defined in CVM-LG-140.\n\n4.2 Damaged packaging shall be reported to Corvane Logistics using the"
+    },
+    {
+      "chunk_id": "W004",
+      "title": null,
+      "content": "reporting procedure\ndescribed in the Packaging and Labeling Specification.\n\n5 Precedence\n5.1 Where this document conflicts with CVM-PKG-210, the requirements of this document shall\ntake precedence."
+    }
+  ]
+}

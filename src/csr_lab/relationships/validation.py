@@ -1,4 +1,6 @@
-"""Structural validation of a relationship graph.
+"""src/csr_lab/relationships/validation.py
+
+Structural validation of a relationship graph.
 
 Structural validity (every edge points at a real node, no duplicates, IDs are
 consistent) says nothing about whether the extracted relationships are
@@ -28,6 +30,7 @@ class GraphValidationReport(BaseModel):
     inconsistent_edge_ids: list[str] = Field(default_factory=list)
     edges_without_evidence: list[str] = Field(default_factory=list)
     unlabelled_hypotheses: list[str] = Field(default_factory=list)
+    inconsistent_revision_edges: list[str] = Field(default_factory=list)
 
 
 def validate_graph(graph: RelationshipGraph) -> GraphValidationReport:
@@ -67,8 +70,17 @@ def validate_graph(graph: RelationshipGraph) -> GraphValidationReport:
         for e in graph.edges
         if e.relationship_type.value in _HYPOTHESIS_TYPES and not e.metadata.get("analytical_hypothesis")
     ]
+    bad_revisions = []
+    for e in graph.edges:
+        if e.relationship_type.value != "has_revision":
+            continue
+        target = graph.node(e.target_node_id)
+        if target is None or target.attributes.get("revision_of") != e.source_node_id:
+            bad_revisions.append(e.relationship_id)
     report = GraphValidationReport(
-        valid=not (invalid or dup_nodes or dup_edges or inconsistent_nodes or inconsistent_edges or no_evidence or unlabelled),
+        valid=not (
+            invalid or dup_nodes or dup_edges or inconsistent_nodes or inconsistent_edges or no_evidence or unlabelled or bad_revisions
+        ),
         node_count=len(graph.nodes),
         edge_count=len(graph.edges),
         invalid_endpoints=invalid,
@@ -78,5 +90,6 @@ def validate_graph(graph: RelationshipGraph) -> GraphValidationReport:
         inconsistent_edge_ids=inconsistent_edges,
         edges_without_evidence=no_evidence,
         unlabelled_hypotheses=unlabelled,
+        inconsistent_revision_edges=bad_revisions,
     )
     return report

@@ -1,4 +1,7 @@
-"""Stage prompt: identify requirements and chapters in pre-segmented text."""
+"""src/csr_lab/prompts/requirements.py
+
+Stage prompt: identify requirements and chapters in pre-segmented text.
+"""
 
 from __future__ import annotations
 

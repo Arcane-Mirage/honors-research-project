@@ -1,4 +1,6 @@
-"""LangGraph node functions shared by the built-in workflows.
+"""src/csr_lab/pipelines/nodes.py
+
+LangGraph node functions shared by the built-in workflows.
 
 Each node receives the workflow state and the runtime context
 (``PipelineContext``) and returns a partial state update. Deterministic
@@ -26,17 +28,22 @@ from csr_lab.conflicts.detector import (
     validate_conflict_evidence,
 )
 from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineError, ordered_pair
+from csr_lab.extraction.fidelity import WordIndex
 from csr_lab.extraction.graph_audit import known_document_candidates, resolve_aliases
+from csr_lab.extraction.grounding import TextIndex
+from csr_lab.extraction.merging import hybrid_merge, llm_merge
 from csr_lab.extraction.references import MentionCounter, extract_references, mentions_from_model
 from csr_lab.extraction.requirements import ReportedRequirement, ground_requirements
 from csr_lab.extraction.verification import targeted_reextraction, verify_pass
 from csr_lab.ingestion.chunking import chunk_raw_text, plan_chunks
 from csr_lab.ingestion.segmentation import segment_document
+from csr_lab.ingestion.units import ChunkInput, model_chunks, segments_from_chunks
 from csr_lab.pipelines.assembly import assemble, provisional_graph
 from csr_lab.pipelines.base import PipelineContext
 from csr_lab.pipelines.state import PipelineState
 from csr_lab.prompts import baseline as baseline_prompt
 from csr_lab.prompts import requirements as requirement_prompt
+from csr_lab.relationships.store import with_saved_documents
 from csr_lab.schemas import ConflictType, CoverageLimitation, GraphDecision, MentionStatus, VerificationEvent
 
 Node = Callable[[PipelineState, Runtime[PipelineContext]], dict[str, Any]]
@@ -67,8 +74,21 @@ def _copy_mentions(state: PipelineState) -> list[MentionDraft]:
 # ---------------------------------------------------------------------------
 
 
+def _uncertain_segment_limitations(segments) -> list[CoverageLimitation]:
+    return [
+        CoverageLimitation(kind="segmentation_uncertain", document_id=seg.document_id, message=f"{seg.segment_id}: {'; '.join(seg.notes)}")
+        for seg in segments
+        if seg.is_candidate and any(n.startswith("numbering jumps") or n.startswith("long block") for n in seg.notes)
+    ]
+
+
 @timed("prepare_input")
 def prepare_input(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """Make the analysable units: csr-lab segments, or the chunks of a chunk file.
+
+    Documents without provided chunks are left to ``llm_chunk`` when the strategy's
+    chunking method is ``llm``.
+    """
     ctx = runtime.context
     documents = state["documents"]
     limitations: list[CoverageLimitation] = []
@@ -81,21 +101,61 @@ def prepare_input(state: PipelineState, runtime: Runtime[PipelineContext]) -> di
     if not usable:
         return {"fatal": "no input document contains analysable text", "limitations": limitations}
 
-    segments = [seg for d in usable for seg in segment_document(d)]
+    chunking = ctx.options.chunking
+    segments = []
+    checks = []
+    pending_llm = False
+    for d in usable:
+        if d.provided_chunks:
+            inputs = [ChunkInput(c.chunk_id, c.content, c.title, c.source_pages) for c in d.provided_chunks]
+            segs, chk = segments_from_chunks(d, inputs, origin="provided", settings=chunking)
+            segments += segs
+            checks += chk
+        elif chunking.method == "llm" and ctx.options.workflow == "staged":
+            pending_llm = True
+        else:
+            segments += segment_document(d)
     plan = plan_chunks(usable, segments, ctx.config.processing)
-    limitations += plan.limitations
-    for seg in segments:
-        if seg.is_candidate and any(n.startswith("numbering jumps") or n.startswith("long block") for n in seg.notes):
-            limitations.append(
-                CoverageLimitation(
-                    kind="segmentation_uncertain",
-                    document_id=seg.document_id,
-                    message=f"{seg.segment_id}: {'; '.join(seg.notes)}",
-                )
-            )
+    limitations += plan.limitations + _uncertain_segment_limitations(segments)
+    update: dict[str, Any] = {"segments": segments, "chunk_plan": plan, "limitations": limitations, "chunk_checks": checks}
+    if not pending_llm and not any(s.is_candidate for s in segments):
+        update["fatal"] = "no requirement candidates were found in the input"
+    return update
+
+
+@timed("llm_chunk")
+def llm_chunk(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """LLM: split each document into word-count batches and ask the model for semantic chunks."""
+    ctx = runtime.context
+    settings = ctx.options.chunking
+    limit = ctx.config.processing.max_document_chars
+    usable = [d for d in state["documents"] if d.parse_status in ("ok", "partial")]
+    targets = [d for d in usable if not d.provided_chunks]
+    made = model_chunks(ctx.llm, targets, settings, limit)
+    by_doc = made.chunks
+    limitations = [
+        CoverageLimitation(kind="truncated_input", document_id=doc_id, message=f"document exceeds max_document_chars={limit}; text after offset {limit} was not chunked")
+        for doc_id in made.truncated
+    ]
+    errors: list[PipelineError] = []
+    for doc_id, b, err in made.failed_batches:
+        errors.append(PipelineError(stage="llm_chunk", message=f"{doc_id} batch {b}: chunking failed; batch kept as one chunk: {err}"))
+        limitations.append(CoverageLimitation(kind="llm_call_failed", document_id=doc_id, message=f"semantic chunking failed for batch {b}; the whole batch is one unit"))
+
+    segments = list(state.get("segments", []))
+    checks = []
+    for d in targets:
+        text = d.text or ""
+        segs, chk = segments_from_chunks(d, by_doc.get(d.document_id, []), origin="llm", settings=settings, indexes=(TextIndex(text), WordIndex(text)))
+        segments += segs
+        checks += chk
+    plan = plan_chunks(usable, segments, ctx.config.processing)
+    known = {lim.message for lim in state.get("limitations", [])}
+    limitations += [lim for lim in plan.limitations if lim.message not in known]
+    update: dict[str, Any] = {"segments": segments, "chunk_plan": plan, "chunk_checks": checks, "limitations": limitations, "errors": errors}
     if not any(s.is_candidate for s in segments):
-        return {"fatal": "no requirement candidates were found in the input", "segments": segments, "chunk_plan": plan, "limitations": limitations}
-    return {"segments": segments, "chunk_plan": plan, "limitations": limitations}
+        update["fatal"] = "semantic chunking produced no analysable text"
+    return update
 
 
 @timed("finalize")
@@ -291,6 +351,44 @@ def identify_requirements(state: PipelineState, runtime: Runtime[PipelineContext
     return {"requirements": drafts, "errors": errors, "limitations": limitations, "warnings": warnings}
 
 
+@timed("chunks_as_requirements")
+def chunks_as_requirements(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """``unit: chunk``: every unit is analysed as one requirement-like unit (no requirement identification).
+
+    The unit text goes through the same grounding as model-reported requirements, so a
+    reworded chunk is marked not verbatim and gets no offsets.
+    """
+    ctx = runtime.context
+    plan = state["chunk_plan"]
+    owner = {sid: c.chunk_id for c in plan.chunks for sid in c.segment_ids}
+    reported = [
+        ReportedRequirement(document_id=seg.document_id, chapter=seg.chapter, text=seg.text, chunk_id=owner[seg.segment_id], segment_id=seg.segment_id)
+        for seg in state["segments"]
+        if seg.is_candidate and seg.segment_id in owner
+    ]
+    chunk_docs = {c.chunk_id: c.document_ids for c in plan.chunks}
+    drafts, _, warnings = ground_requirements(reported, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
+    return {"requirements": drafts, "warnings": warnings}
+
+
+@timed("merge_references")
+def merge_references(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """LLM: merge reference labels that denote the same document (method llm or hybrid)."""
+    ctx = runtime.context
+    method = ctx.options.reference_merging.method
+    mentions = _copy_mentions(state)
+    if method == "llm":
+        decisions, errs = llm_merge(ctx, mentions)
+    else:
+        texts = {r.requirement_id: r.text for r in state["requirements"]}
+        decisions, errs = hybrid_merge(ctx, mentions, state["documents"], texts)
+    return {
+        "mentions": mentions,
+        "merge_decisions": decisions,
+        "errors": [PipelineError(stage="merge_references", message=e) for e in errs],
+    }
+
+
 @timed("extract_references")
 def extract_references_node(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
     ctx = runtime.context
@@ -374,9 +472,15 @@ def targeted_reextraction_node(state: PipelineState, runtime: Runtime[PipelineCo
 # ---------------------------------------------------------------------------
 
 
+def _working_graph(state: PipelineState, ctx: PipelineContext, mentions: list) -> Any:
+    """Graph of the current predictions, plus saved-graph documents when the run has them."""
+    graph = provisional_graph(state["documents"], state["requirements"], mentions)
+    return with_saved_documents(graph, ctx.saved_graph)
+
+
 @timed("build_graph")
 def build_graph_node(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
-    return {"graph": provisional_graph(state["documents"], state["requirements"], state.get("mentions", []))}
+    return {"graph": _working_graph(state, runtime.context, state.get("mentions", []))}
 
 
 @timed("graph_reference_audit")
@@ -396,7 +500,7 @@ def graph_reference_audit(state: PipelineState, runtime: Runtime[PipelineContext
         ev, dec = resolve_aliases(mentions, graph, attempt)
         events += ev
         decisions += dec
-        graph = provisional_graph(state["documents"], state["requirements"], mentions)
+        graph = _working_graph(state, ctx, mentions)
 
     if gs.reference_audit:
         candidates, dec = known_document_candidates(
@@ -433,10 +537,10 @@ def graph_reference_audit(state: PipelineState, runtime: Runtime[PipelineContext
                     if m.active and not m.verified and any(c.mention_id == m.mention_id for c in vp.candidates):
                         m.verified = True
             if new and gs.alias_resolution:
-                ev, dec = resolve_aliases(mentions, provisional_graph(state["documents"], state["requirements"], mentions), attempt)
+                ev, dec = resolve_aliases(mentions, _working_graph(state, ctx, mentions), attempt)
                 events += ev
                 decisions += dec
-        graph = provisional_graph(state["documents"], state["requirements"], mentions)
+        graph = _working_graph(state, ctx, mentions)
 
     return {
         "mentions": mentions,
@@ -483,14 +587,21 @@ def analyze_conflicts(state: PipelineState, runtime: Runtime[PipelineContext]) -
     context_for = None
     decisions: list[GraphDecision] = []
     if graph is not None and gs.context_retrieval:
-        context_for = functools.partial(graph_context_for_pair, graph, max_items=gs.max_context_items)
+        context_for = functools.partial(graph_context_for_pair, graph, max_items=gs.max_context_items, context_format=gs.context_format)
 
     conflicts, analysed, failed, errs = analyze_pairs(
         ctx, candidates, req_map, pairs_per_call=ctx.options.conflicts.pairs_per_call, context_for=context_for, graph_informed=graph is not None
     )
     if context_for is not None:
-        with_context = sum(1 for c in candidates if context_for(c.requirement_ids))
-        decisions.append(GraphDecision(decision_type="context_retrieved", detail=f"graph context added to {with_context} of {len(candidates)} pairs"))
+        sizes = [len(context_for(c.requirement_ids)) for c in candidates]
+        with_context = sum(1 for n in sizes if n)
+        mean_items = sum(sizes) / with_context if with_context else 0.0
+        decisions.append(
+            GraphDecision(
+                decision_type="context_retrieved",
+                detail=f"graph context ({gs.context_format}) added to {with_context} of {len(candidates)} pairs, {mean_items:.1f} items each",
+            )
+        )
 
     if graph is not None:
         rule = graph_rule_conflicts(graph, gs, set(req_map))

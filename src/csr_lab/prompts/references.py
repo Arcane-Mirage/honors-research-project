@@ -1,4 +1,7 @@
-"""Stage prompt: extract referenced documents for a batch of requirements."""
+"""src/csr_lab/prompts/references.py
+
+Stage prompt: extract referenced documents for a batch of requirements.
+"""
 
 from __future__ import annotations
 
@@ -41,7 +44,7 @@ class ReferenceExtractionResponse(BaseModel):
 
 SPEC = PromptSpec(
     name="reference_extraction",
-    version="references.v1",
+    version="references.v2",
     system=(
         "You extract document references from customer-specific requirements (CSR) for automotive "
         "supplier quality engineering.\n\n" + COMMON_RULES

@@ -1,4 +1,6 @@
-"""Provider-independent LLM interface with validated structured output.
+"""src/csr_lab/llm/interface.py
+
+Provider-independent LLM interface with validated structured output.
 
 Providers only move text (``LLMProvider.generate``). ``StructuredLLM`` adds the
 behaviour that must be identical for every provider and strategy:
@@ -26,7 +28,9 @@ from typing import Any, Callable, Generic, Literal, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from csr_lab.config import LLMSettings
-from csr_lab.schemas import LLMCallSummary, OperationalStats
+from csr_lab.schemas import LLMCallSummary, OperationalStats, StageCost
+
+CHARS_PER_TOKEN = 4  # rough English average, used only when the server reports no token counts
 
 T = TypeVar("T", bound=BaseModel)
 R = TypeVar("R")
@@ -116,7 +120,25 @@ class CallRecorder:
         cost = None
         if input_tokens is not None and output_tokens is not None and pricing_in is not None and pricing_out is not None:
             cost = round(input_tokens / 1e6 * pricing_in + output_tokens / 1e6 * pricing_out, 6)
+        stage_costs: dict[str, StageCost] = {}
+        for c in calls:
+            sc = stage_costs.setdefault(c.stage, StageCost(input_tokens=0, output_tokens=0))
+            sc.calls += 1
+            sc.failed_calls += int(not c.success)
+            sc.input_chars += c.input_chars
+            sc.output_chars += c.output_chars
+            sc.input_tokens = None if sc.input_tokens is None or c.input_tokens is None else sc.input_tokens + c.input_tokens
+            sc.output_tokens = None if sc.output_tokens is None or c.output_tokens is None else sc.output_tokens + c.output_tokens
+        for sc in stage_costs.values():
+            if sc.input_tokens is not None and sc.output_tokens is not None:
+                sc.estimated_tokens = sc.input_tokens + sc.output_tokens
+            else:
+                sc.estimated_tokens = (sc.input_chars + sc.output_chars) // CHARS_PER_TOKEN
+        reported = input_tokens is not None and output_tokens is not None
         return OperationalStats(
+            stage_costs=dict(sorted(stage_costs.items())),
+            token_source=("reported" if reported else "estimated_from_chars") if calls else "none",
+            estimated_tokens=sum(sc.estimated_tokens for sc in stage_costs.values()),
             llm_calls=len(calls),
             llm_failed_calls=sum(1 for c in calls if not c.success),
             json_validation_failures=sum(

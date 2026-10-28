@@ -1,0 +1,452 @@
+{
+  "schema_version": "0.2.0",
+  "dataset_name": "synthetic_csr",
+  "dataset_version": "1.1.0",
+  "case_id": "heldout_tessaly_electronics",
+  "split": "heldout",
+  "description": "ECU CSR with prefixed chapter labels (TSA 2.1), long requirements, similar identifiers, revision variants and spacing aliases.",
+  "documents": [
+    {
+      "document_id": "DOC-TSA-CSR-300-REV-2",
+      "canonical_identifier": "TSA-CSR-300",
+      "filename": "tsa_csr_300.txt",
+      "title": "Customer-Specific Requirements: Electronic Control Units",
+      "revision": "2"
+    }
+  ],
+  "requirements": [
+    {
+      "gold_id": "TSA-CSR-300#TSA 2.1",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 2.1",
+      "requirement_text": "The supplier shall submit the design failure mode and effects analysis to Tessaly\nAutomotive at each design review, and the analysis shall follow the methodology described in\nTessaly procedure TSA-QP-031; where the analysis identifies a severity rating of 9 or 10,\nthe supplier shall additionally document the mitigation actions according to TSA-QP-032 and\nshall report the results of all associated validation tests using the template in\nTSA-QF-031A.",
+      "start_offset": 404,
+      "end_offset": 855,
+      "references": [
+        {
+          "canonical_identifier": "TSA-QP-031",
+          "revision": null,
+          "mention_text": "TSA-QP-031",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-QP-032",
+          "revision": null,
+          "mention_text": "TSA-QP-032",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-QF-031A",
+          "revision": null,
+          "mention_text": "TSA-QF-031A",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "long",
+        "multiple_references",
+        "similar_identifiers",
+        "position_middle",
+        "position_end"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 2.2",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 2.2",
+      "requirement_text": "Software for electronic control units shall be developed according to TSA-SW-500\nrev.3.",
+      "start_offset": 865,
+      "end_offset": 952,
+      "references": [
+        {
+          "canonical_identifier": "TSA-SW-500",
+          "revision": "3",
+          "mention_text": "TSA-SW-500 rev.3",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "revision"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 2.3",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 2.3",
+      "requirement_text": "Software release notes shall reference TSA-SW-500 Rev 4 for all releases issued\nafter 1 July 2026.",
+      "start_offset": 962,
+      "end_offset": 1060,
+      "references": [
+        {
+          "canonical_identifier": "TSA-SW-500",
+          "revision": "4",
+          "mention_text": "TSA-SW-500 Rev 4",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "revision",
+        "ambiguous"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 3.1",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 3.1",
+      "requirement_text": "Printed circuit board assemblies shall be cleaned according to the TSA-MP-210\nspecification, and ionic contamination shall not exceed 1.0 µg/cm² NaCl equivalent.",
+      "start_offset": 1090,
+      "end_offset": 1251,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MP-210",
+          "revision": null,
+          "mention_text": "TSA-MP-210",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "alias_form"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 3.2",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 3.2",
+      "requirement_text": "Conformal coating shall be applied in accordance with Specification TSA MP 215 and\ncured for at least 30 minutes.",
+      "start_offset": 1261,
+      "end_offset": 1374,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MP-215",
+          "revision": null,
+          "mention_text": "TSA MP 215",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "normalization"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 3.3",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 3.3",
+      "requirement_text": "Coated assemblies shall be inspected under ultraviolet light as described in\nTSA-MP-215, and assemblies with coating voids larger than 0.5 mm shall be rejected.",
+      "start_offset": 1384,
+      "end_offset": 1544,
+      "references": [
+        {
+          "canonical_identifier": "TSA-MP-215",
+          "revision": null,
+          "mention_text": "TSA-MP-215",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "normalization",
+        "repeated_reference"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 3.4",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 3.4",
+      "requirement_text": "All solder joints shall be inspected by automated optical inspection on 100% of\nproduction units.",
+      "start_offset": 1554,
+      "end_offset": 1651,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 3.5",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 3.5",
+      "requirement_text": "Solder joint inspection shall be performed on a sampling basis of 5 units per\nproduction lot, as defined in TSA-QP-040.",
+      "start_offset": 1661,
+      "end_offset": 1780,
+      "references": [
+        {
+          "canonical_identifier": "TSA-QP-040",
+          "revision": null,
+          "mention_text": "TSA-QP-040",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict",
+        "similar_identifiers"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 4.1",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 4.1",
+      "requirement_text": "Each electronic control unit shall carry a serial number label containing the\nTessaly part number, the hardware revision, and the date of manufacture in the format\ndefined in TSA-LB-077. The label shall remain legible for the service life of the vehicle.\nThe label position is shown on drawing TSA-DRW-1188, sheet 2.",
+      "start_offset": 1809,
+      "end_offset": 2125,
+      "references": [
+        {
+          "canonical_identifier": "TSA-LB-077",
+          "revision": null,
+          "mention_text": "TSA-LB-077",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-DRW-1188",
+          "revision": null,
+          "mention_text": "TSA-DRW-1188",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "long",
+        "multiple_references",
+        "distractor_numbers"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 4.2",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 4.2",
+      "requirement_text": "Traceability records shall be retained for at least 10 years.",
+      "start_offset": 2135,
+      "end_offset": 2196,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 5.1",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 5.1",
+      "requirement_text": "The supplier shall provide an initial containment response within 24 hours of\nnotification of a nonconformance and shall complete the root cause analysis using the 8D\nformat defined in TSA-QP-050.",
+      "start_offset": 2228,
+      "end_offset": 2424,
+      "references": [
+        {
+          "canonical_identifier": "TSA-QP-050",
+          "revision": null,
+          "mention_text": "TSA-QP-050",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict",
+        "distractor_token"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 5.2",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 5.2",
+      "requirement_text": "Initial containment responses shall be submitted no earlier than 72 hours after\nnotification of a nonconformance, once sorting results are available.",
+      "start_offset": 2434,
+      "end_offset": 2583,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "TSA-CSR-300#TSA 5.3",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
+      "chapter": "TSA 5.3",
+      "requirement_text": "Warranty part analysis shall be performed according to TSA-QP-050 and TSA-WR-090.",
+      "start_offset": 2593,
+      "end_offset": 2674,
+      "references": [
+        {
+          "canonical_identifier": "TSA-QP-050",
+          "revision": null,
+          "mention_text": "TSA-QP-050",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "TSA-WR-090",
+          "revision": null,
+          "mention_text": "TSA-WR-090",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "multiple_references",
+        "repeated_reference"
+      ]
+    }
+  ],
+  "referenced_documents": [
+    {
+      "canonical_identifier": "TSA-DRW-1188",
+      "revision": null,
+      "content_available": false,
+      "document_type": "engineering_drawing"
+    },
+    {
+      "canonical_identifier": "TSA-LB-077",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-MP-210",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-MP-215",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-QF-031A",
+      "revision": null,
+      "content_available": false,
+      "document_type": "form"
+    },
+    {
+      "canonical_identifier": "TSA-QP-031",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-QP-032",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-QP-040",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-QP-050",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-SW-500",
+      "revision": "3",
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-SW-500",
+      "revision": "4",
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "TSA-WR-090",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    }
+  ],
+  "conflicts": [
+    {
+      "gold_conflict_id": "heldout_tessaly_electronics-C01",
+      "requirement_ids": [
+        "TSA-CSR-300#TSA 3.4",
+        "TSA-CSR-300#TSA 3.5"
+      ],
+      "conflict_type": "process_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-300#TSA 3.4",
+          "quoted_text": "on 100% of production units"
+        },
+        {
+          "requirement_id": "TSA-CSR-300#TSA 3.5",
+          "quoted_text": "on a sampling basis of 5 units per production lot"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_electronics-C02",
+      "requirement_ids": [
+        "TSA-CSR-300#TSA 5.1",
+        "TSA-CSR-300#TSA 5.2"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-300#TSA 5.1",
+          "quoted_text": "within 24 hours of notification of a nonconformance"
+        },
+        {
+          "requirement_id": "TSA-CSR-300#TSA 5.2",
+          "quoted_text": "no earlier than 72 hours after notification of a nonconformance"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "heldout_tessaly_electronics-C03",
+      "requirement_ids": [
+        "TSA-CSR-300#TSA 2.2",
+        "TSA-CSR-300#TSA 2.3"
+      ],
+      "conflict_type": "other_or_uncertain",
+      "category": "ambiguous",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "TSA-CSR-300#TSA 2.2",
+          "quoted_text": "TSA-SW-500 rev.3"
+        },
+        {
+          "requirement_id": "TSA-CSR-300#TSA 2.3",
+          "quoted_text": "TSA-SW-500 Rev 4"
+        }
+      ],
+      "note": "different software standard revisions; may be intentional by date"
+    }
+  ],
+  "non_conflicting_pairs": [
+    {
+      "requirement_ids": [
+        "TSA-CSR-300#TSA 3.2",
+        "TSA-CSR-300#TSA 3.3"
+      ],
+      "note": "both cite TSA-MP-215 for different steps"
+    },
+    {
+      "requirement_ids": [
+        "TSA-CSR-300#TSA 5.1",
+        "TSA-CSR-300#TSA 5.3"
+      ],
+      "note": "both cite TSA-QP-050 without contradiction"
+    }
+  ],
+  "notes": []
+}

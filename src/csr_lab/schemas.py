@@ -1,4 +1,6 @@
-"""Pydantic models for the exported analysis JSON and the gold-standard annotations.
+"""src/csr_lab/schemas.py
+
+Pydantic models for the exported analysis JSON and the gold-standard annotations.
 
 Two groups of models live here:
 
@@ -19,8 +21,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "0.1.0"
-GOLD_SCHEMA_VERSION = "0.1.0"
+from csr_lab.extraction.fidelity import FidelityReport
+from csr_lab.ids import document_family_id
+
+# 0.2.0: revision-specific document IDs, content-based requirement IDs
+# 0.3.0: input fidelity report, reference-merge decisions, per-stage cost (all additive)
+SCHEMA_VERSION = "0.3.0"
+GOLD_SCHEMA_VERSION = "0.2.0"
 
 
 class _Model(BaseModel):
@@ -68,6 +75,9 @@ class RelationshipType(StrEnum):
     EXPLICITLY_DEPENDS_ON = "explicitly_depends_on"
     EXPLICITLY_TAKES_PRECEDENCE_OVER = "explicitly_takes_precedence_over"
     POTENTIALLY_CONFLICTS_WITH = "potentially_conflicts_with"
+    # Revision tracking (derived from document headers, never from requirement text):
+    HAS_REVISION = "has_revision"  # document -> one revision of it
+    SUPERSEDED_BY = "superseded_by"  # older revision -> newer revision; older requirement -> its newer version
 
 
 RELATION_EDGE_TYPES: dict[ReferenceRelation, RelationshipType] = {
@@ -100,6 +110,7 @@ class ResolutionMethod(StrEnum):
     IDENTIFIER = "identifier"  # resolved from an explicit identifier in the text
     NAME_ALIAS = "name_alias"  # a document name resolved to a known identifier
     UNRESOLVED_NAME = "unresolved_name"  # a document name with no known identifier
+    MERGED = "merged"  # renamed by the reference-merging stage (see metadata.reference_merges)
 
 
 # How a piece of quoted text was located in the extracted source text.
@@ -176,6 +187,15 @@ class Evidence(_Model):
 # ---------------------------------------------------------------------------
 
 
+class ProvidedChunk(_Model):
+    """A chunk produced outside csr-lab (another chunker), analysed instead of csr-lab's own segmentation."""
+
+    chunk_id: str
+    title: str | None = None
+    content: str
+    source_pages: list[int] = Field(default_factory=list, description="Pages the chunker said the chunk came from.")
+
+
 class InputDocument(_Model):
     document_id: str
     canonical_identifier: str | None
@@ -183,6 +203,7 @@ class InputDocument(_Model):
     filename: str
     title: str | None = None
     revision: str | None = None
+    effective_date: str | None = Field(default=None, description="As stated in the header; ISO dates are used to order revisions.")
     format: Literal["txt", "pdf", "json"]
     sha256: str
     char_count: int
@@ -192,6 +213,11 @@ class InputDocument(_Model):
     text: str | None = Field(
         default=None,
         description="Extracted text. Verbatim relative to the parser's output; offsets refer to it.",
+    )
+    provided_chunks: list[ProvidedChunk] | None = Field(
+        default=None,
+        exclude=True,
+        description="Pre-chunked input (not exported; see metadata.input_fidelity for how the chunks matched the source).",
     )
 
 
@@ -371,6 +397,18 @@ class Coverage(_Model):
 # ---------------------------------------------------------------------------
 
 
+class StageCost(_Model):
+    """Model usage of one pipeline stage."""
+
+    calls: int = 0
+    failed_calls: int = 0
+    input_chars: int = 0
+    output_chars: int = 0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_tokens: int = Field(0, description="input+output tokens; reported counts when available, else characters / 4")
+
+
 class OperationalStats(_Model):
     """Cost and effort measures. ``None`` means not measurable, never zero-filled."""
 
@@ -386,6 +424,17 @@ class OperationalStats(_Model):
     output_chars: int = 0
     estimated_cost_usd: float | None = None
     graph_informed_calls: int = 0
+    # Per-stage and per-unit cost (for comparing pipelines of different shapes).
+    stage_costs: dict[str, StageCost] = Field(default_factory=dict)
+    token_source: Literal["reported", "estimated_from_chars", "none"] = "none"
+    estimated_tokens: int = Field(0, description="Total input+output tokens (reported, or characters / 4 when the server reports none).")
+    pages: float | None = Field(default=None, description="PDF pages; for text input, characters / 3000 (see pages_source).")
+    pages_source: Literal["pdf", "estimated", "mixed", "none"] = "none"
+    requirements: int = Field(0, description="Requirement units in the result (the denominator of the per-requirement figures).")
+    calls_per_page: float | None = None
+    tokens_per_page: float | None = None
+    calls_per_requirement: float | None = None
+    tokens_per_requirement: float | None = None
 
 
 class LLMCallSummary(_Model):
@@ -454,6 +503,17 @@ class GraphDecision(_Model):
     node_ids: list[str] = Field(default_factory=list)
 
 
+class ReferenceMergeDecision(_Model):
+    """One grouping decision of the reference-merging stage."""
+
+    method: Literal["llm", "hybrid"]
+    members: list[str] = Field(description="Reference labels (as extracted) the decision covers.")
+    canonical: str = Field(description="Label the members were renamed to.")
+    applied: bool
+    reason: str = ""
+    mention_ids: list[str] = Field(default_factory=list)
+
+
 class AnalysisMetadata(_Model):
     strategy: str
     strategy_description: str = ""
@@ -469,6 +529,15 @@ class AnalysisMetadata(_Model):
     reference_verification: ReferenceVerificationReport | None = None
     conflict_candidates: list[CandidatePairRecord] = Field(default_factory=list)
     graph_decisions: list[GraphDecision] = Field(default_factory=list)
+    reference_merges: list[ReferenceMergeDecision] = Field(default_factory=list)
+    input_fidelity: FidelityReport | None = Field(
+        default=None,
+        description="How the analysed text units (provided or model-made chunks) matched the source text.",
+    )
+    saved_graph: dict[str, Any] | None = Field(
+        default=None,
+        description="Set when a graph-assisted run started from a saved (persistent) graph: its path, fingerprint and size.",
+    )
     llm_calls: list[LLMCallSummary] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
@@ -510,6 +579,8 @@ class AnalysisResult(_Model):
             if missing:
                 raise ValueError(f"{conflict.conflict_id} names unknown requirements: {sorted(missing)}")
         node_ids = known_reqs | known_docs | {d.document_id for d in self.input_documents}
+        # Document-level nodes of provided revisions ('DOC-X' for 'DOC-X-REV-D').
+        node_ids |= {document_family_id(d.canonical_identifier) for d in self.input_documents if d.canonical_identifier}
         for rel in self.relationships:
             if rel.source_node_id not in node_ids or rel.target_node_id not in node_ids:
                 raise ValueError(f"{rel.relationship_id} has an endpoint that is not a known node")

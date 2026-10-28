@@ -1,3 +1,8 @@
+"""tests/test_relationships.py
+
+Relationship graph structure, queries, flagging rules and validation.
+"""
+
 import json
 
 import pytest
@@ -17,6 +22,10 @@ def packaging_graph(dataset, config):
     return result, graph_from_result(result)
 
 
+CSR200 = "DOC-CVM-CSR-200-REV-A"  # input documents are revisions
+PKG210_D = "DOC-CVM-PKG-210-REV-D"
+
+
 def _req(result, doc, chapter):
     return next(r.requirement_id for r in result.requirements if r.source_document_id == doc and r.chapter == chapter)
 
@@ -28,17 +37,22 @@ def test_graph_structure(packaging_graph):
             RelationshipType.EXPLICITLY_TAKES_PRECEDENCE_OVER, RelationshipType.POTENTIALLY_CONFLICTS_WITH} <= types
     report = validate_graph(graph)
     assert report.valid, report
-    # The provided packaging specification is one node, referenced and available.
+    # The provided packaging specification is a revision node under its document node.
+    # Unrevisioned references point at the document node, which resolves to Rev D.
     pkg = graph.node("DOC-CVM-PKG-210")
     assert pkg.attributes["content_available"] and pkg.attributes["is_input_document"]
+    assert graph.revisions_of("DOC-CVM-PKG-210") == [PKG210_D]
+    assert graph.current_revision("DOC-CVM-PKG-210") == PKG210_D
+    assert graph.same_document("DOC-CVM-PKG-210", PKG210_D) and graph.family_of(PKG210_D) == "DOC-CVM-PKG-210"
+    assert all(graph.container_of(r.requirement_id) in (CSR200, PKG210_D) for r in result.requirements)
     doc_edges = [e for e in graph.edges if e.metadata.get("origin") == "aggregation"]
-    assert any(e.source_node_id == "DOC-CVM-CSR-200" and e.target_node_id == "DOC-CVM-PKG-210" for e in doc_edges)
+    assert any(e.source_node_id == CSR200 and e.target_node_id == "DOC-CVM-PKG-210" for e in doc_edges)
     assert all(e.evidence for e in graph.edges if e.metadata.get("origin") == "extraction")
 
 
 def test_queries(packaging_graph):
     result, graph = packaging_graph
-    r12 = _req(result, "DOC-CVM-CSR-200", "1.2")
+    r12 = _req(result, CSR200, "1.2")
     assert queries.documents_referenced_by(graph, r12) == ["DOC-CVM-PKG-210"]
     referencing = queries.requirements_referencing(graph, "DOC-CVM-PKG-210")
     assert r12 in referencing and len(referencing) >= 3
@@ -60,10 +74,10 @@ def test_queries(packaging_graph):
 def test_applicability_and_precedence_rules(packaging_graph):
     result, graph = packaging_graph
     flags = queries.find_applicability_conflicts(graph)
-    assert [f.requirement_ids for f in flags] == [tuple(sorted((_req(result, "DOC-CVM-CSR-200", "1.3"), _req(result, "DOC-CVM-PKG-210", "2.1"))))]
+    assert [f.requirement_ids for f in flags] == [tuple(sorted((_req(result, CSR200, "1.3"), _req(result, PKG210_D, "2.1"))))]
     assert flags[0].evidence and flags[0].relationship_ids
     prec = queries.find_precedence_conflicts(graph)
-    assert [set(f.requirement_ids) for f in prec] == [{_req(result, "DOC-CVM-CSR-200", "5.1"), _req(result, "DOC-CVM-PKG-210", "4.1")}]
+    assert [set(f.requirement_ids) for f in prec] == [{_req(result, CSR200, "5.1"), _req(result, PKG210_D, "4.1")}]
 
 
 def test_shared_reference_alone_is_not_flagged(packaging_graph):

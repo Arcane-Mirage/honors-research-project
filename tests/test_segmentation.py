@@ -1,3 +1,8 @@
+"""tests/test_segmentation.py
+
+Segmentation into exact source slices; chunking limits, overlap and truncation.
+"""
+
 from csr_lab.config import ProcessingSettings
 from csr_lab.ingestion.chunking import chunk_raw_text, plan_chunks
 from csr_lab.ingestion.segmentation import requirement_candidates, segment_document

@@ -1,4 +1,6 @@
-"""Heuristic rules that stand in for an LLM inside the offline mock provider.
+"""src/csr_lab/llm/mock_rules.py
+
+Heuristic rules that stand in for an LLM inside the offline mock provider.
 
 These rules exist so the full pipeline can run without an API. They are
 simple and deliberately imperfect, they are *not* a proposed extraction

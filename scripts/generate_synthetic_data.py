@@ -1,4 +1,7 @@
-"""Regenerate the synthetic dataset (same as `csr-lab generate-data`)."""
+"""scripts/generate_synthetic_data.py
+
+Regenerate the synthetic dataset (same as `csr-lab generate-data`).
+"""
 
 from __future__ import annotations
 

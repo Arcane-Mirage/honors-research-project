@@ -1,3 +1,8 @@
+"""tests/test_cli.py
+
+Command-line commands end to end: generate-data, analyze, graph, evaluate, experiment, listings.
+"""
+
 import json
 import sqlite3
 

@@ -1,0 +1,29 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-paragraph(words=120)",
+  "source": {
+    "file": "cvm_csr_500.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "C001",
+      "title": "CORVANE MOTORS Customer-Specific Requirements: Interior Trim",
+      "content": "CORVANE MOTORS\nCustomer-Specific Requirements: Interior Trim Components\nDocument ID: CVM-CSR-500\nRevision: A\nEffective Date: 2026-07-01\nAll names, companies and document identifiers in this document are fictional.\n\n1 Scope\n1.1 This document applies to suppliers of interior trim components delivered to Corvane\nMotors.\n\n1.2 Suppliers shall apply this document in place of CVM-CSR-450 Revision C, which this\ndocument supersedes.\n\n2 Materials\n2.1 Interior trim materials shall meet the flammability requirements of CVM-MS-610 and the\nodor requirements of CVM-MS-612, and the supplier shall submit test results from a\nlaboratory accredited according to the Corvane laboratory policy CVM-LAB-005."
+    },
+    {
+      "chunk_id": "C002",
+      "title": "2.2 Volatile organic compound emissions shall",
+      "content": "2.2 Volatile organic compound emissions shall be tested according to CVM-MS-615 at a test\ntemperature of 65 °C. Results shall be reported in µg/m³ to Corvane Motors within 5 working\ndays of test completion.\n\n2.3 Materials that contain recycled content shall be declared in the material data system\nbefore part submission. The declaration shall include the supplier name, material grade, and\nrecycled content percentage.\n\n3 Appearance\n3.1 Color and gloss shall match the master sample approved under CVM-AP-300. Visual\nevaluation shall be performed under D65 lighting at 1000 lux.\n\n3.2 Grain and texture shall conform to CVM-AP-310 as shown on drawing DRW-7731."
+    },
+    {
+      "chunk_id": "C003",
+      "title": "4 Approval of Changes 4.1 Any",
+      "content": "4 Approval of Changes\n4.1 Any change to a material formulation shall require written approval from Corvane Motors\nbefore implementation.\n\n4.2 Changes to a material formulation shall be implemented without approval from Corvane\nMotors when they are recorded in the supplier's internal change log according to CVM-QS-110.\n\n5 Shipping\n5.1 Finished trim parts shall be packaged according to CVM-PKG-210 and shall be protected\nfrom ultraviolet exposure during transport.\n\n5.2 Parts shall be labeled according to CVM-LBL-220 and CVM-PKG-210.\n\n6 Testing\n6.1 Test results from internal supplier laboratories shall not be accepted for flammability\ntesting under CVM-MS-610.\n\n6.2 Odor testing according to CVM-MS-612 shall be performed at 80 °C."
+    },
+    {
+      "chunk_id": "C004",
+      "title": "6.3 All material tests shall be",
+      "content": "6.3 All material tests shall be performed at a maximum test temperature of 70 °C."
+    }
+  ]
+}

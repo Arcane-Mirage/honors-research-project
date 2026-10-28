@@ -1,4 +1,6 @@
-"""Evaluation metrics, independent of providers and workflows.
+"""src/csr_lab/evaluation/metrics.py
+
+Evaluation metrics, independent of providers and workflows.
 
 ``evaluate_case`` scores one ``AnalysisResult`` against one ``CaseGold``.
 Categories are kept separate (requirements, references, graph, conflicts,
@@ -15,11 +17,25 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from csr_lab.evaluation.matching import align_requirements, gold_key, mapped_id, predicted_key, unordered
-from csr_lab.extraction.normalization import reference_key
+from csr_lab.evaluation.matching import (
+    align_requirements,
+    contains_requirement,
+    family_key,
+    gold_key,
+    mapped_id,
+    predicted_key,
+    reanchor_gold,
+    unordered,
+)
+from csr_lab.extraction.normalization import reference_key, squash
 from csr_lab.relationships.builder import graph_from_result
 from csr_lab.relationships.validation import validate_graph
-from csr_lab.schemas import AnalysisResult, CaseGold, ReferenceRelation, RelationshipType
+from csr_lab.schemas import (
+    AnalysisResult,
+    CaseGold,
+    ReferenceRelation,
+    RelationshipType,
+)
 
 
 def ratio(num: float, den: float) -> float | None:
@@ -75,6 +91,58 @@ class ReferenceMetrics(BaseModel):
     document_level_recall: float | None = None
     false_positives: list[str] = Field(default_factory=list)
     false_negatives: list[str] = Field(default_factory=list)
+    # Why references were wrong. A wrong key and the missing key it stands for in the same
+    # requirement count as ONE error of the matching kind.
+    errors: dict[str, int] = Field(default_factory=dict)
+    merges_applied: int = Field(0, description="Reference-merging decisions that renamed at least one mention.")
+    merges_rejected: int = Field(0, description="Merging decisions not applied (model said no, or a guard rule vetoed).")
+
+
+REFERENCE_ERROR_KINDS = {
+    "revision": "right document, wrong or missing revision",
+    "identifier_variant": "identifier spelled differently from the gold key (e.g. leading zero)",
+    "unresolved_alias": "document named by title but not linked to its identifier",
+    "confused_identifier": "a look-alike identifier (one character different) instead of the right one",
+    "wrong_requirement": "a referenced document of the case, attached to the wrong requirement/unit",
+    "spurious": "not a referenced document of the case (hallucinated or a non-document number)",
+    "missed": "gold reference not predicted",
+}
+
+
+class UnitMetrics(BaseModel):
+    """Reference extraction scored at the granularity of the predicted units.
+
+    A predicted unit may contain several gold requirements (a chunk). A predicted
+    (unit, document) pair is correct when the document is referenced by any gold
+    requirement inside the unit; a gold (requirement, document) pair is found when
+    some unit containing that requirement predicts the document. For one-requirement
+    units this equals the per-requirement score; for chunks it is the most favourable
+    fair reading of per-chunk extraction.
+    """
+
+    units: int = 0
+    gold_requirements: int = 0
+    gold_contained: int = 0
+    gold_coverage: float | None = None
+    mean_gold_per_unit: float | None = Field(default=None, description="Granularity: gold requirements per unit that holds any.")
+    tp: int = 0
+    fp: int = 0
+    fn: int = 0
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
+
+
+class InputMetrics(BaseModel):
+    """How faithful the analysed units were to the source (from metadata.input_fidelity)."""
+
+    chunked: bool = False
+    chunks: int = 0
+    verbatim: int = 0
+    verbatim_rate: float | None = None
+    mean_word_ratio: float | None = None
+    source_coverage: float | None = None
+    requirement_like_gaps: int = 0
 
 
 class GraphMetrics(BaseModel):
@@ -127,11 +195,19 @@ class CaseEvaluation(BaseModel):
     references: ReferenceMetrics
     graph: GraphMetrics
     conflicts: ConflictMetrics
+    units: UnitMetrics = Field(default_factory=UnitMetrics)
+    input: InputMetrics = Field(default_factory=InputMetrics)
     operational: dict[str, Any] = Field(default_factory=dict)
 
 
 def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: float = 0.75, status: str | None = None) -> CaseEvaluation:
-    """Score a result. ``None`` (a failed run) is scored as an empty prediction."""
+    """Score a result. ``None`` (a failed run) is scored as an empty prediction.
+
+    Gold offsets of PDF inputs are re-anchored to the extracted text first (see
+    ``matching.reanchor_gold``); gold text is never changed.
+    """
+    if result is not None:
+        gold = reanchor_gold(gold, result.input_documents)
     preds = result.requirements if result else []
     alignment = align_requirements(preds, gold.requirements, threshold)
     gold_by_id = {g.gold_id: g for g in gold.requirements}
@@ -163,6 +239,7 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
     pred_pairs: set[tuple[str, str]] = set()
     pred_relation: dict[tuple[str, str], set[ReferenceRelation]] = {}
     pred_doc_for_pair: dict[tuple[str, str], str] = {}
+    keys_by_unit: dict[str, set[str]] = {}
     duplicates = 0
     for p in preds:
         rid = mapped_id(p.requirement_id, alignment)
@@ -175,6 +252,7 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
             if key in seen:
                 duplicates += 1
             seen.add(key)
+            keys_by_unit.setdefault(p.requirement_id, set()).add(key)
             pair = (rid, key)
             pred_pairs.add(pair)
             pred_relation.setdefault(pair, set()).add(m.relation)
@@ -212,6 +290,50 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
     pred_docs = {k for _, k in pred_pairs}
     ref.document_level_precision = ratio(len(gold_docs & pred_docs), len(pred_docs))
     ref.document_level_recall = ratio(len(gold_docs & pred_docs), len(gold_docs))
+    gold_resolution = {(g.gold_id, gold_key(r)): r.resolution for g in gold.requirements for r in g.references}
+    ref.errors = reference_errors(pred_pairs, gold_pairs, gold_resolution)
+    if result is not None:
+        ref.merges_applied = sum(1 for d in result.metadata.reference_merges if d.applied)
+        ref.merges_rejected = sum(1 for d in result.metadata.reference_merges if not d.applied)
+
+    # -- units (granularity-independent) -----------------------------------
+    um = UnitMetrics(units=len(preds), gold_requirements=len(gold.requirements))
+    refs_of = {g.gold_id: {gold_key(r) for r in g.references} for g in gold.requirements}
+    contained = {p.requirement_id: [g.gold_id for g in gold.requirements if contains_requirement(p, g)] for p in preds}
+    holders: dict[str, list[str]] = {}
+    for pid, gids in contained.items():
+        for gid_ in gids:
+            holders.setdefault(gid_, []).append(pid)
+    um.gold_contained = len(holders)
+    um.gold_coverage = ratio(um.gold_contained, um.gold_requirements)
+    sizes = [len(g) for g in contained.values() if g]
+    um.mean_gold_per_unit = ratio(sum(sizes), len(sizes))
+    for pid, keys in keys_by_unit.items():
+        allowed = set().union(*(refs_of[g] for g in contained.get(pid, []))) if contained.get(pid) else set()
+        um.tp += len(keys & allowed)
+        um.fp += len(keys - allowed)
+    found_gold = sum(
+        1 for g in gold.requirements for k in refs_of[g.gold_id] if any(k in keys_by_unit.get(pid, set()) for pid in holders.get(g.gold_id, []))
+    )
+    um.fn = len(gold_pairs) - found_gold
+    um.precision = ratio(um.tp, um.tp + um.fp)
+    um.recall = ratio(found_gold, len(gold_pairs))
+    um.f1 = None if um.precision is None or um.recall is None else (0.0 if um.precision + um.recall == 0 else 2 * um.precision * um.recall / (um.precision + um.recall))
+
+    # -- input fidelity ------------------------------------------------------
+    im = InputMetrics()
+    fidelity = result.metadata.input_fidelity if result else None
+    if fidelity is not None:
+        fs = fidelity.summary
+        im = InputMetrics(
+            chunked=True,
+            chunks=fs.fragments,
+            verbatim=fs.exact + fs.whitespace_normalized,
+            verbatim_rate=fs.verbatim_rate,
+            mean_word_ratio=fs.mean_fragment_ratio,
+            source_coverage=fs.source_coverage,
+            requirement_like_gaps=fs.requirement_like_gaps,
+        )
 
     # -- graph -------------------------------------------------------------
     gm = GraphMetrics()
@@ -303,7 +425,14 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
             "output_chars": o.output_chars,
             "estimated_cost_usd": o.estimated_cost_usd,
             "graph_informed_calls": o.graph_informed_calls,
+            "estimated_tokens": o.estimated_tokens,
+            "token_source": o.token_source,
+            "pages": o.pages,
+            "units": o.requirements,
+            "gold_requirements": len(gold.requirements),
             **{f"stage_seconds.{k}": v for k, v in o.stage_seconds.items()},
+            **{f"stage_calls.{k}": v.calls for k, v in o.stage_costs.items()},
+            **{f"stage_tokens.{k}": v.estimated_tokens for k, v in o.stage_costs.items()},
         }
     return CaseEvaluation(
         case_id=gold.case_id,
@@ -312,8 +441,52 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
         references=ref,
         graph=gm,
         conflicts=cm,
+        units=um,
+        input=im,
         operational=ops,
     )
+
+
+def _one_char_apart(a: str, b: str) -> bool:
+    pa, pb = a.split("-"), b.split("-")
+    if len(pa) != len(pb) or pa[:-1] != pb[:-1] or len(pa[-1]) != len(pb[-1]):
+        return False
+    return sum(x != y for x, y in zip(pa[-1], pb[-1])) == 1
+
+
+def reference_errors(
+    pred_pairs: set[tuple[str, str]], gold_pairs: set[tuple[str, str]], gold_resolution: dict[tuple[str, str], str]
+) -> dict[str, int]:
+    """Classify reference errors (see ``REFERENCE_ERROR_KINDS``)."""
+    errors = dict.fromkeys(REFERENCE_ERROR_KINDS, 0)
+    gold_keys = {k for _, k in gold_pairs}
+    fps: dict[str, set[str]] = {}
+    fns: dict[str, set[str]] = {}
+    for rid, key in pred_pairs - gold_pairs:
+        fps.setdefault(rid, set()).add(key)
+    for rid, key in gold_pairs - pred_pairs:
+        fns.setdefault(rid, set()).add(key)
+    for rid in sorted(set(fps) | set(fns)):
+        missing = set(fns.get(rid, set()))
+        for fp in sorted(fps.get(rid, set())):
+            kind = None
+            for fn in sorted(missing):
+                if not fp.startswith("NAME:") and family_key(fp) == family_key(fn):
+                    kind = "revision"
+                elif fp.startswith("NAME:") and gold_resolution.get((rid, fn)) == "name_alias":
+                    kind = "unresolved_alias"
+                elif not fp.startswith("NAME:") and squash(family_key(fp)) == squash(family_key(fn)):
+                    kind = "identifier_variant"
+                elif not fp.startswith("NAME:") and not fn.startswith("NAME:") and _one_char_apart(family_key(fp), family_key(fn)):
+                    kind = "confused_identifier"
+                if kind:
+                    missing.discard(fn)
+                    break
+            if kind is None:
+                kind = "wrong_requirement" if fp in gold_keys else "spurious"
+            errors[kind] += 1
+        errors["missed"] += len(missing)
+    return errors
 
 
 # ---------------------------------------------------------------------------
@@ -369,6 +542,33 @@ def aggregate(evaluations: list[CaseEvaluation]) -> dict[str, float | None]:
         total(lambda e: e.graph.qualified_edge_tp), total(lambda e: e.graph.qualified_edge_fp), total(lambda e: e.graph.qualified_edge_fn)
     )[2]
 
+    out["references.merges_applied"] = total(lambda e: e.references.merges_applied)
+    out["references.merges_rejected"] = total(lambda e: e.references.merges_rejected)
+    for kind in REFERENCE_ERROR_KINDS:
+        out[f"references.errors.{kind}"] = total(lambda e, k=kind: e.references.errors.get(k, 0))
+
+    utp, ufp, ufn = total(lambda e: e.units.tp), total(lambda e: e.units.fp), total(lambda e: e.units.fn)
+    up = ratio(utp, utp + ufp)
+    gold_ref_pairs = total(lambda e: e.references.tp + e.references.fn)
+    ur = ratio(gold_ref_pairs - ufn, gold_ref_pairs)
+    out["units.precision"], out["units.recall"] = up, ur
+    out["units.f1"] = None if up is None or ur is None else (0.0 if up + ur == 0 else 2 * up * ur / (up + ur))
+    out["units.units"] = total(lambda e: e.units.units)
+    out["units.gold_coverage"] = ratio(total(lambda e: e.units.gold_contained), total(lambda e: e.units.gold_requirements))
+    holders = [e.units.mean_gold_per_unit for e in evaluations if e.units.mean_gold_per_unit is not None]
+    out["units.mean_gold_per_unit"] = sum(holders) / len(holders) if holders else None
+
+    chunked = [e for e in evaluations if e.input.chunked]
+    out["input.chunked_cases"] = len(chunked)
+    if chunked:
+        out["input.chunks"] = sum(e.input.chunks for e in chunked)
+        out["input.verbatim_rate"] = ratio(sum(e.input.verbatim for e in chunked), out["input.chunks"] or 0)
+        word = [e.input.mean_word_ratio for e in chunked if e.input.mean_word_ratio is not None]
+        out["input.mean_word_ratio"] = sum(word) / len(word) if word else None
+        cov = [e.input.source_coverage for e in chunked if e.input.source_coverage is not None]
+        out["input.source_coverage"] = sum(cov) / len(cov) if cov else None
+        out["input.requirement_like_gaps"] = sum(e.input.requirement_like_gaps for e in chunked)
+
     out["conflicts.candidate_pair_recall"] = ratio(total(lambda e: e.conflicts.candidate_hits), total(lambda e: e.conflicts.gold_pairs))
     out["conflicts.candidate_pairs_considered"] = total(lambda e: e.conflicts.candidate_pairs_considered)
     out["conflicts.evidence_validity_rate"] = ratio(total(lambda e: e.conflicts.evidence_valid), total(lambda e: e.conflicts.predicted))
@@ -384,6 +584,26 @@ def aggregate(evaluations: list[CaseEvaluation]) -> dict[str, float | None]:
     for key in _NULLABLE_SUMS:
         values = [e.operational.get(key) for e in evaluations]
         out[f"ops.{key}"] = round(sum(values), 6) if values and all(v is not None for v in values) else None
+
+    # Cost per unit of work: ratios of totals over the cases.
+    calls = out["ops.llm_calls"] or 0
+    tokens = sum(e.operational.get("estimated_tokens") or 0 for e in evaluations)
+    pages = sum(e.operational.get("pages") or 0 for e in evaluations)
+    gold_reqs = sum(e.operational.get("gold_requirements") or 0 for e in evaluations)
+    out["ops.estimated_tokens"] = tokens
+    sources = {e.operational.get("token_source") for e in evaluations if e.operational}
+    out["ops.tokens_reported"] = 1.0 if sources == {"reported"} else 0.0
+    out["ops.pages"] = round(pages, 2)
+    out["ops.calls_per_page"] = ratio(calls, pages)
+    out["ops.tokens_per_page"] = ratio(tokens, pages)
+    out["ops.calls_per_gold_requirement"] = ratio(calls, gold_reqs)
+    out["ops.tokens_per_gold_requirement"] = ratio(tokens, gold_reqs)
+    # Unit-level true positives, so per-chunk strategies (no per-requirement hits) get a value too.
+    out["ops.tokens_per_correct_reference"] = ratio(tokens, utp)
+    stages = sorted({k.split(".", 1)[1] for e in evaluations for k in e.operational if k.startswith("stage_tokens.")})
+    for stage in stages:
+        out[f"ops.stage_calls.{stage}"] = sum(e.operational.get(f"stage_calls.{stage}") or 0 for e in evaluations)
+        out[f"ops.stage_tokens.{stage}"] = sum(e.operational.get(f"stage_tokens.{stage}") or 0 for e in evaluations)
     return out
 
 
@@ -404,9 +624,12 @@ def describe(values: list[float | None]) -> dict[str, float | int | None]:
 def flatten_case(evaluation: CaseEvaluation) -> dict[str, Any]:
     """One flat row per case for CSV/SQLite (lists of FP/FN items are excluded)."""
     row: dict[str, Any] = {"case_id": evaluation.case_id, "status": evaluation.status}
-    for section in ("requirements", "references", "graph", "conflicts"):
+    for section in ("requirements", "references", "graph", "conflicts", "units", "input"):
         for key, value in getattr(evaluation, section).model_dump().items():
             if isinstance(value, list):
+                continue
+            if isinstance(value, dict):
+                row.update({f"{section}.{key}.{k}": v for k, v in value.items()})
                 continue
             row[f"{section}.{key}"] = value
     row.update({f"ops.{k}": v for k, v in evaluation.operational.items()})

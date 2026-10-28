@@ -1,4 +1,6 @@
-"""LangGraph workflow state.
+"""src/csr_lab/pipelines/state.py
+
+LangGraph workflow state.
 
 Documents are stored once (``documents``); every other field refers to them
 by ID and offset. Fields annotated with a reducer accumulate across nodes.
@@ -16,7 +18,8 @@ from csr_lab.extraction.verification import AuditCandidate
 from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment
 from csr_lab.relationships.builder import RelationshipGraph
-from csr_lab.schemas import AnalysisResult, CoverageLimitation, GraphDecision, InputDocument, VerificationEvent
+from csr_lab.extraction.fidelity import FragmentCheck
+from csr_lab.schemas import AnalysisResult, CoverageLimitation, GraphDecision, InputDocument, ReferenceMergeDecision, VerificationEvent
 
 
 def sum_seconds(a: dict[str, float] | None, b: dict[str, float] | None) -> dict[str, float]:
@@ -31,6 +34,7 @@ class PipelineState(TypedDict, total=False):
     documents: list[InputDocument]
     segments: list[Segment]
     chunk_plan: ChunkPlan
+    chunk_checks: Annotated[list[FragmentCheck], operator.add]  # how chunk units matched the source
     requirements: list[RequirementDraft]
     initial_mentions: list[MentionDraft]  # snapshot taken right after first extraction
     mentions: list[MentionDraft]  # working set (includes inactive = rejected/merged)
@@ -45,6 +49,7 @@ class PipelineState(TypedDict, total=False):
     conflicts: list[ConflictDraft]
     conflict_stats: dict[str, Any]
     graph_decisions: Annotated[list[GraphDecision], operator.add]
+    merge_decisions: Annotated[list[ReferenceMergeDecision], operator.add]
     limitations: Annotated[list[CoverageLimitation], operator.add]
     errors: Annotated[list[PipelineError], operator.add]
     warnings: Annotated[list[str], operator.add]
@@ -71,6 +76,8 @@ def initial_state(documents: list[InputDocument], case_id: str | None) -> Pipeli
         conflicts=[],
         conflict_stats={},
         graph_decisions=[],
+        merge_decisions=[],
+        chunk_checks=[],
         limitations=[],
         errors=[],
         warnings=[],

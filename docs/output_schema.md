@@ -1,4 +1,8 @@
-# Output schema (version 0.1.0)
+# Output schema (version 0.3.0)
+
+0.3.0 added `metadata.input_fidelity`, `metadata.reference_merges`, per-stage and per-unit
+cost in `metadata.operational`, and the `merged` mention resolution. All additions are
+optional fields; 0.2.0 consumers can ignore them.
 
 The Pydantic models in `src/csr_lab/schemas.py` are the contract; the generated JSON Schema
 is `docs/analysis_result.schema.json`. Unknown fields are rejected, and the top-level model
@@ -9,13 +13,28 @@ endpoint must exist).
 
 | Kind | Form | Example |
 |---|---|---|
-| Input or referenced document | `DOC-<identifier>[-REV-<rev>]` | `DOC-CVM-PKG-210`, `DOC-CVM-ES-210-REV-B` |
+| Document (any revision) | `DOC-<identifier>` | `DOC-CVM-PKG-210` |
+| One revision of a document | `DOC-<identifier>-REV-<rev>` | `DOC-CVM-PKG-210-REV-D`, `DOC-CVM-ES-210-REV-B` |
 | Document known only by name | `DOC-NAME-<name>` | `DOC-NAME-CORVANE-SUPPLIER-QUALITY-MANUAL` |
-| Requirement | `REQ-<document>-<nnn>` in source order | `REQ-CVM-CSR-200-008` |
+| Requirement | `REQ-<document revision>-<chapter>-<text hash>` | `REQ-CVM-CSR-200-REV-A-1.3-4f240cf0` |
 | Relationship | `REL-<hash of source, type, target>` | `REL-c829775f0e58` |
 | Conflict | `CON-<hash of requirement pair>` | `CON-09f1275918` |
 
 IDs are derived from content, so the same input and configuration give the same IDs.
+
+**Documents and revisions.** An input document is the revision stated in its header
+(`DOC-CVM-PKG-210-REV-D`); without a stated revision it gets the plain document ID and a
+warning. A reference points at what the text names: "CVM-PKG-210" at the document node,
+"CVM-PKG-210 Rev C" at that revision. The two levels are linked by `has_revision` edges, and
+the document node's `current_revision` attribute says which revision an unrevisioned reference
+currently means. A reference to the provided revision, or an unrevisioned one, has
+`content_available: true`; a reference to a different revision does not.
+
+**Requirements.** A requirement is identified by its source document revision, chapter and
+verbatim text (whitespace-collapsed, hashed to 8 hex characters). The same requirement gets the
+same ID in every run and every strategy. An exact duplicate within one chapter gets a `-2`
+suffix. A missing chapter is written `NOCHAPTER`. Prompts show the model short keys (`R1`,
+`A`/`B`), never these IDs.
 
 ## Top level
 
@@ -43,7 +62,8 @@ IDs are derived from content, so the same input and configuration give the same 
 - `reference_mentions`: one per occurrence, with `raw_identifier`, `relation`
   (`references`, `excludes`, `supersedes`, `depends_on`, `takes_precedence_over`), `evidence`,
   `status` (`found_initially`, `added_during_verification`, `added_by_graph_audit`),
-  `resolution` (`identifier`, `name_alias`, `unresolved_name`) and `verified`.
+  `resolution` (`identifier`, `name_alias`, `unresolved_name`, `merged`) and `verified`.
+  `merged` means the reference-merging stage renamed the mention (see `metadata.reference_merges`).
 - `department`: `null` with `department_status: deferred`.
 
 ## Evidence
@@ -62,8 +82,11 @@ Model explanations are never stored as evidence.
 | `explicitly_excludes` / `_supersedes` / `_depends_on` / `_takes_precedence_over` | requirement → document, only when the text states it | `extraction` |
 | `references` (`derived: true`) | document → document, aggregated from its requirements | `aggregation` |
 | `potentially_conflicts_with` | requirement → requirement (`analytical_hypothesis: true`) | `analysis` |
+| `has_revision` | document → one of its revisions (`sequence` when the order is known) | `document_structure` |
+| `superseded_by` | older → newer revision, and older → newer version of a requirement (`change`: unchanged / changed / moved). Only in a saved graph store. | `revision_tracking` |
 
-A newer revision is never taken to supersede an older one unless the text says so.
+`explicitly_supersedes` is only ever what the text states. `superseded_by` comes from revision
+order (declared, or ISO effective dates), never from comparing revision labels as strings.
 
 ## Potential conflict
 
@@ -85,6 +108,57 @@ is always `requires_human_review`.
 - `limitations`: unavailable referenced documents, unresolved identifiers, truncated input,
   unsupported input, failed LLM calls, uncertain segmentation, oversized segments.
 - `unresolved_identifiers`: names that could not be tied to an identifier.
+
+## Input fidelity (`metadata.input_fidelity`)
+
+Present when the analysed units were chunks (a chunk file, or `chunking.method: llm`); `null`
+for csr-lab's own segmentation. Produced by `extraction/fidelity.py`, which needs no model.
+
+- `fragments[]`: one per chunk: `match` (`exact`, `whitespace_normalized`, `fuzzy` = reworded,
+  `not_found`), `fragment_ratio` (share of the chunk's words that are source words in order),
+  `span_ratio` (share of the aligned source span the chunk kept), source offsets and pages,
+  `reported_pages` and `pages_agree` when the chunker stated pages, and `differences` (up to 12
+  edits: `replace`/`insert`/`delete` with the chunk text and the source text).
+- `gaps[]`: source passages no chunk covered (`looks_like_requirement` when they contain
+  shall/must/required).
+- `summary`: counts per match kind, `verbatim_rate`, `mean_fragment_ratio`, `source_coverage`,
+  gaps and page agreement.
+
+Whether a reworded chunk was analysed as given or replaced by the aligned source text is the
+strategy option `chunking.repair` (`none` / `source_slice`), recorded in `metadata.strategy_options`.
+
+## Reference merges (`metadata.reference_merges`)
+
+One entry per decision of the reference-merging stage (`reference_merging.method` `llm` or
+`hybrid`): `method`, `members` (reference labels as extracted), `canonical` (what they were
+renamed to), `applied`, `reason` (model reason, or the guard rule that vetoed it) and
+`mention_ids`. Empty with the default `deterministic` method.
+
+## Operational cost (`metadata.operational`)
+
+Besides calls, retries, characters, tokens and seconds:
+
+- `stage_costs`: per pipeline stage, calls, failed calls, characters, reported tokens and
+  `estimated_tokens` (reported counts when the server sends them, else characters / 4);
+- `token_source`: `reported` or `estimated_from_chars`;
+- `pages` (PDF pages; for text input characters / 3000, see `pages_source`) and `requirements`
+  (units in the result), with `calls_per_page`, `tokens_per_page`, `calls_per_requirement`,
+  `tokens_per_requirement`.
+
+## Pre-chunked input
+
+A `.json` input with a `chunks` list is analysed with those chunks instead of csr-lab's
+segmentation (format in `src/csr_lab/ingestion/provided_chunks.py`):
+
+```json
+{"source": {"file": "manual.pdf"},
+ "chunks": [{"chunk_id": "c1", "title": "Scope", "content": "...", "source_pages": [1]}]}
+```
+
+`content`/`text`, `source_pages`/`pages` and `chunk_id`/`id` are accepted spellings. With a
+source file the chunks are checked against it and requirement offsets refer to the source;
+without one, the chunks themselves become the document text. The chunks are not repeated in
+the exported `input_documents`.
 
 ## Integration notes
 

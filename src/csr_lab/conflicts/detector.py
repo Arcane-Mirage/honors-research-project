@@ -1,4 +1,6 @@
-"""Evidence-based potential-conflict detection.
+"""src/csr_lab/conflicts/detector.py
+
+Evidence-based potential-conflict detection.
 
 * ``analyze_pairs`` sends candidate pairs to the model in batches and turns
   positive assessments into ``ConflictDraft`` records. Quotes are located in
@@ -14,6 +16,7 @@ precedence or resolves a conflict.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 from csr_lab.config import GraphSettings
@@ -65,19 +68,22 @@ def analyze_pairs(
     requirements: dict[str, RequirementDraft],
     *,
     pairs_per_call: int,
-    context_for: Callable[[tuple[str, str]], list[str]] | None = None,
+    context_for: Callable[[tuple[str, str]], list[str | dict]] | None = None,
     graph_informed: bool = False,
 ) -> tuple[list[ConflictDraft], set[tuple[str, str]], int, list[str]]:
     """Returns (conflicts, analysed pairs, failed pair count, errors)."""
     numbered = [(f"P{i + 1:03d}", c) for i, c in enumerate(candidates)]
     batches = [numbered[i : i + pairs_per_call] for i in range(0, len(numbered), pairs_per_call)]
 
-    def describe(req_id: str) -> dict:
+    # The model refers to the two requirements of a pair as "A" and "B" rather than
+    # copying long requirement IDs back.
+    def describe(req_id: str, key: str) -> dict:
         req = requirements[req_id]
         doc = ctx.sources.documents.get(req.document_id)
         return {
-            "requirement_id": req_id,
+            "requirement_id": key,
             "document_identifier": doc.canonical_identifier if doc else None,
+            "document_revision": doc.revision if doc else None,
             "chapter": req.chapter,
             "text": req.text,
         }
@@ -86,9 +92,9 @@ def analyze_pairs(
         pairs = []
         for pair_id, cand in batch:
             a, b = cand.requirement_ids
-            item = {"pair_id": pair_id, "requirement_a": describe(a), "requirement_b": describe(b)}
+            item = {"pair_id": pair_id, "requirement_a": describe(a, "A"), "requirement_b": describe(b, "B")}
             if context_for is not None:
-                context = context_for((a, b))
+                context = context_for((a, b))  # already uses A/B for this pair
                 if context:
                     item["related_context"] = context
             pairs.append(item)
@@ -124,7 +130,8 @@ def analyze_pairs(
             if not assessment.potential_conflict:
                 continue
             ids = list(cand.requirement_ids)
-            quotes = [(e.requirement_id, e.quoted_text) for e in assessment.evidence if e.requirement_id in ids]
+            keys = {"A": ids[0], "B": ids[1]}
+            quotes = [(keys[k], e.quoted_text) for e in assessment.evidence if (k := e.requirement_id.strip().upper()) in keys]
             evidence = build_conflict_evidence(quotes, requirements, ctx.sources)
             conflicts.append(
                 ConflictDraft(
@@ -218,28 +225,150 @@ def merge_conflicts(conflicts: list[ConflictDraft]) -> list[ConflictDraft]:
     return [merged[p] for p in sorted(merged)]
 
 
-def graph_context_for_pair(graph: RelationshipGraph, pair: tuple[str, str], max_items: int) -> list[str]:
-    """Short, source-backed statements from the graph that relate to a pair."""
-    items: list[str] = []
+# ---------------------------------------------------------------------------
+# Graph context for a pair (graph_assisted): facts, then one of several renderings
+# ---------------------------------------------------------------------------
+
+CONTEXT_FORMATS = ("sentences", "triples", "json", "ids")
+_DOCUMENT_STATEMENTS = (
+    RelationshipType.EXPLICITLY_EXCLUDES,
+    RelationshipType.EXPLICITLY_TAKES_PRECEDENCE_OVER,
+    RelationshipType.EXPLICITLY_SUPERSEDES,
+)
+_PHRASES = {
+    RelationshipType.REFERENCES: "refers to",
+    RelationshipType.EXPLICITLY_EXCLUDES: "states that this document does not apply:",
+    RelationshipType.EXPLICITLY_TAKES_PRECEDENCE_OVER: "states that its own document takes precedence over",
+    RelationshipType.EXPLICITLY_SUPERSEDES: "states that its own document supersedes",
+    RelationshipType.EXPLICITLY_DEPENDS_ON: "is to be used together with",
+}
+
+
+@dataclass(frozen=True)
+class ContextFact:
+    """One graph statement about a pair, before it is rendered for the prompt.
+
+    ``kind == "pair"``: an edge from one of the two requirements (``subject`` is its ID).
+    ``kind == "same_document"``: an exclusion/precedence/supersession statement made by
+    another requirement in the document of A and/or B.
+    """
+
+    kind: str
+    subject: str
+    relation: RelationshipType
+    target: str
+    target_available: bool | None = None
+    subject_chapter: str | None = None
+    subject_document: str | None = None
+    shares_document_with: tuple[str, ...] = ()
+    quote: str = ""
+
+
+def graph_context_facts(
+    graph: RelationshipGraph, pair: tuple[str, str], max_items: int, *, collapse: bool = True
+) -> list[ContextFact]:
+    """Short, source-backed graph facts that relate to a pair, in a fixed order.
+
+    With ``collapse``, a plain "refers to X" is dropped when the same requirement also has a
+    qualified edge (excludes, takes precedence over, ...) to X, which says more in one item.
+    """
+    facts: list[ContextFact] = []
     for req_id in pair:
         for e in graph.out_edges(req_id):
-            if e.relationship_type == RelationshipType.CONTAINS:
-                continue
-            if e.relationship_type == RelationshipType.POTENTIALLY_CONFLICTS_WITH:
+            if e.relationship_type in (RelationshipType.CONTAINS, RelationshipType.POTENTIALLY_CONFLICTS_WITH):
                 continue
             target = graph.node(e.target_node_id)
-            label = target.label if target else e.target_node_id
-            available = "available" if target and target.attributes.get("content_available") else "not provided"
-            items.append(f"{req_id} {e.relationship_type.value} {label} ({available})")
-    docs = [graph.container_of(r) for r in pair]
-    for doc in {d for d in docs if d}:
+            facts.append(
+                ContextFact(
+                    kind="pair",
+                    subject=req_id,
+                    relation=e.relationship_type,
+                    target=target.label if target else e.target_node_id,
+                    target_available=bool(target and target.attributes.get("content_available")),
+                )
+            )
+    containers = {r: graph.container_of(r) for r in pair}
+    for doc in dict.fromkeys(d for d in containers.values() if d):  # ordered, unlike a set
+        doc_node = graph.node(doc)
         for e in graph.edges:
-            if e.relationship_type in (
-                RelationshipType.EXPLICITLY_EXCLUDES,
-                RelationshipType.EXPLICITLY_TAKES_PRECEDENCE_OVER,
-                RelationshipType.EXPLICITLY_SUPERSEDES,
-            ) and graph.container_of(e.source_node_id) == doc and e.source_node_id not in pair:
-                target = graph.node(e.target_node_id)
-                quote = e.evidence[0].quoted_text[:160] if e.evidence else ""
-                items.append(f"{e.source_node_id} {e.relationship_type.value} {target.label if target else e.target_node_id}: \"{quote}\"")
-    return list(dict.fromkeys(items))[:max_items]
+            if e.relationship_type not in _DOCUMENT_STATEMENTS or e.source_node_id in pair:
+                continue
+            if graph.container_of(e.source_node_id) != doc:
+                continue
+            source = graph.node(e.source_node_id)
+            target = graph.node(e.target_node_id)
+            facts.append(
+                ContextFact(
+                    kind="same_document",
+                    subject=e.source_node_id,
+                    relation=e.relationship_type,
+                    target=target.label if target else e.target_node_id,
+                    subject_chapter=(source.attributes.get("chapter") if source else None),
+                    subject_document=doc_node.label if doc_node else doc,
+                    shares_document_with=tuple(r for r in pair if containers[r] == doc),
+                    quote=" ".join(e.evidence[0].quoted_text.split())[:160] if e.evidence else "",
+                )
+            )
+    if collapse:
+        qualified = {(f.subject, f.target) for f in facts if f.kind == "pair" and f.relation != RelationshipType.REFERENCES}
+        facts = [f for f in facts if not (f.kind == "pair" and f.relation == RelationshipType.REFERENCES and (f.subject, f.target) in qualified)]
+    return list(dict.fromkeys(facts))[:max_items]
+
+
+def _letters(pair: tuple[str, str]) -> dict[str, str]:
+    return {pair[0]: "A", pair[1]: "B"}
+
+
+def _availability(fact: ContextFact) -> str:
+    return "content provided in this analysis" if fact.target_available else "content not provided"
+
+
+def _same_doc_subject(fact: ContextFact, letters: dict[str, str]) -> str:
+    who = [letters[r] for r in fact.shares_document_with]
+    holder = f"requirements {' and '.join(who)}" if len(who) > 1 else f"requirement {who[0]}"
+    chapter = f"Chapter {fact.subject_chapter}" if fact.subject_chapter else "Another requirement"
+    return f"{chapter} of {fact.subject_document} (the document containing {holder})"
+
+
+def render_fact(fact: ContextFact, pair: tuple[str, str], fmt: str) -> str | dict:
+    letters = _letters(pair)
+    if fmt == "ids":  # the original rendering: raw IDs and relation codes
+        if fact.kind == "pair":
+            text = f"{fact.subject} {fact.relation.value} {fact.target} ({'available' if fact.target_available else 'not provided'})"
+        else:
+            text = f'{fact.subject} {fact.relation.value} {fact.target}: "{fact.quote}"'
+        return text.replace(pair[0], "A").replace(pair[1], "B")
+    if fmt == "triples":
+        if fact.kind == "pair":
+            return f"{letters[fact.subject]} | {fact.relation.value} | {fact.target} | {_availability(fact)}"
+        who = "+".join(letters[r] for r in fact.shares_document_with)
+        return f'{fact.subject_document} ch.{fact.subject_chapter or "?"} (same document as {who}) | {fact.relation.value} | {fact.target} | "{fact.quote}"'
+    if fmt == "json":
+        if fact.kind == "pair":
+            return {"subject": f"requirement {letters[fact.subject]}", "relation": fact.relation.value, "object": fact.target, "object_content_provided": bool(fact.target_available)}
+        return {
+            "subject": f"chapter {fact.subject_chapter or '?'} of {fact.subject_document}",
+            "same_document_as": [letters[r] for r in fact.shares_document_with],
+            "relation": fact.relation.value,
+            "object": fact.target,
+            "quote": fact.quote,
+        }
+    # sentences
+    phrase = _PHRASES.get(fact.relation, fact.relation.value.replace("_", " "))
+    if fact.kind == "pair":
+        if fact.relation == RelationshipType.EXPLICITLY_EXCLUDES:
+            return f"Requirement {letters[fact.subject]} states that document {fact.target} does not apply ({_availability(fact)})."
+        return f"Requirement {letters[fact.subject]} {phrase} document {fact.target} ({_availability(fact)})."
+    if fact.relation == RelationshipType.EXPLICITLY_EXCLUDES:
+        return f'{_same_doc_subject(fact, letters)} states that {fact.target} does not apply: "{fact.quote}"'
+    return f'{_same_doc_subject(fact, letters)} {phrase} {fact.target}: "{fact.quote}"'
+
+
+def graph_context_for_pair(
+    graph: RelationshipGraph, pair: tuple[str, str], max_items: int, context_format: str = "sentences"
+) -> list[str | dict]:
+    """Graph context for a pair, rendered for the conflict prompt (A/B = the pair's requirements)."""
+    if context_format not in CONTEXT_FORMATS:
+        raise ValueError(f"unknown graph context_format {context_format!r}; choose from {CONTEXT_FORMATS}")
+    facts = graph_context_facts(graph, pair, max_items, collapse=context_format != "ids")
+    return [render_fact(f, pair, context_format) for f in facts]

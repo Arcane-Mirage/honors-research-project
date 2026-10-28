@@ -1,4 +1,6 @@
-"""Stable identifier helpers.
+"""src/csr_lab/ids.py
+
+Stable identifier helpers.
 
 IDs are derived from content (not random) so that the same input and
 configuration produce the same IDs on every run.
@@ -23,19 +25,46 @@ def stable_hash(*parts: object, length: int = 10) -> str:
 
 
 def document_node_id(canonical: str | None, revision: str | None = None, name: str | None = None) -> str:
-    """Node ID for a document. Revision-qualified references are distinct nodes."""
+    """Node ID for a document or one revision of it.
+
+    'CVM-PKG-210' -> 'DOC-CVM-PKG-210' (the document, any revision);
+    'CVM-PKG-210', 'D' -> 'DOC-CVM-PKG-210-REV-D' (that revision only).
+    """
     if canonical:
         base = f"DOC-{slug(canonical)}"
-        return f"{base}-REV-{slug(revision)}" if revision else base
+        rev = slug(revision) if revision else ""
+        return f"{base}-REV-{rev}" if rev else base
     if name:
         return f"DOC-NAME-{slug(name)}"
     raise ValueError("a document node needs a canonical identifier or a name")
 
 
-def requirement_id(document_id: str, index: int) -> str:
-    """'DOC-CVM-CSR-100', 3 -> 'REQ-CVM-CSR-100-003'."""
+def document_family_id(canonical: str) -> str:
+    """ID of the revision-independent document node: 'CVM-PKG-210' -> 'DOC-CVM-PKG-210'."""
+    return document_node_id(canonical)
+
+
+_CHAPTER_CHARS = re.compile(r"[^A-Z0-9.]+")
+
+
+def chapter_slug(chapter: str | None) -> str:
+    """'TSA 2.1' -> 'TSA-2.1'; a missing chapter -> 'NOCHAPTER'."""
+    value = _CHAPTER_CHARS.sub("-", (chapter or "").upper()).strip("-.")
+    return value or "NOCHAPTER"
+
+
+def text_fingerprint(text: str, length: int = 8) -> str:
+    """Short hash of requirement text. Whitespace is collapsed first, so line wrapping does not matter."""
+    return stable_hash(" ".join(text.split()), length=length)
+
+
+def requirement_id(document_id: str, chapter: str | None, text: str) -> str:
+    """A requirement is identified by its source document (revision), chapter and verbatim text.
+
+    'DOC-CVM-CSR-100-REV-C', '2.1', 'The supplier shall ...' -> 'REQ-CVM-CSR-100-REV-C-2.1-3f9c2a1b'
+    """
     base = document_id[4:] if document_id.startswith("DOC-") else slug(document_id)
-    return f"REQ-{base}-{index:03d}"
+    return f"REQ-{base}-{chapter_slug(chapter)}-{text_fingerprint(text)}"
 
 
 def relationship_id(source: str, relationship_type: str, target: str) -> str:

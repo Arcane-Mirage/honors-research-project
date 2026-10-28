@@ -1,0 +1,44 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-window(words=60)",
+  "source": {
+    "file": "cvm_csr_100.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "W001",
+      "title": null,
+      "content": "CORVANE MOTORS\nCustomer-Specific Requirements for Production Part Suppliers\nDocument ID: CVM-CSR-100\nRevision: C\nEffective Date: 2026-02-15\nAll names, companies and document identifiers in this document are fictional.\n\n1 Scope\n1.1 This document defines the customer-specific requirements of Corvane Motors for suppliers\nof production parts and supplements the purchase order terms.\n\n2 Quality Management System\n2.1 The supplier shall maintain a"
+    },
+    {
+      "chunk_id": "W002",
+      "title": null,
+      "content": "quality management system that conforms to the Corvane\nSupplier Quality Manual CVM-SQM-001.\n\n2.2 The supplier shall notify the Corvane supplier quality engineer of any change to its\nquality management system certification status within 10 working days.\n\n3 Product Quality Planning\n3.1 Control Plans\nThe supplier shall prepare control plans in accordance with Specification CVM-QS-110 and\nshall include all special characteristics"
+    },
+    {
+      "chunk_id": "W003",
+      "title": null,
+      "content": "identified on Drawing DRW-045.\n\n3.2 The supplier shall perform a process failure mode and effects analysis for every new\npart number before the production trial run, using the worksheet format defined in Procedure\nQP-12. Part number 55-1020 and part number 55-1021 are excluded from this requirement during\nthe 2026 model year.\n\n4 Validation Testing\n4.1 The supplier shall perform the"
+    },
+    {
+      "chunk_id": "W004",
+      "title": null,
+      "content": "validation tests listed in the following table:\n| Test | Method | Frequency |\n| Salt spray corrosion | CVM-TM-305 | Each production lot |\n| Coating adhesion | CVM-TM-311 Rev B | Weekly |\n\n4.2 Production parts shall be validated at a maximum test temperature of 85 °C according to\nTest Method CVM-TM-320.\n\n4.3 Thermal validation according to CVM-TM-320"
+    },
+    {
+      "chunk_id": "W005",
+      "title": null,
+      "content": "shall be performed at a minimum test\ntemperature of 105 °C for 500 hours.\n\n5 Change Management\n5.1 The supplier shall notify Corvane Motors in writing at least 90 days before implementing\nany change to a manufacturing process, as required by the Corvane Supplier Quality Manual\nCVM-SQM-001.\n\n5.2 Minor process changes shall be implemented no later than 30 days after"
+    },
+    {
+      "chunk_id": "W006",
+      "title": null,
+      "content": "written\nnotification to Corvane Motors and shall be documented according to Procedure QP-12.\n\n6 Records\n6.1 The supplier shall retain quality records for a minimum of 15 years after the end of\nseries production, unless a longer period is specified on the applicable drawing.\n\n6.2 Inspection records described in Specification CVM-QS-110 shall be destroyed no later\nthan 10 years after"
+    },
+    {
+      "chunk_id": "W007",
+      "title": null,
+      "content": "the end of series production.\n\n7 Engineering Standards\n7.1 Fastener Compliance\nFasteners shall conform to Engineering Standard ES 4.12, and coated fasteners shall\nadditionally meet CVM-ES-210 Rev. B.\n\n7.2 Replacement fasteners supplied for service shall conform to CVM-ES-210 Revision D.\nSection 4.12 of this document does not apply to service fasteners."
+    }
+  ]
+}

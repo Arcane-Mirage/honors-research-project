@@ -1,0 +1,49 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1345 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (TESSALY AUTOMOTIVE | TSA-MAT-420 Rev C | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (TESSALY AUTOMOTIVE) Tj ET
+BT /F1 10 Tf 50.0 700 Td (Material Specification for Battery Module Components) Tj ET
+BT /F1 10 Tf 50.0 686 Td (Document ID: TSA-MAT-420) Tj ET
+BT /F1 10 Tf 50.0 672 Td (Revision: C) Tj ET
+BT /F1 10 Tf 50.0 658 Td (Effective Date: 2025-12-01) Tj ET
+BT /F1 10 Tf 50.0 644 Td (All names, companies and document identifiers in this document are fictional.) Tj ET
+BT /F1 10 Tf 50.0 616 Td (1 Scope) Tj ET
+BT /F1 10 Tf 50.0 602 Td (1.1 This specification applies to materials used in battery module assemblies.) Tj ET
+BT /F1 10 Tf 50.0 574 Td (2 Adhesives) Tj ET
+BT /F1 10 Tf 50.0 560 Td (2.1 Cell housing adhesives shall be cured at a minimum temperature of 80 °C for 20 minutes.) Tj ET
+BT /F1 10 Tf 50.0 532 Td (2.2 Adhesive lot certificates shall be retained for at least 5 years.) Tj ET
+BT /F1 10 Tf 50.0 504 Td (3 Coatings) Tj ET
+BT /F1 10 Tf 50.0 490 Td (3.1 Cell coatings shall meet the dielectric strength requirements of Specification) Tj ET
+BT /F1 10 Tf 50.0 476 Td (TSA-CT-077.) Tj ET
+BT /F1 10 Tf 50.0 448 Td (3.2 Coating thickness shall be measured according to TSA-CT-080 at a frequency of one sample) Tj ET
+BT /F1 10 Tf 50.0 434 Td (per shift.) Tj ET
+BT /F1 10 Tf 430.0 406 Td (Page 1 of 1) Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000212 00000 n 
+0000000338 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1735
+%%EOF

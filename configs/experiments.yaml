@@ -1,9 +1,15 @@
 # Experiments override parts of configs/default.yaml (llm, processing, evaluation).
 # Run one with:  csr-lab experiment <name>
 #
-# `strategies:` (bottom) defines extra strategies as variants of existing ones.
+# `strategies:` defines extra strategies as variants of existing ones.
 # They are registered at start-up, so they can be used in any experiment or
 # with `csr-lab analyze --strategy <name>` without code changes.
+#
+# `sweeps:` (bottom) runs one experiment over a grid of settings:  csr-lab sweep <name>
+#
+# LLM choice: `llm:` names a profile from configs/llms.yaml (or gives settings). An
+# experiment without `llm:` uses the default profile. `--llm NAME` on the command line
+# replaces the experiment's choice, e.g.  csr-lab experiment dev --llm lmstudio
 
 experiments:
   demo_mock:
@@ -36,38 +42,173 @@ experiments:
     repetitions: 3
     llm: {provider: mock}
 
+  # --- The four conditions with whichever LLM you select (--llm NAME, or the default) ---
+
+  dev:
+    description: The four conditions on the dev split, with the selected LLM profile.
+    split: dev
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 1
+
+  heldout:
+    description: The four conditions on the held-out split, with the selected LLM profile.
+    split: heldout
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+
+  # --- Transfer experiments: the pieces meant to work behind another evaluator --------
+
+  practice_vs_pipeline_mock:
+    description: >-
+      Industry-style pipeline (model chunks, per-chunk references, model-merged reference names)
+      against the staged pipeline with verification and guarded merging. The headline comparison.
+    split: all
+    strategies: [llm_chunked_merge_llm, llm_chunked, llm_chunked_repaired, staged_verified, staged_verified_merge_hybrid, graph_assisted]
+    repetitions: 3
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: llm_chunked_merge_llm}
+
+  chunking_mock:
+    description: >-
+      Model-made chunks: per-chunk extraction vs. source repair vs. per-requirement extraction,
+      with the deterministic-segmentation `staged` condition as the control.
+    split: all
+    strategies: [llm_chunked, llm_chunked_repaired, llm_chunked_staged, staged]
+    repetitions: 3
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: llm_chunked}
+
+  merging_mock:
+    description: Reference merging methods (deterministic, model-only, hybrid with guard rules) on top of Condition C, with D for reference.
+    split: all
+    strategies: [staged_verified, staged_verified_merge_llm, staged_verified_merge_hybrid, graph_assisted]
+    repetitions: 3
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: staged_verified}
+
+  external_chunks_mock:
+    description: >-
+      Chunks from a simulated external chunker (paragraph packing, verbatim) given as chunk
+      files. Per-chunk vs. per-requirement extraction, with and without source repair.
+    dataset: data/synthetic_chunked/manifest.json
+    split: all
+    strategies: [chunk_units, chunk_units_repaired, staged_verified, staged_verified_repaired]
+    repetitions: 3
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: chunk_units}
+
+  pdf_mock:
+    description: The four conditions on the PDF rendering (running headers, page footers, page breaks inside requirements, drawn tables).
+    dataset: data/synthetic_pdf/manifest.json
+    split: all
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    llm: {provider: mock}
+
+  graph_context_mock:
+    description: >-
+      Formats of the graph context given to the conflict model (graph_assisted). The mock model
+      ignores graph context, so this only checks the machinery: all four rows should score the
+      same and differ in input size. Use graph_context_local for evidence.
+    split: all
+    strategies: [graph_assisted, graph_assisted_ctx_triples, graph_assisted_ctx_json, graph_assisted_ctx_ids, staged_verified]
+    repetitions: 1
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: graph_assisted_ctx_ids}
+
+  graph_context_local:
+    description: >-
+      Graph context formats with a real (local) model. graph_assisted_ctx_ids is the original
+      rendering; staged_verified (no graph) shows how much graph context helps at all.
+    split: all
+    strategies: [graph_assisted, graph_assisted_ctx_triples, graph_assisted_ctx_json, graph_assisted_ctx_ids, staged_verified]
+    repetitions: 3
+    evaluation: {baseline_strategy: graph_assisted_ctx_ids}
+    llm: lmstudio                   # a profile from configs/llms.yaml; `--llm NAME` picks another
+
   local_llama_dev:
     description: Local model through llama.cpp `llama-server` (OpenAI-compatible API) on the dev split.
     split: dev
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
-    llm:
-      provider: openai_compatible
-      base_url: http://localhost:8080/v1
-      model: local-model            # llama-server ignores the name; record the GGUF file in `description`
-      api_key_env: LOCAL_LLM_API_KEY
-      structured_output: json_schema
-      temperature: 0.0
-      timeout_seconds: 900
-      max_output_tokens: 4096
+    llm: llama_cpp                  # model: auto records the GGUF name llama-server reports
+
+  local_lmstudio_dev:
+    description: >-
+      Local model through LM Studio's server (OpenAI-compatible, port 1234) on the dev split.
+      The loaded model is detected (`model: auto` in the lmstudio profile) and recorded with
+      every result; `csr-lab llms models lmstudio` shows it with its quantisation.
+    split: dev
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 1
+    llm: lmstudio
 
   api_model_heldout:
     description: Commercial OpenAI-compatible API on the held-out split. Set the model ID before running.
     split: heldout
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
-    llm:
-      provider: openai_compatible
-      base_url: https://api.openai.com/v1
-      model: REPLACE_WITH_MODEL_ID
-      api_key_env: OPENAI_API_KEY
-      structured_output: json_schema
-      temperature: 0.0
-      pricing:                      # fill in from the provider's price list to get cost estimates
-        input_usd_per_million_tokens: null
-        output_usd_per_million_tokens: null
+    llm: openai                     # set model: and pricing: in the openai profile (configs/llms.yaml)
+
+  azure_openai_example:
+    description: >-
+      Azure OpenAI deployment with Microsoft Entra ID (keyless) authentication. Fill in the
+      resource and deployment, `pip install azure-identity`, sign in (`az login`), then check the
+      connection with `csr-lab llm-check --experiment azure_openai_example`.
+    split: heldout
+    strategies: [llm_chunked_merge_llm, staged_verified, staged_verified_merge_hybrid, graph_assisted]
+    repetitions: 3
+    llm: azure                      # fill in the azure profile in configs/llms.yaml
 
 strategies:
+  # --- graph context format (graph.context_format; graph_assisted uses "sentences") ---
+  graph_assisted_ctx_triples:
+    base: graph_assisted
+    description: graph_assisted with graph context as 'subject | relation | object' lines.
+    options: {graph: {context_format: triples}}
+
+  graph_assisted_ctx_json:
+    base: graph_assisted
+    description: graph_assisted with graph context as JSON objects.
+    options: {graph: {context_format: json}}
+
+  graph_assisted_ctx_ids:
+    base: graph_assisted
+    description: graph_assisted with the original graph context (raw requirement IDs and relation codes).
+    options: {graph: {context_format: ids}}
+
+  # --- reference merging (configs: reference_merging) ---
+  staged_verified_merge_llm:
+    base: staged_verified
+    description: Condition C plus one model call that groups all reference labels (model-only merging).
+    options: {reference_merging: {method: llm}}
+
+  staged_verified_merge_hybrid:
+    base: staged_verified
+    description: Condition C plus rule-selected alias questions to the model, with revision/identifier guard rules.
+    options: {reference_merging: {method: hybrid}}
+
+  llm_chunked_merge_llm:
+    base: llm_chunked
+    description: "Industry-style pipeline end to end: model chunks, per-chunk references, model-only reference merging."
+    options: {reference_merging: {method: llm}}
+
+  # --- units of analysis (configs: chunking) ---
+  chunk_units:
+    base: staged
+    description: Each chunk (from a chunk file, or a csr-lab segment) is one unit; references per chunk; no verification.
+    options: {chunking: {unit: chunk}}
+
+  chunk_units_repaired:
+    base: chunk_units
+    description: chunk_units with reworded chunks replaced by the aligned source text.
+    options: {chunking: {repair: source_slice}}
+
+  staged_verified_repaired:
+    base: staged_verified
+    description: Condition C; chunk units whose wording differs from the source are replaced by the source text first.
+    options: {chunking: {repair: source_slice}}
+
   graph_assisted_no_alias:
     base: graph_assisted
     description: Condition D without graph alias resolution (isolates name-to-identifier resolution).
@@ -99,3 +240,52 @@ strategies:
     base: graph_assisted
     description: Condition D with topic-overlap plus graph-derived candidate selection instead of all pairs.
     options: {conflicts: {all_pairs_max: 0}}
+
+sweeps:
+  graph_context:
+    experiment: graph_context_local
+    description: >-
+      Graph context format x amount of context, with a real model. Conflict metrics are the
+      outcome; analyze_conflicts tokens show what each format costs.
+    strategies: [graph_assisted]
+    grid:
+      options.graph.context_format: [sentences, triples, json, ids]
+      options.graph.max_context_items: [3, 6, 12]
+    metrics: [conflicts.f1, conflicts.precision, conflicts.recall, conflicts.hard_negative_false_positives, conflicts.cross_document_recall, conflicts.ambiguous_recall, conflicts.evidence_validity_rate, ops.stage_tokens.analyze_conflicts]
+
+  chunk_size:
+    experiment: chunking_mock
+    description: How chunk size changes per-chunk vs. per-requirement extraction.
+    strategies: [llm_chunked, llm_chunked_staged]
+    grid:
+      options.chunking.target_chunk_words: [60, 150, 500]
+    metrics: [references.f1, units.f1, units.mean_gold_per_unit, requirements.verbatim_exact_rate, ops.tokens_per_gold_requirement]
+
+  merge_errors:
+    experiment: merging_mock
+    description: >-
+      How merging methods react to a model that drops revisions or merges look-alike
+      identifiers (the mock's merge error rates).
+    strategies: [staged_verified, staged_verified_merge_llm, staged_verified_merge_hybrid]
+    grid:
+      llm.mock.merge_revision_drop_rate: [0.0, 1.0]
+      llm.mock.merge_confusion_rate: [0.0, 1.0]
+    metrics: [references.f1, references.errors.revision, references.errors.wrong_requirement, references.errors.unresolved_alias, references.errors.spurious, references.merges_applied, references.merges_rejected]
+
+  pdf_preprocessing:
+    experiment: pdf_mock
+    description: PDF reader and header/footer removal on the PDF rendering.
+    strategies: [staged_verified]
+    grid:
+      processing.pdf_backend: [pypdf, pypdf_layout]
+      processing.pdf_strip_repeated_lines: [false, true]
+    metrics: [requirements.recall, requirements.verbatim_exact_rate, requirements.location_accuracy, references.precision, references.f1, references.errors.spurious]
+
+  text_vs_pdf:
+    experiment: pdf_mock
+    description: The same cases as text and as PDF (with header/footer removal), same strategies.
+    strategies: [staged, staged_verified, graph_assisted]
+    grid:
+      dataset: [data/synthetic/manifest.json, data/synthetic_pdf/manifest.json]
+      processing.pdf_strip_repeated_lines: [true]
+    metrics: [requirements.recall, requirements.verbatim_exact_rate, references.f1, conflicts.f1]

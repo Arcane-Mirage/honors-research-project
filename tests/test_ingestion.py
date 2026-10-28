@@ -1,3 +1,8 @@
+"""tests/test_ingestion.py
+
+Document loading: header detection, filename fallback, line endings, text and scanned PDFs, JSON input.
+"""
+
 import json
 
 from csr_lab.ingestion.loader import load_bundle, load_document
@@ -7,7 +12,7 @@ from helpers import make_pdf
 
 def test_text_header_detection(simple_doc_path):
     doc = load_document(simple_doc_path)
-    assert (doc.document_id, doc.canonical_identifier, doc.revision) == ("DOC-CVM-CSR-900", "CVM-CSR-900", "A")
+    assert (doc.document_id, doc.canonical_identifier, doc.revision) == ("DOC-CVM-CSR-900-REV-A", "CVM-CSR-900", "A")
     assert doc.title == "Test Requirements" and doc.identifier_source == "header"
 
 

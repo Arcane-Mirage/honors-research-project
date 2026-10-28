@@ -1,4 +1,7 @@
-"""Test helpers: scripted providers, a tiny PDF writer, and a gold-oracle provider."""
+"""tests/helpers.py
+
+Test helpers: scripted providers, a tiny PDF writer, and a gold-oracle provider.
+"""
 
 from __future__ import annotations
 

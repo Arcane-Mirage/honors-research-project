@@ -1,4 +1,6 @@
-"""Build reference mentions from model output, and the staged reference-extraction call.
+"""src/csr_lab/extraction/references.py
+
+Build reference mentions from model output, and the staged reference-extraction call.
 
 ``mentions_from_model`` is used by every strategy. It canonicalises identifiers
 (``normalization.parse_identifier``) and records evidence, but it does not
@@ -115,13 +117,16 @@ def extract_references(
     Returns (mentions, requirement_id -> status, errors). A requirement that the
     model skipped or whose batch failed gets status 'failed', which is distinct
     from 'no references found'.
+
+    The model sees short batch-local keys (R1, R2, ...) instead of the long
+    requirement IDs, so it never has to copy a hash back exactly.
     """
     batches = [requirements[i : i + batch_size] for i in range(0, len(requirements), batch_size)]
 
     def run(batch: list[RequirementDraft]):
         payload = {
             "requirements": [
-                {"requirement_id": r.requirement_id, "chapter": r.chapter, "text": r.text} for r in batch
+                {"requirement_id": f"R{i}", "chapter": r.chapter, "text": r.text} for i, r in enumerate(batch, start=1)
             ]
         }
         system, user = reference_prompt.SPEC.render(payload)
@@ -143,9 +148,9 @@ def extract_references(
             for r in batch:
                 statuses[r.requirement_id] = "failed"
             continue
-        by_id = {item.requirement_id: item for item in result.value.results}
-        for r in batch:
-            item = by_id.get(r.requirement_id)
+        by_id = {item.requirement_id.strip(): item for item in result.value.results}
+        for i, r in enumerate(batch, start=1):
+            item = by_id.get(f"R{i}")
             if item is None:
                 statuses[r.requirement_id] = "failed"
                 errors.append(f"model returned no reference result for {r.requirement_id}")

@@ -1,6 +1,8 @@
-"""LangGraph workflow for the single-pass baseline.
+"""src/csr_lab/pipelines/baseline.py
 
-    prepare_input -> single_pass_extract -> finalize
+LangGraph workflow for the single-pass baseline.
+
+    prepare_input -> single_pass_extract [-> merge_references] -> finalize
 
 Input preparation and finalisation are the same nodes the staged workflows
 use, so the baseline receives the same chunks and is scored from the same
@@ -24,6 +26,11 @@ def build_single_pass_workflow(options: PipelineOptions):
     g.add_node("finalize", nodes.finalize)
     g.add_edge(START, "prepare_input")
     g.add_conditional_edges("prepare_input", nodes.route_after_prepare, {"ok": "single_pass_extract", "fatal": "finalize"})
-    g.add_edge("single_pass_extract", "finalize")
+    if options.reference_merging.method != "deterministic":
+        g.add_node("merge_references", nodes.merge_references)
+        g.add_edge("single_pass_extract", "merge_references")
+        g.add_edge("merge_references", "finalize")
+    else:
+        g.add_edge("single_pass_extract", "finalize")
     g.add_edge("finalize", END)
     return g.compile(name="single_pass_workflow")

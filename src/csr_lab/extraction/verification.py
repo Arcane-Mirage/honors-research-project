@@ -1,4 +1,6 @@
-"""Reference verification: deterministic checks, coverage audit, targeted re-extraction.
+"""src/csr_lab/extraction/verification.py
+
+Reference verification: deterministic checks, coverage audit, targeted re-extraction.
 
 Used by strategies with ``verification.enabled``. For each predicted mention:
 

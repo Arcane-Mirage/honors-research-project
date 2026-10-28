@@ -1,4 +1,6 @@
-"""Deterministic segmentation of document text into candidate requirement blocks.
+"""src/csr_lab/ingestion/segmentation.py
+
+Deterministic segmentation of document text into candidate requirement blocks.
 
 The segmenter only *proposes* blocks. Deciding which blocks are requirements is
 done later (by the LLM in the staged workflows). Headings, front matter and
@@ -29,6 +31,7 @@ SegmentKind = Literal["front_matter", "heading", "numbered_paragraph", "paragrap
 # upper-case letter or "(" so wrapped lines such as "10 years after ..." are not
 # mistaken for new sections.
 _LABEL_RE = re.compile(r"^(?P<label>(?:[A-Z]{2,6}[ \t])?\d{1,3}(?:\.\d{1,3}){0,5})\.?[ \t]+(?P<rest>[A-Z(\"'].*)$")
+LABEL_RE = _LABEL_RE
 MODAL_RE = re.compile(r"\b(shall|must|is required to|are required to|is required|are required)\b", re.IGNORECASE)
 _TABLE_RE = re.compile(r"^\s*\|")
 _LONG_PARAGRAPH_CHARS = 2500
@@ -51,6 +54,12 @@ class Segment(BaseModel):
     has_modal: bool = False
     confidence: Literal["high", "low"] = "low"
     notes: list[str] = Field(default_factory=list)
+    origin: Literal["deterministic", "provided", "llm"] = Field(
+        default="deterministic", description="Who made this unit: csr-lab's segmenter, a chunk file, or the model."
+    )
+    text_is_source_slice: bool = Field(
+        default=True, description="False when the unit's text is a chunk whose wording differs from the source."
+    )
 
     @property
     def is_candidate(self) -> bool:

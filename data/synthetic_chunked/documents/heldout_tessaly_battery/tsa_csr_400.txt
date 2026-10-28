@@ -1,0 +1,41 @@
+TESSALY AUTOMOTIVE
+Customer-Specific Requirements for Battery Module Suppliers
+Document ID: TSA-CSR-400
+Revision: B
+Effective Date: 2026-03-20
+All names, companies and document identifiers in this document are fictional.
+
+1 General
+1.1 This document applies to suppliers of high-voltage battery modules for Tessaly
+Automotive.
+
+1.2 Production part approval shall be obtained according to the Production Part Approval
+Procedure TSA-PPAP-410 before the first production shipment.
+
+1.3 Materials used in battery modules shall conform to TSA-MAT-420.
+
+1.4 Where this document conflicts with TSA-PPAP-410, the requirements of this document shall
+take precedence.
+
+2 Materials
+2.1 Specification TSA-CT-077 does not apply to battery modules and shall not be used for
+cell coatings.
+
+2.2 Cell housing adhesives shall have a maximum curing temperature of 60 °C.
+
+2.3 Thermal interface materials shall be qualified according to TSA-MAT-425, and the
+qualification report shall be included in the production part approval package described in
+TSA-PPAP-410.
+
+3 Approval
+3.1 The supplier shall submit the production part approval package at least 20 working days
+before the planned start of production.
+
+3.2 The approval package shall include the dimensional results report described in the
+Production Part Approval Procedure.
+
+3.3 Run-at-rate results shall be documented on form TSA-QF-031A.
+
+3.4 The supplier shall perform the run-at-rate verification during the first week of series
+production.
+

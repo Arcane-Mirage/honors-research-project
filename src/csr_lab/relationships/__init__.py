@@ -1,4 +1,6 @@
-"""The document relationship graph (plain JSON) and deterministic queries over it.
+"""src/csr_lab/relationships/__init__.py
+
+The document relationship graph (plain JSON) and deterministic queries over it.
 
 This graph describes *content* (requirements, documents, and their relations).
 It is independent of the LangGraph *workflow* graph that runs the pipeline and

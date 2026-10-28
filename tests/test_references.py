@@ -1,3 +1,8 @@
+"""tests/test_references.py
+
+Reference identifiers: normalisation, distractors, verification, evidence repair and re-extraction.
+"""
+
 import pytest
 
 from csr_lab.config import VerificationSettings

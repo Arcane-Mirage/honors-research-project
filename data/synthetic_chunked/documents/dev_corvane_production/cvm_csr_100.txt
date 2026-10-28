@@ -1,0 +1,63 @@
+CORVANE MOTORS
+Customer-Specific Requirements for Production Part Suppliers
+Document ID: CVM-CSR-100
+Revision: C
+Effective Date: 2026-02-15
+All names, companies and document identifiers in this document are fictional.
+
+1 Scope
+1.1 This document defines the customer-specific requirements of Corvane Motors for suppliers
+of production parts and supplements the purchase order terms.
+
+2 Quality Management System
+2.1 The supplier shall maintain a quality management system that conforms to the Corvane
+Supplier Quality Manual CVM-SQM-001.
+
+2.2 The supplier shall notify the Corvane supplier quality engineer of any change to its
+quality management system certification status within 10 working days.
+
+3 Product Quality Planning
+3.1 Control Plans
+The supplier shall prepare control plans in accordance with Specification CVM-QS-110 and
+shall include all special characteristics identified on Drawing DRW-045.
+
+3.2 The supplier shall perform a process failure mode and effects analysis for every new
+part number before the production trial run, using the worksheet format defined in Procedure
+QP-12. Part number 55-1020 and part number 55-1021 are excluded from this requirement during
+the 2026 model year.
+
+4 Validation Testing
+4.1 The supplier shall perform the validation tests listed in the following table:
+| Test | Method | Frequency |
+| Salt spray corrosion | CVM-TM-305 | Each production lot |
+| Coating adhesion | CVM-TM-311 Rev B | Weekly |
+
+4.2 Production parts shall be validated at a maximum test temperature of 85 °C according to
+Test Method CVM-TM-320.
+
+4.3 Thermal validation according to CVM-TM-320 shall be performed at a minimum test
+temperature of 105 °C for 500 hours.
+
+5 Change Management
+5.1 The supplier shall notify Corvane Motors in writing at least 90 days before implementing
+any change to a manufacturing process, as required by the Corvane Supplier Quality Manual
+CVM-SQM-001.
+
+5.2 Minor process changes shall be implemented no later than 30 days after written
+notification to Corvane Motors and shall be documented according to Procedure QP-12.
+
+6 Records
+6.1 The supplier shall retain quality records for a minimum of 15 years after the end of
+series production, unless a longer period is specified on the applicable drawing.
+
+6.2 Inspection records described in Specification CVM-QS-110 shall be destroyed no later
+than 10 years after the end of series production.
+
+7 Engineering Standards
+7.1 Fastener Compliance
+Fasteners shall conform to Engineering Standard ES 4.12, and coated fasteners shall
+additionally meet CVM-ES-210 Rev. B.
+
+7.2 Replacement fasteners supplied for service shall conform to CVM-ES-210 Revision D.
+Section 4.12 of this document does not apply to service fasteners.
+

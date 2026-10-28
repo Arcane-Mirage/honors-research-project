@@ -1,4 +1,7 @@
-"""Write experiment reports: summary.json, CSV tables and a concise report.md."""
+"""src/csr_lab/evaluation/reporting.py
+
+Write experiment reports: summary.json, CSV tables and a concise report.md.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from csr_lab.evaluation.metrics import flatten_case
+from csr_lab.evaluation.metrics import REFERENCE_ERROR_KINDS, flatten_case
 
 if TYPE_CHECKING:
     from csr_lab.evaluation.runner import CaseRun
@@ -37,13 +40,13 @@ def _fmt_int(stat: dict | None) -> str:
     return text if not stat.get("std") else f"{text} ± {stat['std']:,.1f}"
 
 
-def _table(headers: list[str], rows: list[list[str]]) -> str:
+def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     lines = ["| " + " | ".join(headers) + " |", "|" + "|".join("---" for _ in headers) + "|"]
     lines += ["| " + " | ".join(r) + " |" for r in rows]
     return "\n".join(lines)
 
 
-def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     keys: list[str] = []
     for row in rows:
         for k in row:
@@ -65,7 +68,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
     if prov["is_mock"]:
         out += [MOCK_WARNING, ""]
     out += [
-        _table(
+        markdown_table(
             ["Item", "Value"],
             [
                 ["Experiment ID", f"`{summary['experiment_id']}`"],
@@ -82,7 +85,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "## Reference extraction (primary outcome)",
         "",
-        _table(
+        markdown_table(
             ["Strategy", "Precision", "Recall", "F1", "Complete-set accuracy", "Duplicates", "Relation accuracy"],
             [
                 [
@@ -101,9 +104,51 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "Scored per (requirement, document) pair: a correct document on the wrong requirement is an error. "
         "Complete-set accuracy is the share of gold requirements whose whole reference set is exactly right.",
         "",
+        "## Reference extraction at unit level (granularity-independent)",
+        "",
+        markdown_table(
+            ["Strategy", "Units", "Gold req. per unit", "Gold req. inside some unit", "Unit precision", "Unit recall", "Unit F1"],
+            [
+                [
+                    f"`{n}`",
+                    _fmt_int(agg[n].get("units.units")),
+                    _fmt(agg[n].get("units.mean_gold_per_unit"), 2),
+                    _fmt(agg[n].get("units.gold_coverage")),
+                    _fmt(agg[n].get("units.precision")),
+                    _fmt(agg[n].get("units.recall")),
+                    _fmt(agg[n].get("units.f1")),
+                ]
+                for n in names
+            ],
+        ),
+        "",
+        "A unit is whatever the strategy extracts references from: one requirement, or a chunk holding "
+        "several. A predicted document counts as correct when any gold requirement inside the unit "
+        "references it. This is the most favourable fair reading of per-chunk extraction; the "
+        "per-requirement table above is the strict one. The gap between the two is the cost of not "
+        "knowing *which* requirement references a document.",
+        "",
+        "## Reference errors by cause",
+        "",
+        markdown_table(
+            ["Strategy", *[k.replace("_", " ") for k in REFERENCE_ERROR_KINDS], "Merges applied", "Merges rejected"],
+            [
+                [
+                    f"`{n}`",
+                    *[_fmt_int(agg[n].get(f"references.errors.{k}")) for k in REFERENCE_ERROR_KINDS],
+                    _fmt_int(agg[n].get("references.merges_applied")),
+                    _fmt_int(agg[n].get("references.merges_rejected")),
+                ]
+                for n in names
+            ],
+        ),
+        "",
+        "; ".join(f"**{k.replace('_', ' ')}**: {v}" for k, v in REFERENCE_ERROR_KINDS.items())
+        + ". A wrong key and the missing key it stands for in the same requirement count as one error.",
+        "",
         "## Potential conflicts",
         "",
-        _table(
+        markdown_table(
             ["Strategy", "Precision", "Recall", "F1", "Candidate-pair recall", "Evidence valid", "Hard-negative FPs", "Ambiguous recall", "Cross-doc recall"],
             [
                 [
@@ -123,7 +168,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "## Requirement extraction (context for the above)",
         "",
-        _table(
+        markdown_table(
             ["Strategy", "Precision", "Recall", "Chapter accuracy", "Verbatim exact", "Location accuracy"],
             [
                 [
@@ -140,7 +185,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "## Relationship graph",
         "",
-        _table(
+        markdown_table(
             ["Strategy", "Structurally valid", "Node resolution", "Unresolved identifiers", "Explicit-relation edge F1", "Unsupported edges", "Missing edges"],
             [
                 [
@@ -160,7 +205,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "## Cost",
         "",
-        _table(
+        markdown_table(
             ["Strategy", "LLM calls", "Input chars", "Input tokens", "Output tokens", "Seconds", "Retries", "JSON failures", "Graph-informed calls", "Est. cost (USD)"],
             [
                 [
@@ -181,7 +226,74 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "Token counts and cost are shown only when the provider reports them; `–` means not measured.",
         "",
+        "## Cost per unit of work",
+        "",
+        markdown_table(
+            ["Strategy", "Pages", "Calls / page", "Tokens / page", "Calls / gold req.", "Tokens / gold req.", "Tokens / correct reference"],
+            [
+                [
+                    f"`{n}`",
+                    _fmt(agg[n].get("ops.pages"), 1),
+                    _fmt(agg[n].get("ops.calls_per_page"), 2),
+                    _fmt_int(agg[n].get("ops.tokens_per_page")),
+                    _fmt(agg[n].get("ops.calls_per_gold_requirement"), 2),
+                    _fmt_int(agg[n].get("ops.tokens_per_gold_requirement")),
+                    _fmt_int(agg[n].get("ops.tokens_per_correct_reference")),
+                ]
+                for n in names
+            ],
+        ),
+        "",
+        (
+            "Tokens are the server's reported counts."
+            if all((agg[n].get("ops.tokens_reported") or {}).get("mean") == 1.0 for n in names)
+            else "Tokens are **estimated** as characters / 4 because the provider reported no token counts."
+        )
+        + " Pages are PDF pages; for text input a page is 3,000 characters. "
+        "Tokens per correct reference divides all tokens by the unit-level true positives (correct documents found).",
+        "",
     ]
+    stages = sorted({k.split(".", 2)[2] for n in names for k in agg[n] if k.startswith("ops.stage_tokens.")})
+    if stages:
+        out += [
+            "## Tokens by stage",
+            "",
+            markdown_table(
+                ["Strategy", *stages],
+                [[f"`{n}`", *[_fmt_int(agg[n].get(f"ops.stage_tokens.{st}")) for st in stages]] for n in names],
+            ),
+            "",
+            "Calls per stage are in `per_run_metrics.csv` (`ops.stage_calls.*`).",
+            "",
+        ]
+    if any((agg[n].get("input.chunked_cases") or {}).get("mean") for n in names):
+        out += [
+            "## Input fidelity (chunk units)",
+            "",
+            markdown_table(
+                ["Strategy", "Chunks", "Verbatim chunks", "Mean word ratio", "Source coverage", "Requirement-like gaps", "Gold req. verbatim"],
+                [
+                    [
+                        f"`{n}`",
+                        _fmt_int(agg[n].get("input.chunks")),
+                        _fmt(agg[n].get("input.verbatim_rate")),
+                        _fmt(agg[n].get("input.mean_word_ratio")),
+                        _fmt(agg[n].get("input.source_coverage")),
+                        _fmt_int(agg[n].get("input.requirement_like_gaps")),
+                        _fmt(agg[n].get("requirements.verbatim_exact_rate")),
+                    ]
+                    for n in names
+                ],
+            ),
+            "",
+            "Only strategies or inputs that analyse chunks have values. Verbatim chunks: share found word "
+            "for word in the source. Word ratio: share of a chunk's words that are source words in order. "
+            "Source coverage: share of source words inside some chunk. Requirement-like gaps: uncovered "
+            "source passages containing shall/must/required (possible lost requirements). Per-chunk "
+            "details, including what each rewritten chunk changed, are in each prediction's "
+            "`metadata.input_fidelity`.",
+            "",
+        ]
 
     paired = summary.get("paired_vs_baseline", {})
     if paired:
@@ -193,7 +305,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         out += [
             f"## Paired per-case comparison against `{baseline}`",
             "",
-            _table(["Strategy", "Metric", "Mean Δ", "Better", "Worse", "Tied", "Cases"], rows),
+            markdown_table(["Strategy", "Metric", "Mean Δ", "Better", "Worse", "Tied", "Cases"], rows),
             "",
             "Each case's metric is averaged over repetitions and compared on the same case. This is "
             "descriptive: with few cases and repetitions it does not establish statistical significance.",
@@ -204,7 +316,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
     out += ["## Failed and partial runs", ""]
     if failures:
         out += [
-            _table(
+            markdown_table(
                 ["Strategy", "Repetition", "Case", "Status", "Error"],
                 [[f"`{f['strategy']}`", str(f["repetition"]), f["case_id"], f["status"], f["error"].splitlines()[0][:120] if f["error"] else ""] for f in failures],
             ),
@@ -232,13 +344,13 @@ def write_reports(out_dir: Path, summary: dict[str, Any], case_runs: list[CaseRu
         row["error"] = (cr.error or "").splitlines()[0] if cr.error else ""
         row["output_path"] = cr.output_path
         case_rows.append(row)
-    _write_csv(out_dir / "per_case_metrics.csv", case_rows)
+    write_csv(out_dir / "per_case_metrics.csv", case_rows)
     run_rows = []
     for r in summary["runs"]:
         for scope in ("metrics_strict", "metrics_valid_only"):
             if r[scope]:
                 run_rows.append({"strategy": r["strategy"], "repetition": r["repetition"], "seed": r["seed"], "scope": scope.removeprefix("metrics_"), **r[scope]})
-    _write_csv(out_dir / "per_run_metrics.csv", run_rows)
+    write_csv(out_dir / "per_run_metrics.csv", run_rows)
     if llm_rows:
-        _write_csv(out_dir / "llm_calls.csv", llm_rows)
+        write_csv(out_dir / "llm_calls.csv", llm_rows)
     (out_dir / "report.md").write_text(markdown_report(summary), encoding="utf-8")

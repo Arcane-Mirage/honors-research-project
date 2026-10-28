@@ -1,3 +1,9 @@
+"""tests/test_llm.py
+
+Model access: JSON parsing, the OpenAI-compatible request, retries, prompt-mode fallback,
+the mock model and prompt versioning.
+"""
+
 import json
 
 import httpx
@@ -118,5 +124,14 @@ def test_mock_provider_is_seeded_and_uses_prompt_input():
 
 def test_prompt_versions_include_content_hash():
     versions = prompt_versions()
-    assert set(versions) == {"single_pass_extraction", "requirement_identification", "reference_extraction", "reference_verification", "conflict_analysis"}
+    assert set(versions) == {
+        "single_pass_extraction",
+        "requirement_identification",
+        "reference_extraction",
+        "reference_verification",
+        "conflict_analysis",
+        "semantic_chunking",
+        "reference_merging",
+        "reference_alias_check",
+    }
     assert all("@" in v for v in versions.values())

@@ -1,3 +1,8 @@
+"""tests/test_metrics.py
+
+Scoring: undefined ratios, a perfect gold oracle, reference and conflict matching, aggregation.
+"""
+
 import pytest
 
 from csr_lab.evaluation.metrics import aggregate, describe, evaluate_case, prf

@@ -1,4 +1,6 @@
-"""Turn model-reported requirements into grounded ``RequirementDraft`` records.
+"""src/csr_lab/extraction/requirements.py
+
+Turn model-reported requirements into grounded ``RequirementDraft`` records.
 
 Grounding is applied identically in every strategy and only *annotates*:
 * the reported text is located in the source (exact, then whitespace-insensitive);
@@ -6,7 +8,10 @@ Grounding is applied identically in every strategy and only *annotates*:
 * when not found, the model's text is kept and flagged ``not_found`` with no offsets.
 
 Requirements found twice (for example in overlapping chunks) are merged.
-IDs are assigned per document in source order, so they are stable across runs.
+IDs come from the source document revision, chapter and verbatim text
+(``csr_lab.ids.requirement_id``), so the same requirement gets the same ID in
+every run. The rare exact duplicate inside one chapter gets a ``-2``, ``-3`` suffix
+in source order.
 """
 
 from __future__ import annotations
@@ -142,7 +147,7 @@ def ground_requirements(
             existing.segment_ids = list(dict.fromkeys([*existing.segment_ids, *draft.segment_ids]))
             reps.append(rep)
 
-    # Stable numbering per document in source order.
+    # Source order (only used to make duplicate suffixes deterministic).
     doc_order = {doc_id: i for i, doc_id in enumerate(sources.documents)}
     merged.sort(
         key=lambda item: (
@@ -151,12 +156,13 @@ def ground_requirements(
             item[0].text,
         )
     )
-    counters: dict[str, int] = {}
+    seen_ids: dict[str, int] = {}
     key_map: dict[str, str] = {}
     drafts: list[RequirementDraft] = []
     for draft, reps in merged:
-        counters[draft.document_id] = counters.get(draft.document_id, 0) + 1
-        draft.requirement_id = requirement_id(draft.document_id, counters[draft.document_id])
+        rid = requirement_id(draft.document_id, draft.chapter, draft.text)
+        seen_ids[rid] = seen_ids.get(rid, 0) + 1
+        draft.requirement_id = rid if seen_ids[rid] == 1 else f"{rid}-{seen_ids[rid]}"
         drafts.append(draft)
         for rep in reps:
             if rep.local_key:

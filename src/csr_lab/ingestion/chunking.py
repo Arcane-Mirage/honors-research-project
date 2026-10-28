@@ -1,4 +1,6 @@
-"""Section-aware chunking shared by every strategy.
+"""src/csr_lab/ingestion/chunking.py
+
+Section-aware chunking shared by every strategy.
 
 All strategies in an experiment receive the same chunk plan, so differences in
 results cannot come from different input slicing.
@@ -43,7 +45,8 @@ class ChunkPlan(BaseModel):
 
 
 def _segment_size(seg: Segment) -> int:
-    return seg.end_offset - seg.line_start_offset + 1
+    # Chunk units whose text differs from the source have only approximate offsets.
+    return max(seg.end_offset - seg.line_start_offset, len(seg.text)) + 1
 
 
 def plan_chunks(
@@ -150,6 +153,18 @@ def chunk_raw_text(chunk: Chunk, segments: dict[str, Segment], documents: dict[s
         doc = documents[doc_id]
         start = min(s.line_start_offset for s in segs)
         end = max(s.end_offset for s in segs)
+        if any(s.origin != "deterministic" for s in segs):
+            # Chunk units: send each unit's own text (it may differ from the source).
+            out.append(
+                {
+                    "document_id": doc_id,
+                    "identifier": doc.canonical_identifier,
+                    "title": doc.title,
+                    "text_start_offset": start,
+                    "text": "\n\n".join(s.text for s in segs),
+                }
+            )
+            continue
         out.append(
             {
                 "document_id": doc_id,

@@ -1,4 +1,6 @@
-"""Load evaluation datasets described by a ``manifest.json``.
+"""src/csr_lab/datasets/loader.py
+
+Load evaluation datasets described by a ``manifest.json``.
 
 Manifest format (paths are relative to the manifest)::
 
@@ -7,8 +9,8 @@ Manifest format (paths are relative to the manifest)::
                 "documents": ["documents/x/a.txt", ...],
                 "ground_truth": "ground_truth/x.json"}]}
 
-Public datasets (for example PURE) can be added later with the same format;
-cases without ``ground_truth`` can be analysed but not scored.
+Public datasets (for example PURE) use the same format. Cases without
+``ground_truth`` can be analysed but not scored.
 """
 
 from __future__ import annotations

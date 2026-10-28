@@ -21,6 +21,10 @@ dev = [
     "pytest>=8.0",
     "pip-tools>=7.5",
 ]
+# Optional, not in the lockfile: Microsoft Entra ID auth for Azure OpenAI (llm.auth.method: azure_identity)
+azure = ["azure-identity>=1.15"]
+# Optional, not in the lockfile: PyMuPDF reader (processing.pdf_backend: pymupdf). AGPL-licensed.
+pymupdf = ["pymupdf>=1.24"]
 
 [project.scripts]
 csr-lab = "csr_lab.cli:main"

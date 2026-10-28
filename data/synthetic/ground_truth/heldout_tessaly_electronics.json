@@ -1,13 +1,13 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "dataset_name": "synthetic_csr",
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.1.0",
   "case_id": "heldout_tessaly_electronics",
   "split": "heldout",
   "description": "ECU CSR with prefixed chapter labels (TSA 2.1), long requirements, similar identifiers, revision variants and spacing aliases.",
   "documents": [
     {
-      "document_id": "DOC-TSA-CSR-300",
+      "document_id": "DOC-TSA-CSR-300-REV-2",
       "canonical_identifier": "TSA-CSR-300",
       "filename": "tsa_csr_300.txt",
       "title": "Customer-Specific Requirements: Electronic Control Units",
@@ -17,7 +17,7 @@
   "requirements": [
     {
       "gold_id": "TSA-CSR-300#TSA 2.1",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 2.1",
       "requirement_text": "The supplier shall submit the design failure mode and effects analysis to Tessaly\nAutomotive at each design review, and the analysis shall follow the methodology described in\nTessaly procedure TSA-QP-031; where the analysis identifies a severity rating of 9 or 10,\nthe supplier shall additionally document the mitigation actions according to TSA-QP-032 and\nshall report the results of all associated validation tests using the template in\nTSA-QF-031A.",
       "start_offset": 404,
@@ -55,7 +55,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 2.2",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 2.2",
       "requirement_text": "Software for electronic control units shall be developed according to TSA-SW-500\nrev.3.",
       "start_offset": 865,
@@ -75,7 +75,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 2.3",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 2.3",
       "requirement_text": "Software release notes shall reference TSA-SW-500 Rev 4 for all releases issued\nafter 1 July 2026.",
       "start_offset": 962,
@@ -96,7 +96,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 3.1",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 3.1",
       "requirement_text": "Printed circuit board assemblies shall be cleaned according to the TSA-MP-210\nspecification, and ionic contamination shall not exceed 1.0 µg/cm² NaCl equivalent.",
       "start_offset": 1090,
@@ -116,7 +116,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 3.2",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 3.2",
       "requirement_text": "Conformal coating shall be applied in accordance with Specification TSA MP 215 and\ncured for at least 30 minutes.",
       "start_offset": 1261,
@@ -136,7 +136,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 3.3",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 3.3",
       "requirement_text": "Coated assemblies shall be inspected under ultraviolet light as described in\nTSA-MP-215, and assemblies with coating voids larger than 0.5 mm shall be rejected.",
       "start_offset": 1384,
@@ -157,7 +157,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 3.4",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 3.4",
       "requirement_text": "All solder joints shall be inspected by automated optical inspection on 100% of\nproduction units.",
       "start_offset": 1554,
@@ -170,7 +170,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 3.5",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 3.5",
       "requirement_text": "Solder joint inspection shall be performed on a sampling basis of 5 units per\nproduction lot, as defined in TSA-QP-040.",
       "start_offset": 1661,
@@ -191,7 +191,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 4.1",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 4.1",
       "requirement_text": "Each electronic control unit shall carry a serial number label containing the\nTessaly part number, the hardware revision, and the date of manufacture in the format\ndefined in TSA-LB-077. The label shall remain legible for the service life of the vehicle.\nThe label position is shown on drawing TSA-DRW-1188, sheet 2.",
       "start_offset": 1809,
@@ -220,7 +220,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 4.2",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 4.2",
       "requirement_text": "Traceability records shall be retained for at least 10 years.",
       "start_offset": 2135,
@@ -232,7 +232,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 5.1",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 5.1",
       "requirement_text": "The supplier shall provide an initial containment response within 24 hours of\nnotification of a nonconformance and shall complete the root cause analysis using the 8D\nformat defined in TSA-QP-050.",
       "start_offset": 2228,
@@ -253,7 +253,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 5.2",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 5.2",
       "requirement_text": "Initial containment responses shall be submitted no earlier than 72 hours after\nnotification of a nonconformance, once sorting results are available.",
       "start_offset": 2434,
@@ -266,7 +266,7 @@
     },
     {
       "gold_id": "TSA-CSR-300#TSA 5.3",
-      "source_document_id": "DOC-TSA-CSR-300",
+      "source_document_id": "DOC-TSA-CSR-300-REV-2",
       "chapter": "TSA 5.3",
       "requirement_text": "Warranty part analysis shall be performed according to TSA-QP-050 and TSA-WR-090.",
       "start_offset": 2593,

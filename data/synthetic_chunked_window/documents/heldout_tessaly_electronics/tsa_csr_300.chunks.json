@@ -1,0 +1,44 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-window(words=60)",
+  "source": {
+    "file": "tsa_csr_300.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "W001",
+      "title": null,
+      "content": "TESSALY AUTOMOTIVE\nCustomer-Specific Requirements: Electronic Control Units\nDocument ID: TSA-CSR-300\nRevision: 2\nEffective Date: 2026-05-04\nAll names, companies and document identifiers in this document are fictional.\n\nTSA 1 Introduction\nTSA 1.1 This document supplements the general purchasing terms of Tessaly Automotive for\nsuppliers of electronic control units.\n\nTSA 2 Design and Development\nTSA 2.1 The supplier shall submit the design"
+    },
+    {
+      "chunk_id": "W002",
+      "title": null,
+      "content": "failure mode and effects analysis to Tessaly\nAutomotive at each design review, and the analysis shall follow the methodology described in\nTessaly procedure TSA-QP-031; where the analysis identifies a severity rating of 9 or 10,\nthe supplier shall additionally document the mitigation actions according to TSA-QP-032 and\nshall report the results of all associated validation tests using the template in"
+    },
+    {
+      "chunk_id": "W003",
+      "title": null,
+      "content": "TSA-QF-031A.\n\nTSA 2.2 Software for electronic control units shall be developed according to TSA-SW-500\nrev.3.\n\nTSA 2.3 Software release notes shall reference TSA-SW-500 Rev 4 for all releases issued\nafter 1 July 2026.\n\nTSA 3 Manufacturing\nTSA 3.1 Printed circuit board assemblies shall be cleaned according to the TSA-MP-210\nspecification, and ionic contamination shall not exceed 1.0 µg/cm² NaCl equivalent."
+    },
+    {
+      "chunk_id": "W004",
+      "title": null,
+      "content": "TSA 3.2 Conformal coating shall be applied in accordance with Specification TSA MP 215 and\ncured for at least 30 minutes.\n\nTSA 3.3 Coated assemblies shall be inspected under ultraviolet light as described in\nTSA-MP-215, and assemblies with coating voids larger than 0.5 mm shall be rejected.\n\nTSA 3.4 All solder joints shall be inspected by automated optical inspection on"
+    },
+    {
+      "chunk_id": "W005",
+      "title": null,
+      "content": "100% of\nproduction units.\n\nTSA 3.5 Solder joint inspection shall be performed on a sampling basis of 5 units per\nproduction lot, as defined in TSA-QP-040.\n\nTSA 4 Traceability\nTSA 4.1 Each electronic control unit shall carry a serial number label containing the\nTessaly part number, the hardware revision, and the date of manufacture in the format\ndefined in TSA-LB-077."
+    },
+    {
+      "chunk_id": "W006",
+      "title": null,
+      "content": "The label shall remain legible for the service life of the vehicle.\nThe label position is shown on drawing TSA-DRW-1188, sheet 2.\n\nTSA 4.2 Traceability records shall be retained for at least 10 years.\n\nTSA 5 Problem Solving\nTSA 5.1 The supplier shall provide an initial containment response within 24 hours of\nnotification of a nonconformance and shall complete the"
+    },
+    {
+      "chunk_id": "W007",
+      "title": null,
+      "content": "root cause analysis using the 8D\nformat defined in TSA-QP-050.\n\nTSA 5.2 Initial containment responses shall be submitted no earlier than 72 hours after\nnotification of a nonconformance, once sorting results are available.\n\nTSA 5.3 Warranty part analysis shall be performed according to TSA-QP-050 and TSA-WR-090."
+    }
+  ]
+}

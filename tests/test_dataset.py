@@ -1,3 +1,9 @@
+"""tests/test_dataset.py
+
+Synthetic dataset: deterministic generation, committed files up to date, gold spans,
+and gold annotations kept out of reach of the pipelines.
+"""
+
 from pathlib import Path
 
 from csr_lab.config import PROJECT_ROOT

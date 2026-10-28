@@ -1,4 +1,6 @@
-"""Convert working drafts into the exported ``AnalysisResult`` (same code for every strategy).
+"""src/csr_lab/pipelines/assembly.py
+
+Convert working drafts into the exported ``AnalysisResult`` (same code for every strategy).
 
 This step also builds the exported relationship graph from the *final*
 predictions. That graph is output only: nothing here feeds back into
@@ -14,8 +16,9 @@ from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 
 from csr_lab.drafts import ConflictDraft, MentionDraft, RequirementDraft
+from csr_lab.extraction.fidelity import FidelityReport, source_gaps, summarize
 from csr_lab.extraction.normalization import reference_key
-from csr_lab.ids import conflict_id, stable_hash
+from csr_lab.ids import conflict_id, document_family_id, stable_hash
 from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment
 from csr_lab.prompts import prompt_versions
@@ -105,8 +108,21 @@ def requirement_records(
 
 
 def referenced_document_records(mentions: list[MentionDraft], documents: list[InputDocument]) -> list[ReferencedDocument]:
-    available = {d.document_id for d in documents if d.parse_status in ("ok", "partial")}
+    """One record per referenced document node.
+
+    Content is available when the exact node was provided, or when an unrevisioned
+    reference ("CVM-PKG-210") names a document of which one revision was provided.
+    A reference to a *different* revision than the one provided is not available.
+    """
     inputs = {d.document_id: d for d in documents}
+    by_family: dict[str, list[InputDocument]] = {}
+    for d in documents:
+        if d.canonical_identifier:
+            by_family.setdefault(document_family_id(d.canonical_identifier), []).append(d)
+    for family, docs in by_family.items():
+        if family not in inputs and len(docs) == 1:
+            inputs[family] = docs[0]
+    available = {doc_id for doc_id, d in inputs.items() if d.parse_status in ("ok", "partial")}
     grouped: dict[str, list[MentionDraft]] = {}
     for m in mentions:
         if m.active:
@@ -271,6 +287,47 @@ def _coverage(
     )
 
 
+CHARS_PER_PAGE = 3000  # a typical page of a text-heavy specification; used only for text input
+
+
+def add_unit_costs(stats, documents: list[InputDocument], n_requirements: int) -> None:
+    """Per-page and per-requirement cost, so pipelines of different shapes compare fairly."""
+    usable = [d for d in documents if d.parse_status in ("ok", "partial")]
+    pdf = [d for d in usable if d.pages]
+    text = [d for d in usable if not d.pages]
+    pages = sum(len(d.pages) for d in pdf) + sum(d.char_count for d in text) / CHARS_PER_PAGE
+    stats.pages = round(pages, 2) if usable else None
+    stats.pages_source = "none" if not usable else ("pdf" if not text else ("estimated" if not pdf else "mixed"))
+    stats.requirements = n_requirements
+    if stats.pages:
+        stats.calls_per_page = round(stats.llm_calls / stats.pages, 3)
+        stats.tokens_per_page = round(stats.estimated_tokens / stats.pages, 1)
+    if n_requirements:
+        stats.calls_per_requirement = round(stats.llm_calls / n_requirements, 3)
+        stats.tokens_per_requirement = round(stats.estimated_tokens / n_requirements, 1)
+
+
+def fidelity_report(state: dict) -> FidelityReport | None:
+    """How the chunk units (provided or model-made) matched the source text."""
+    checks = state.get("chunk_checks", [])
+    if not checks:
+        return None
+    docs = {d.document_id: d for d in state["documents"]}
+    origins = sorted({s.origin for s in state.get("segments", []) if s.origin != "deterministic"})
+    gaps = []
+    covered_words = total_words = 0
+    for doc_id in dict.fromkeys(c.document_id for c in checks):
+        text = (docs[doc_id].text or "") if doc_id in docs else ""
+        located = [(c.start_offset, c.end_offset) for c in checks if c.document_id == doc_id and c.start_offset is not None]
+        doc_gaps, coverage = source_gaps(text, located, document_id=doc_id)  # type: ignore[arg-type]
+        gaps += doc_gaps
+        n = len(text.split())
+        total_words += n
+        covered_words += round((coverage or 0) * n)
+    coverage = round(covered_words / total_words, 4) if total_words else None
+    return FidelityReport(origin="+".join(origins) or "chunks", fragments=checks, gaps=gaps, summary=summarize(checks, gaps, coverage))
+
+
 def assemble(state: dict, ctx) -> AnalysisResult:
     """Build and validate the final result from workflow state."""
     from csr_lab.extraction.verification import verification_counts
@@ -311,6 +368,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         ctx.config.llm.pricing.input_usd_per_million_tokens, ctx.config.llm.pricing.output_usd_per_million_tokens
     )
     stats.stage_seconds = state.get("stage_seconds", {})
+    add_unit_costs(stats, documents, len(reqs))
 
     include_text = ctx.config.processing.include_source_text
     exported_docs = [d if include_text else d.model_copy(update={"text": None}) for d in documents]
@@ -321,6 +379,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         ctx.run_seed,
         json.dumps(options_dump, sort_keys=True),
         *[d.sha256 for d in documents],
+        *([ctx.saved_graph_info["fingerprint"]] if ctx.saved_graph_info else []),
         length=16,
     )
     metadata = AnalysisMetadata(
@@ -346,6 +405,9 @@ def assemble(state: dict, ctx) -> AnalysisResult:
             for c in state.get("conflict_candidates", [])
         ],
         graph_decisions=state.get("graph_decisions", []),
+        reference_merges=state.get("merge_decisions", []),
+        input_fidelity=fidelity_report(state),
+        saved_graph=ctx.saved_graph_info,
         llm_calls=list(ctx.recorder.calls),
         warnings=[*ctx.recorder.warnings, *state.get("warnings", [])],
         errors=errors,

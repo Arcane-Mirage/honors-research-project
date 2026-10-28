@@ -1,3 +1,8 @@
+"""tests/test_pipelines.py
+
+Every strategy end to end: valid output, determinism, workflow shapes and failure handling.
+"""
+
 import json
 
 import pytest

@@ -1,4 +1,6 @@
-"""Locate quoted text in source documents and build ``Evidence`` records.
+"""src/csr_lab/extraction/grounding.py
+
+Locate quoted text in source documents and build ``Evidence`` records.
 
 Matching is exact first, then whitespace-insensitive (runs of spaces and
 newlines compare equal). Nothing else is normalised: a quote with changed

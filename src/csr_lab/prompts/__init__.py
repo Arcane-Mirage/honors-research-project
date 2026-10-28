@@ -1,4 +1,6 @@
-"""Versioned prompt templates and the response models they request.
+"""src/csr_lab/prompts/__init__.py
+
+Versioned prompt templates and the response models they request.
 
 Each prompt module defines a ``SPEC`` (name, version, system text, user
 instructions) and the Pydantic response model(s). The input data is always sent
@@ -68,7 +70,16 @@ Definitions used in every task:
 
 
 def prompt_versions() -> dict[str, str]:
-    from csr_lab.prompts import baseline, conflicts, references, requirements, verification
+    from csr_lab.prompts import baseline, chunking, conflicts, merging, references, requirements, verification
 
-    specs = [baseline.SPEC, requirements.SPEC, references.SPEC, verification.SPEC, conflicts.SPEC]
+    specs = [
+        baseline.SPEC,
+        requirements.SPEC,
+        references.SPEC,
+        verification.SPEC,
+        conflicts.SPEC,
+        chunking.SPEC,
+        merging.MERGING_SPEC,
+        merging.ALIAS_SPEC,
+    ]
     return {spec.name: spec.fingerprint for spec in specs}

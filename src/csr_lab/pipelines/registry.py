@@ -1,4 +1,6 @@
-"""Strategy registry: look up, register and derive strategies.
+"""src/csr_lab/pipelines/registry.py
+
+Strategy registry: look up, register and derive strategies.
 
 New strategies can be added without touching the runner or evaluator:
 

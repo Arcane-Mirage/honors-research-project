@@ -1,0 +1,89 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2979 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (TESSALY AUTOMOTIVE | TSA-CSR-300 Rev 2 | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (TESSALY AUTOMOTIVE) Tj ET
+BT /F1 10 Tf 50.0 700 Td (Customer-Specific Requirements: Electronic Control Units) Tj ET
+BT /F1 10 Tf 50.0 686 Td (Document ID: TSA-CSR-300) Tj ET
+BT /F1 10 Tf 50.0 672 Td (Revision: 2) Tj ET
+BT /F1 10 Tf 50.0 658 Td (Effective Date: 2026-05-04) Tj ET
+BT /F1 10 Tf 50.0 644 Td (All names, companies and document identifiers in this document are fictional.) Tj ET
+BT /F1 10 Tf 50.0 616 Td (TSA 1 Introduction) Tj ET
+BT /F1 10 Tf 50.0 602 Td (TSA 1.1 This document supplements the general purchasing terms of Tessaly Automotive for) Tj ET
+BT /F1 10 Tf 50.0 588 Td (suppliers of electronic control units.) Tj ET
+BT /F1 10 Tf 50.0 560 Td (TSA 2 Design and Development) Tj ET
+BT /F1 10 Tf 50.0 546 Td (TSA 2.1 The supplier shall submit the design failure mode and effects analysis to Tessaly) Tj ET
+BT /F1 10 Tf 50.0 532 Td (Automotive at each design review, and the analysis shall follow the methodology described in) Tj ET
+BT /F1 10 Tf 50.0 518 Td (Tessaly procedure TSA-QP-031; where the analysis identifies a severity rating of 9 or 10,) Tj ET
+BT /F1 10 Tf 50.0 504 Td (the supplier shall additionally document the mitigation actions according to TSA-QP-032 and) Tj ET
+BT /F1 10 Tf 50.0 490 Td (shall report the results of all associated validation tests using the template in) Tj ET
+BT /F1 10 Tf 50.0 476 Td (TSA-QF-031A.) Tj ET
+BT /F1 10 Tf 50.0 448 Td (TSA 2.2 Software for electronic control units shall be developed according to TSA-SW-500) Tj ET
+BT /F1 10 Tf 50.0 434 Td (rev.3.) Tj ET
+BT /F1 10 Tf 50.0 406 Td (TSA 2.3 Software release notes shall reference TSA-SW-500 Rev 4 for all releases issued) Tj ET
+BT /F1 10 Tf 50.0 392 Td (after 1 July 2026.) Tj ET
+BT /F1 10 Tf 50.0 364 Td (TSA 3 Manufacturing) Tj ET
+BT /F1 10 Tf 50.0 350 Td (TSA 3.1 Printed circuit board assemblies shall be cleaned according to the TSA-MP-210) Tj ET
+BT /F1 10 Tf 50.0 336 Td (specification, and ionic contamination shall not exceed 1.0 µg/cm² NaCl equivalent.) Tj ET
+BT /F1 10 Tf 50.0 308 Td (TSA 3.2 Conformal coating shall be applied in accordance with Specification TSA MP 215 and) Tj ET
+BT /F1 10 Tf 50.0 294 Td (cured for at least 30 minutes.) Tj ET
+BT /F1 10 Tf 50.0 266 Td (TSA 3.3 Coated assemblies shall be inspected under ultraviolet light as described in) Tj ET
+BT /F1 10 Tf 50.0 252 Td (TSA-MP-215, and assemblies with coating voids larger than 0.5 mm shall be rejected.) Tj ET
+BT /F1 10 Tf 50.0 224 Td (TSA 3.4 All solder joints shall be inspected by automated optical inspection on 100% of) Tj ET
+BT /F1 10 Tf 50.0 210 Td (production units.) Tj ET
+BT /F1 10 Tf 50.0 182 Td (TSA 3.5 Solder joint inspection shall be performed on a sampling basis of 5 units per) Tj ET
+BT /F1 10 Tf 50.0 168 Td (production lot, as defined in TSA-QP-040.) Tj ET
+BT /F1 10 Tf 50.0 140 Td (TSA 4 Traceability) Tj ET
+BT /F1 10 Tf 430.0 112 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 1398 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (TESSALY AUTOMOTIVE | TSA-CSR-300 Rev 2 | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (TSA 4.1 Each electronic control unit shall carry a serial number label containing the) Tj ET
+BT /F1 10 Tf 50.0 700 Td (Tessaly part number, the hardware revision, and the date of manufacture in the format) Tj ET
+BT /F1 10 Tf 50.0 686 Td (defined in TSA-LB-077. The label shall remain legible for the service life of the vehicle.) Tj ET
+BT /F1 10 Tf 50.0 672 Td (The label position is shown on drawing TSA-DRW-1188, sheet 2.) Tj ET
+BT /F1 10 Tf 50.0 644 Td (TSA 4.2 Traceability records shall be retained for at least 10 years.) Tj ET
+BT /F1 10 Tf 50.0 616 Td (TSA 5 Problem Solving) Tj ET
+BT /F1 10 Tf 50.0 602 Td (TSA 5.1 The supplier shall provide an initial containment response within 24 hours of) Tj ET
+BT /F1 10 Tf 50.0 588 Td (notification of a nonconformance and shall complete the root cause analysis using the 8D) Tj ET
+BT /F1 10 Tf 50.0 574 Td (format defined in TSA-QP-050.) Tj ET
+BT /F1 10 Tf 50.0 546 Td (TSA 5.2 Initial containment responses shall be submitted no earlier than 72 hours after) Tj ET
+BT /F1 10 Tf 50.0 532 Td (notification of a nonconformance, once sorting results are available.) Tj ET
+BT /F1 10 Tf 50.0 504 Td (TSA 5.3 Warranty part analysis shall be performed according to TSA-QP-050 and TSA-WR-090.) Tj ET
+BT /F1 10 Tf 430.0 476 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000003375 00000 n 
+0000003501 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+4951
+%%EOF

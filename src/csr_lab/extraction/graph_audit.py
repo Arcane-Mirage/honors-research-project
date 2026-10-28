@@ -1,4 +1,6 @@
-"""Graph-informed reference audit (used only by graph-assisted strategies).
+"""src/csr_lab/extraction/graph_audit.py
+
+Graph-informed reference audit (used only by graph-assisted strategies).
 
 Two uses of the relationship graph:
 
@@ -12,6 +14,9 @@ Two uses of the relationship graph:
    context (which other requirements reference that document) in the prompt.
 
 Each use is recorded as a ``GraphDecision`` so its effect can be analysed.
+
+A document with revisions is looked up through its document-level node, so a
+name or a bare identifier never silently picks a revision the text does not state.
 """
 
 from __future__ import annotations
@@ -29,10 +34,23 @@ from csr_lab.schemas import GraphDecision, ResolutionMethod, VerificationEvent
 _MIN_NAME_WORDS = 3
 
 
+def lookup_documents(graph: RelationshipGraph) -> list:
+    """Document nodes to match names and identifiers against.
+
+    A revision node is skipped when its document-level node is in the graph:
+    that node carries the same identifier and names without picking a revision.
+    """
+    return [
+        n
+        for n in graph.nodes_of_type("document")
+        if not (n.attributes.get("revision_of") and graph.node(n.attributes["revision_of"]) is not None)
+    ]
+
+
 def build_alias_index(graph: RelationshipGraph) -> dict[str, list[tuple[str, str | None, str]]]:
     """normalised name -> [(canonical identifier, revision, node id)] for nodes with identifiers."""
     index: dict[str, list[tuple[str, str | None, str]]] = {}
-    for node in graph.nodes_of_type("document"):
+    for node in lookup_documents(graph):
         canonical = node.attributes.get("canonical_identifier")
         if not canonical:
             continue
@@ -96,10 +114,12 @@ def resolve_aliases(
                 mention_id=m.mention_id,
             )
         )
+        node = graph.node(node_id)
+        saved = " (known from the saved graph)" if node and node.attributes.get("from_saved_graph") else ""
         decisions.append(
             GraphDecision(
                 decision_type="alias_resolved",
-                detail=f"'{m.name}' in {m.requirement_id} resolved to {canonical}",
+                detail=f"'{m.name}' in {m.requirement_id} resolved to {canonical}{saved}",
                 node_ids=[m.requirement_id, node_id],
             )
         )
@@ -142,14 +162,14 @@ def known_document_candidates(
             linked.setdefault(m.requirement_id, set()).add(m.document_id)
             if m.canonical:
                 linked_identifiers.setdefault(m.requirement_id, set()).add(m.canonical)
-    documents = [n for n in graph.nodes_of_type("document") if n.attributes.get("canonical_identifier")]
+    documents = [n for n in lookup_documents(graph) if n.attributes.get("canonical_identifier")]
     candidates: list[AuditCandidate] = []
     decisions: list[GraphDecision] = []
     for req in requirements:
         per_req = 0
         for node in documents:
             canonical = node.attributes["canonical_identifier"]
-            if node.node_id in linked.get(req.requirement_id, set()) or node.node_id == req.document_id:
+            if node.node_id in linked.get(req.requirement_id, set()) or graph.same_document(node.node_id, req.document_id):
                 continue
             if canonical in linked_identifiers.get(req.requirement_id, set()):
                 continue  # already linked to this identifier (possibly another revision)
@@ -191,7 +211,8 @@ def known_document_candidates(
             decisions.append(
                 GraphDecision(
                     decision_type="audit_candidate",
-                    detail=f"'{hit.group(0)}' in {req.requirement_id} matches graph document {canonical}",
+                    detail=f"'{hit.group(0)}' in {req.requirement_id} matches graph document {canonical}"
+                    + (" (known from the saved graph)" if node.attributes.get("from_saved_graph") else ""),
                     node_ids=[req.requirement_id, node.node_id],
                 )
             )

@@ -1,0 +1,447 @@
+{
+  "schema_version": "0.2.0",
+  "dataset_name": "synthetic_csr",
+  "dataset_version": "1.1.0",
+  "case_id": "dev_corvane_production",
+  "split": "dev",
+  "description": "Single production-part CSR: simple, multiple, table, revision, distractor and section-like references; three internal conflicts.",
+  "documents": [
+    {
+      "document_id": "DOC-CVM-CSR-100-REV-C",
+      "canonical_identifier": "CVM-CSR-100",
+      "filename": "cvm_csr_100.pdf",
+      "title": "Customer-Specific Requirements for Production Part Suppliers",
+      "revision": "C"
+    }
+  ],
+  "requirements": [
+    {
+      "gold_id": "CVM-CSR-100#2.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "2.1",
+      "requirement_text": "The supplier shall maintain a quality management system that conforms to the Corvane\nSupplier Quality Manual CVM-SQM-001.",
+      "start_offset": 466,
+      "end_offset": 587,
+      "references": [
+        {
+          "canonical_identifier": "CVM-SQM-001",
+          "revision": null,
+          "mention_text": "CVM-SQM-001",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "simple",
+        "named_identifier"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#2.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "2.2",
+      "requirement_text": "The supplier shall notify the Corvane supplier quality engineer of any change to its\nquality management system certification status within 10 working days.",
+      "start_offset": 593,
+      "end_offset": 748,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#3.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "3.1",
+      "requirement_text": "The supplier shall prepare control plans in accordance with Specification CVM-QS-110 and\nshall include all special characteristics identified on Drawing DRW-045.",
+      "start_offset": 795,
+      "end_offset": 956,
+      "references": [
+        {
+          "canonical_identifier": "CVM-QS-110",
+          "revision": null,
+          "mention_text": "CVM-QS-110",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "DRW-045",
+          "revision": null,
+          "mention_text": "DRW-045",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "multiple_references",
+        "heading_paragraph"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#3.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "3.2",
+      "requirement_text": "The supplier shall perform a process failure mode and effects analysis for every new\npart number before the production trial run, using the worksheet format defined in Procedure\nQP-12. Part number 55-1020 and part number 55-1021 are excluded from this requirement during\nthe 2026 model year.",
+      "start_offset": 962,
+      "end_offset": 1253,
+      "references": [
+        {
+          "canonical_identifier": "QP-12",
+          "revision": null,
+          "mention_text": "QP-12",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "distractor_numbers",
+        "long"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#4.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "4.1",
+      "requirement_text": "The supplier shall perform the validation tests listed in the following table:\nTest Method Frequency\nSalt spray corrosion CVM-TM-305 Each production lot\nCoating adhesion CVM-TM-311 Rev B Weekly",
+      "start_offset": 1280,
+      "end_offset": 1473,
+      "references": [
+        {
+          "canonical_identifier": "CVM-TM-305",
+          "revision": null,
+          "mention_text": "CVM-TM-305",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "CVM-TM-311",
+          "revision": "B",
+          "mention_text": "CVM-TM-311 Rev B",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "table",
+        "revision"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#4.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "4.2",
+      "requirement_text": "Production parts shall be validated at a maximum test temperature of 85 °C according to\nTest Method CVM-TM-320.",
+      "start_offset": 1479,
+      "end_offset": 1590,
+      "references": [
+        {
+          "canonical_identifier": "CVM-TM-320",
+          "revision": null,
+          "mention_text": "CVM-TM-320",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#4.3",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "4.3",
+      "requirement_text": "Thermal validation according to CVM-TM-320 shall be performed at a minimum test\ntemperature of 105 °C for 500 hours.",
+      "start_offset": 1596,
+      "end_offset": 1712,
+      "references": [
+        {
+          "canonical_identifier": "CVM-TM-320",
+          "revision": null,
+          "mention_text": "CVM-TM-320",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict",
+        "repeated_reference"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#5.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "5.1",
+      "requirement_text": "The supplier shall notify Corvane Motors in writing at least 90 days before implementing\nany change to a manufacturing process, as required by the Corvane Supplier Quality Manual\nCVM-SQM-001.",
+      "start_offset": 1738,
+      "end_offset": 1929,
+      "references": [
+        {
+          "canonical_identifier": "CVM-SQM-001",
+          "revision": null,
+          "mention_text": "CVM-SQM-001",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict",
+        "repeated_reference"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#5.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "5.2",
+      "requirement_text": "Minor process changes shall be implemented no later than 30 days after written\nnotification to Corvane Motors and shall be documented according to Procedure QP-12.",
+      "start_offset": 1999,
+      "end_offset": 2162,
+      "references": [
+        {
+          "canonical_identifier": "QP-12",
+          "revision": null,
+          "mention_text": "QP-12",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#6.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "6.1",
+      "requirement_text": "The supplier shall retain quality records for a minimum of 15 years after the end of\nseries production, unless a longer period is specified on the applicable drawing.",
+      "start_offset": 2178,
+      "end_offset": 2344,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "generic_mention",
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#6.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "6.2",
+      "requirement_text": "Inspection records described in Specification CVM-QS-110 shall be destroyed no later\nthan 10 years after the end of series production.",
+      "start_offset": 2350,
+      "end_offset": 2484,
+      "references": [
+        {
+          "canonical_identifier": "CVM-QS-110",
+          "revision": null,
+          "mention_text": "CVM-QS-110",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#7.1",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "7.1",
+      "requirement_text": "Fasteners shall conform to Engineering Standard ES 4.12, and coated fasteners shall\nadditionally meet CVM-ES-210 Rev. B.",
+      "start_offset": 2534,
+      "end_offset": 2654,
+      "references": [
+        {
+          "canonical_identifier": "ES-4.12",
+          "revision": null,
+          "mention_text": "ES 4.12",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "CVM-ES-210",
+          "revision": "B",
+          "mention_text": "CVM-ES-210 Rev. B",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "section_like_identifier",
+        "revision"
+      ]
+    },
+    {
+      "gold_id": "CVM-CSR-100#7.2",
+      "source_document_id": "DOC-CVM-CSR-100-REV-C",
+      "chapter": "7.2",
+      "requirement_text": "Replacement fasteners supplied for service shall conform to CVM-ES-210 Revision D.\nSection 4.12 of this document does not apply to service fasteners.",
+      "start_offset": 2660,
+      "end_offset": 2809,
+      "references": [
+        {
+          "canonical_identifier": "CVM-ES-210",
+          "revision": "D",
+          "mention_text": "CVM-ES-210 Revision D",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "revision",
+        "distractor_section"
+      ]
+    }
+  ],
+  "referenced_documents": [
+    {
+      "canonical_identifier": "CVM-ES-210",
+      "revision": "B",
+      "content_available": false,
+      "document_type": "standard"
+    },
+    {
+      "canonical_identifier": "CVM-ES-210",
+      "revision": "D",
+      "content_available": false,
+      "document_type": "standard"
+    },
+    {
+      "canonical_identifier": "CVM-QS-110",
+      "revision": null,
+      "content_available": false,
+      "document_type": "technical_specification"
+    },
+    {
+      "canonical_identifier": "CVM-SQM-001",
+      "revision": null,
+      "content_available": false,
+      "document_type": "quality_manual"
+    },
+    {
+      "canonical_identifier": "CVM-TM-305",
+      "revision": null,
+      "content_available": false,
+      "document_type": "technical_specification"
+    },
+    {
+      "canonical_identifier": "CVM-TM-311",
+      "revision": "B",
+      "content_available": false,
+      "document_type": "technical_specification"
+    },
+    {
+      "canonical_identifier": "CVM-TM-320",
+      "revision": null,
+      "content_available": false,
+      "document_type": "technical_specification"
+    },
+    {
+      "canonical_identifier": "DRW-045",
+      "revision": null,
+      "content_available": false,
+      "document_type": "engineering_drawing"
+    },
+    {
+      "canonical_identifier": "ES-4.12",
+      "revision": null,
+      "content_available": false,
+      "document_type": "standard"
+    },
+    {
+      "canonical_identifier": "QP-12",
+      "revision": null,
+      "content_available": false,
+      "document_type": "procedure"
+    }
+  ],
+  "conflicts": [
+    {
+      "gold_conflict_id": "dev_corvane_production-C01",
+      "requirement_ids": [
+        "CVM-CSR-100#4.2",
+        "CVM-CSR-100#4.3"
+      ],
+      "conflict_type": "numeric_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "CVM-CSR-100#4.2",
+          "quoted_text": "maximum test temperature of 85 °C"
+        },
+        {
+          "requirement_id": "CVM-CSR-100#4.3",
+          "quoted_text": "minimum test temperature of 105 °C"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "dev_corvane_production-C02",
+      "requirement_ids": [
+        "CVM-CSR-100#5.1",
+        "CVM-CSR-100#5.2"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "CVM-CSR-100#5.1",
+          "quoted_text": "at least 90 days before implementing any change"
+        },
+        {
+          "requirement_id": "CVM-CSR-100#5.2",
+          "quoted_text": "no later than 30 days after written notification"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "gold_conflict_id": "dev_corvane_production-C03",
+      "requirement_ids": [
+        "CVM-CSR-100#6.1",
+        "CVM-CSR-100#6.2"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "CVM-CSR-100#6.1",
+          "quoted_text": "retain quality records for a minimum of 15 years"
+        },
+        {
+          "requirement_id": "CVM-CSR-100#6.2",
+          "quoted_text": "destroyed no later than 10 years after the end of series production"
+        }
+      ],
+      "note": ""
+    }
+  ],
+  "non_conflicting_pairs": [
+    {
+      "requirement_ids": [
+        "CVM-CSR-100#2.2",
+        "CVM-CSR-100#5.1"
+      ],
+      "note": "both concern notifications, but about different subjects"
+    },
+    {
+      "requirement_ids": [
+        "CVM-CSR-100#7.1",
+        "CVM-CSR-100#7.2"
+      ],
+      "note": "different revisions of CVM-ES-210 for production versus service fasteners"
+    },
+    {
+      "requirement_ids": [
+        "CVM-CSR-100#3.1",
+        "CVM-CSR-100#6.2"
+      ],
+      "note": "share CVM-QS-110 without contradiction"
+    }
+  ],
+  "notes": [
+    "PDF rendering: table rows are cell text; offsets are re-anchored to the extracted text when scoring"
+  ]
+}

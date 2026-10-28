@@ -1,4 +1,7 @@
-"""Verification prompt: targeted re-examination of candidate references."""
+"""src/csr_lab/prompts/verification.py
+
+Verification prompt: targeted re-examination of candidate references.
+"""
 
 from __future__ import annotations
 

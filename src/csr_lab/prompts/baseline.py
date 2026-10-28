@@ -1,4 +1,7 @@
-"""Single-pass baseline prompt: everything in one structured call per chunk."""
+"""src/csr_lab/prompts/baseline.py
+
+Single-pass baseline prompt: everything in one structured call per chunk.
+"""
 
 from __future__ import annotations
 

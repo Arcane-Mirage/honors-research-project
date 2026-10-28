@@ -1,0 +1,58 @@
+{
+  "name": "synthetic_csr_chunked_paragraph",
+  "version": "1.1.0",
+  "description": "The synthetic CSR cases as chunk files from a simulated external chunker, with their source text.",
+  "generator": "csr_lab.datasets.variants",
+  "chunker": "paragraph",
+  "words": 120,
+  "cases": [
+    {
+      "case_id": "dev_corvane_production",
+      "split": "dev",
+      "description": "Single production-part CSR: simple, multiple, table, revision, distractor and section-like references; three internal conflicts. (pre-chunked: paragraph)",
+      "documents": [
+        "documents/dev_corvane_production/cvm_csr_100.chunks.json"
+      ],
+      "ground_truth": "ground_truth/dev_corvane_production.json"
+    },
+    {
+      "case_id": "dev_corvane_packaging",
+      "split": "dev",
+      "description": "Two provided documents: a logistics CSR and the packaging specification it references; exclusion, precedence, name aliases and cross-document conflicts. (pre-chunked: paragraph)",
+      "documents": [
+        "documents/dev_corvane_packaging/cvm_csr_200.chunks.json",
+        "documents/dev_corvane_packaging/cvm_pkg_210.chunks.json"
+      ],
+      "ground_truth": "ground_truth/dev_corvane_packaging.json"
+    },
+    {
+      "case_id": "heldout_tessaly_electronics",
+      "split": "heldout",
+      "description": "ECU CSR with prefixed chapter labels (TSA 2.1), long requirements, similar identifiers, revision variants and spacing aliases. (pre-chunked: paragraph)",
+      "documents": [
+        "documents/heldout_tessaly_electronics/tsa_csr_300.chunks.json"
+      ],
+      "ground_truth": "ground_truth/heldout_tessaly_electronics.json"
+    },
+    {
+      "case_id": "heldout_tessaly_battery",
+      "split": "heldout",
+      "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts. (pre-chunked: paragraph)",
+      "documents": [
+        "documents/heldout_tessaly_battery/tsa_csr_400.chunks.json",
+        "documents/heldout_tessaly_battery/tsa_ppap_410.chunks.json",
+        "documents/heldout_tessaly_battery/tsa_mat_420.chunks.json"
+      ],
+      "ground_truth": "ground_truth/heldout_tessaly_battery.json"
+    },
+    {
+      "case_id": "heldout_corvane_interior",
+      "split": "heldout",
+      "description": "Interior trim CSR with supersession, dense similar identifiers, distractor tokens, unavailable external documents and non-conflicting overlaps. (pre-chunked: paragraph)",
+      "documents": [
+        "documents/heldout_corvane_interior/cvm_csr_500.chunks.json"
+      ],
+      "ground_truth": "ground_truth/heldout_corvane_interior.json"
+    }
+  ]
+}

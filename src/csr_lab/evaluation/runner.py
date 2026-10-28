@@ -1,4 +1,6 @@
-"""Experiment runner: datasets x strategies x repetitions, with storage and reports.
+"""src/csr_lab/evaluation/runner.py
+
+Experiment runner: datasets x strategies x repetitions, with storage and reports.
 
 For every (strategy, repetition, case) the runner builds a fresh provider and
 pipeline context (``run_analysis``), so runs cannot share state. A failure in
@@ -25,14 +27,22 @@ from csr_lab.datasets.loader import Case, load_dataset
 from csr_lab.evaluation.metrics import CaseEvaluation, aggregate, describe, evaluate_case, flatten_case
 from csr_lab.evaluation.reporting import write_reports
 from csr_lab.ids import stable_hash
-from csr_lab.ingestion.loader import load_bundle
+from csr_lab.ingestion.loader import load_bundle, processing_load_options
 from csr_lab.pipelines.registry import get_strategy
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.prompts import prompt_versions
 from csr_lab.schemas import AnalysisResult, InputDocument
 from csr_lab.storage.database import ExperimentStore
 
-PAIRED_METRICS = ["references.f1", "references.recall", "references.complete_set_accuracy", "conflicts.f1", "conflicts.recall"]
+PAIRED_METRICS = [
+    "references.f1",
+    "references.precision",
+    "references.recall",
+    "references.complete_set_accuracy",
+    "units.f1",
+    "conflicts.f1",
+    "conflicts.recall",
+]
 
 
 def _now() -> str:
@@ -96,7 +106,7 @@ def validate_cases(cases: list[Case], config: AppConfig) -> tuple[dict[str, list
         if missing:
             problems.append(f"{case.case_id}: missing documents {missing}")
             continue
-        docs = load_bundle(list(case.document_paths), min_chars_per_page=config.processing.pdf_min_chars_per_page)
+        docs = load_bundle(list(case.document_paths), **processing_load_options(config.processing))
         documents[case.case_id] = docs
         gold = case.load_gold()
         if gold is None:

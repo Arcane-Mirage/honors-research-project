@@ -1,4 +1,6 @@
-"""Deterministic synthetic CSR-like dataset with gold annotations.
+"""src/csr_lab/datasets/synthetic.py
+
+Deterministic synthetic CSR-like dataset with gold annotations.
 
 All companies (Corvane Motors, Tessaly Automotive), documents and identifiers
 are fictional. Documents are rendered from the structured specification below,
@@ -12,7 +14,7 @@ should not be edited to suit a pipeline. Bump ``DATASET_VERSION`` whenever the
 content changes.
 
 ``generate_scaled_case`` builds parameterised documents (length, reference
-density, reference position) for later ablations.
+density, reference position) for ablations.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from csr_lab.ids import document_node_id
+from csr_lab.ids import document_node_id, slug
 from csr_lab.schemas import (
     CaseGold,
     DocumentType,
@@ -38,7 +40,7 @@ from csr_lab.schemas import (
 )
 
 DATASET_NAME = "synthetic_csr"
-DATASET_VERSION = "1.0.0"
+DATASET_VERSION = "1.1.0"  # 1.1.0: input document IDs include the revision
 WRAP_WIDTH = 92
 FICTION_NOTE = "All names, companies and document identifiers in this document are fictional."
 
@@ -184,7 +186,7 @@ class _Rendered:
 def render_document(doc: DocSpec) -> _Rendered:
     out = ""
     reqs: list[GoldRequirement] = []
-    doc_id = document_node_id(doc.identifier)
+    doc_id = document_node_id(doc.identifier, doc.revision)
 
     def emit(line: str) -> int:
         nonlocal out
@@ -253,13 +255,13 @@ def build_case(case: CaseSpec) -> tuple[dict[str, str], CaseGold]:
     files: dict[str, str] = {}
     documents: list[GoldInputDocument] = []
     requirements: list[GoldRequirement] = []
-    provided = {d.identifier for d in case.documents}
+    provided = {d.identifier: d.revision for d in case.documents}
     for doc in case.documents:
         rendered = render_document(doc)
         files[doc.filename] = rendered.text
         documents.append(
             GoldInputDocument(
-                document_id=document_node_id(doc.identifier),
+                document_id=document_node_id(doc.identifier, doc.revision),
                 canonical_identifier=doc.identifier,
                 filename=doc.filename,
                 title=doc.title,
@@ -277,7 +279,9 @@ def build_case(case: CaseSpec) -> tuple[dict[str, str], CaseGold]:
                 GoldReferencedDocument(
                     canonical_identifier=ref.canonical_identifier,
                     revision=ref.revision,
-                    content_available=ref.canonical_identifier in provided and ref.revision is None,
+                    # Unrevisioned: the provided revision is meant. Revision-qualified: only that revision.
+                    content_available=ref.canonical_identifier in provided
+                    and (ref.revision is None or slug(ref.revision) == slug(provided[ref.canonical_identifier])),
                     document_type=DOCUMENT_TYPES.get(ref.canonical_identifier, DocumentType.UNKNOWN),
                 ),
             )

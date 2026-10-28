@@ -1,0 +1,99 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 3188 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (CORVANE MOTORS | CVM-CSR-100 Rev C | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (CORVANE MOTORS) Tj ET
+BT /F1 10 Tf 50.0 700 Td (Customer-Specific Requirements for Production Part Suppliers) Tj ET
+BT /F1 10 Tf 50.0 686 Td (Document ID: CVM-CSR-100) Tj ET
+BT /F1 10 Tf 50.0 672 Td (Revision: C) Tj ET
+BT /F1 10 Tf 50.0 658 Td (Effective Date: 2026-02-15) Tj ET
+BT /F1 10 Tf 50.0 644 Td (All names, companies and document identifiers in this document are fictional.) Tj ET
+BT /F1 10 Tf 50.0 616 Td (1 Scope) Tj ET
+BT /F1 10 Tf 50.0 602 Td (1.1 This document defines the customer-specific requirements of Corvane Motors for suppliers) Tj ET
+BT /F1 10 Tf 50.0 588 Td (of production parts and supplements the purchase order terms.) Tj ET
+BT /F1 10 Tf 50.0 560 Td (2 Quality Management System) Tj ET
+BT /F1 10 Tf 50.0 546 Td (2.1 The supplier shall maintain a quality management system that conforms to the Corvane) Tj ET
+BT /F1 10 Tf 50.0 532 Td (Supplier Quality Manual CVM-SQM-001.) Tj ET
+BT /F1 10 Tf 50.0 504 Td (2.2 The supplier shall notify the Corvane supplier quality engineer of any change to its) Tj ET
+BT /F1 10 Tf 50.0 490 Td (quality management system certification status within 10 working days.) Tj ET
+BT /F1 10 Tf 50.0 462 Td (3 Product Quality Planning) Tj ET
+BT /F1 10 Tf 50.0 448 Td (3.1 Control Plans) Tj ET
+BT /F1 10 Tf 50.0 434 Td (The supplier shall prepare control plans in accordance with Specification CVM-QS-110 and) Tj ET
+BT /F1 10 Tf 50.0 420 Td (shall include all special characteristics identified on Drawing DRW-045.) Tj ET
+BT /F1 10 Tf 50.0 392 Td (3.2 The supplier shall perform a process failure mode and effects analysis for every new) Tj ET
+BT /F1 10 Tf 50.0 378 Td (part number before the production trial run, using the worksheet format defined in Procedure) Tj ET
+BT /F1 10 Tf 50.0 364 Td (QP-12. Part number 55-1020 and part number 55-1021 are excluded from this requirement during) Tj ET
+BT /F1 10 Tf 50.0 350 Td (the 2026 model year.) Tj ET
+BT /F1 10 Tf 50.0 322 Td (4 Validation Testing) Tj ET
+BT /F1 10 Tf 50.0 308 Td (4.1 The supplier shall perform the validation tests listed in the following table:) Tj ET
+BT /F1 10 Tf 50.0 294 Td (Test) Tj ET
+BT /F1 10 Tf 216.7 294 Td (Method) Tj ET
+BT /F1 10 Tf 383.3 294 Td (Frequency) Tj ET
+BT /F1 10 Tf 50.0 280 Td (Salt spray corrosion) Tj ET
+BT /F1 10 Tf 216.7 280 Td (CVM-TM-305) Tj ET
+BT /F1 10 Tf 383.3 280 Td (Each production lot) Tj ET
+BT /F1 10 Tf 50.0 266 Td (Coating adhesion) Tj ET
+BT /F1 10 Tf 216.7 266 Td (CVM-TM-311 Rev B) Tj ET
+BT /F1 10 Tf 383.3 266 Td (Weekly) Tj ET
+BT /F1 10 Tf 50.0 238 Td (4.2 Production parts shall be validated at a maximum test temperature of 85 °C according to) Tj ET
+BT /F1 10 Tf 50.0 224 Td (Test Method CVM-TM-320.) Tj ET
+BT /F1 10 Tf 50.0 196 Td (4.3 Thermal validation according to CVM-TM-320 shall be performed at a minimum test) Tj ET
+BT /F1 10 Tf 50.0 182 Td (temperature of 105 °C for 500 hours.) Tj ET
+BT /F1 10 Tf 50.0 154 Td (5 Change Management) Tj ET
+BT /F1 10 Tf 50.0 140 Td (5.1 The supplier shall notify Corvane Motors in writing at least 90 days before implementing) Tj ET
+BT /F1 10 Tf 430.0 112 Td (Page 1 of 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 1537 >>
+stream
+BT /F1 10 Tf 50.0 742 Td (CORVANE MOTORS | CVM-CSR-100 Rev C | Confidential) Tj ET
+BT /F1 10 Tf 50.0 714 Td (any change to a manufacturing process, as required by the Corvane Supplier Quality Manual) Tj ET
+BT /F1 10 Tf 50.0 700 Td (CVM-SQM-001.) Tj ET
+BT /F1 10 Tf 50.0 672 Td (5.2 Minor process changes shall be implemented no later than 30 days after written) Tj ET
+BT /F1 10 Tf 50.0 658 Td (notification to Corvane Motors and shall be documented according to Procedure QP-12.) Tj ET
+BT /F1 10 Tf 50.0 630 Td (6 Records) Tj ET
+BT /F1 10 Tf 50.0 616 Td (6.1 The supplier shall retain quality records for a minimum of 15 years after the end of) Tj ET
+BT /F1 10 Tf 50.0 602 Td (series production, unless a longer period is specified on the applicable drawing.) Tj ET
+BT /F1 10 Tf 50.0 574 Td (6.2 Inspection records described in Specification CVM-QS-110 shall be destroyed no later) Tj ET
+BT /F1 10 Tf 50.0 560 Td (than 10 years after the end of series production.) Tj ET
+BT /F1 10 Tf 50.0 532 Td (7 Engineering Standards) Tj ET
+BT /F1 10 Tf 50.0 518 Td (7.1 Fastener Compliance) Tj ET
+BT /F1 10 Tf 50.0 504 Td (Fasteners shall conform to Engineering Standard ES 4.12, and coated fasteners shall) Tj ET
+BT /F1 10 Tf 50.0 490 Td (additionally meet CVM-ES-210 Rev. B.) Tj ET
+BT /F1 10 Tf 50.0 462 Td (7.2 Replacement fasteners supplied for service shall conform to CVM-ES-210 Revision D.) Tj ET
+BT /F1 10 Tf 50.0 448 Td (Section 4.12 of this document does not apply to service fasteners.) Tj ET
+BT /F1 10 Tf 430.0 420 Td (Page 2 of 2) Tj ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000003584 00000 n 
+0000003710 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+5299
+%%EOF

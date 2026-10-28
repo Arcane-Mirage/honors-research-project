@@ -1,0 +1,59 @@
+TESSALY AUTOMOTIVE
+Customer-Specific Requirements: Electronic Control Units
+Document ID: TSA-CSR-300
+Revision: 2
+Effective Date: 2026-05-04
+All names, companies and document identifiers in this document are fictional.
+
+TSA 1 Introduction
+TSA 1.1 This document supplements the general purchasing terms of Tessaly Automotive for
+suppliers of electronic control units.
+
+TSA 2 Design and Development
+TSA 2.1 The supplier shall submit the design failure mode and effects analysis to Tessaly
+Automotive at each design review, and the analysis shall follow the methodology described in
+Tessaly procedure TSA-QP-031; where the analysis identifies a severity rating of 9 or 10,
+the supplier shall additionally document the mitigation actions according to TSA-QP-032 and
+shall report the results of all associated validation tests using the template in
+TSA-QF-031A.
+
+TSA 2.2 Software for electronic control units shall be developed according to TSA-SW-500
+rev.3.
+
+TSA 2.3 Software release notes shall reference TSA-SW-500 Rev 4 for all releases issued
+after 1 July 2026.
+
+TSA 3 Manufacturing
+TSA 3.1 Printed circuit board assemblies shall be cleaned according to the TSA-MP-210
+specification, and ionic contamination shall not exceed 1.0 µg/cm² NaCl equivalent.
+
+TSA 3.2 Conformal coating shall be applied in accordance with Specification TSA MP 215 and
+cured for at least 30 minutes.
+
+TSA 3.3 Coated assemblies shall be inspected under ultraviolet light as described in
+TSA-MP-215, and assemblies with coating voids larger than 0.5 mm shall be rejected.
+
+TSA 3.4 All solder joints shall be inspected by automated optical inspection on 100% of
+production units.
+
+TSA 3.5 Solder joint inspection shall be performed on a sampling basis of 5 units per
+production lot, as defined in TSA-QP-040.
+
+TSA 4 Traceability
+TSA 4.1 Each electronic control unit shall carry a serial number label containing the
+Tessaly part number, the hardware revision, and the date of manufacture in the format
+defined in TSA-LB-077. The label shall remain legible for the service life of the vehicle.
+The label position is shown on drawing TSA-DRW-1188, sheet 2.
+
+TSA 4.2 Traceability records shall be retained for at least 10 years.
+
+TSA 5 Problem Solving
+TSA 5.1 The supplier shall provide an initial containment response within 24 hours of
+notification of a nonconformance and shall complete the root cause analysis using the 8D
+format defined in TSA-QP-050.
+
+TSA 5.2 Initial containment responses shall be submitted no earlier than 72 hours after
+notification of a nonconformance, once sorting results are available.
+
+TSA 5.3 Warranty part analysis shall be performed according to TSA-QP-050 and TSA-WR-090.
+

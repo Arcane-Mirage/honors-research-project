@@ -1,0 +1,19 @@
+{
+  "format": "csr-lab.chunks/1",
+  "chunker": "simulated-paragraph(words=120)",
+  "source": {
+    "file": "cvm_pkg_210.txt"
+  },
+  "chunks": [
+    {
+      "chunk_id": "C001",
+      "title": "CORVANE MOTORS Packaging and Labeling Specification",
+      "content": "CORVANE MOTORS\nPackaging and Labeling Specification\nDocument ID: CVM-PKG-210\nRevision: D\nEffective Date: 2025-11-03\nAll names, companies and document identifiers in this document are fictional.\n\n1 Scope\n1.1 This specification defines packaging and labeling requirements for production parts\ndelivered to Corvane Motors.\n\n2 Packaging Design\n2.1 Packaging design shall follow the dimensional guidelines of Packaging Standard\nCVM-PKG-050.\n\n2.2 Expendable (one-way) cardboard containers shall be used for all parts weighing less than 2\nkg.\n\n3 Labeling\n3.1 Labels shall conform to CVM-LBL-220 and shall have a barcode height of no more than 20\nmm.\n\n3.2 Label data content shall follow the requirements of the Corvane Supplier Quality Manual."
+    },
+    {
+      "chunk_id": "C002",
+      "title": "4 Precedence 4.1 In the event",
+      "content": "4 Precedence\n4.1 In the event of a conflict between this specification and CVM-CSR-200, the requirements\nof this specification shall take precedence."
+    }
+  ]
+}
