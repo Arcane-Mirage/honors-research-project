@@ -55,16 +55,16 @@ def test_pdf_layout_backend(tmp_path):
 
 def test_committed_variant_datasets_match_generator(tmp_path):
     for name, writer in (
-        ("synthetic_pdf", lambda out: write_pdf_dataset(out)),
-        ("synthetic_chunked", lambda out: write_chunked_dataset(out)),
-        ("synthetic_chunked_window", lambda out: write_chunked_dataset(out, chunker="window", words=60)),
+        ("pdf", lambda out: write_pdf_dataset(out)),
+        ("chunked", lambda out: write_chunked_dataset(out)),
+        ("chunked_window", lambda out: write_chunked_dataset(out, chunker="window", words=60)),
     ):
         fresh = writer(tmp_path / name).parent
         for path in fresh.rglob("*"):
             if path.is_file():
                 rel = path.relative_to(fresh)
-                committed = PROJECT_ROOT / "data" / name / rel
-                assert committed.read_bytes() == path.read_bytes(), f"data/{name}/{rel} is out of date: regenerate it"
+                committed = PROJECT_ROOT / "data" / "synthetic" / name / rel
+                assert committed.read_bytes() == path.read_bytes(), f"data/synthetic/{name}/{rel} is out of date: regenerate it"
 
 
 def test_sweep_over_strategy_option_and_mock_rate(tmp_path):

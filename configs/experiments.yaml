@@ -14,7 +14,7 @@
 experiments:
   demo_mock:
     description: Offline demonstration of the four conditions on held-out cases with the mock model.
-    dataset: data/synthetic/manifest.json
+    dataset: data/synthetic/text/manifest.json
     split: heldout
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
@@ -90,7 +90,7 @@ experiments:
     description: >-
       Chunks from a simulated external chunker (paragraph packing, verbatim) given as chunk
       files. Per-chunk vs. per-requirement extraction, with and without source repair.
-    dataset: data/synthetic_chunked/manifest.json
+    dataset: data/synthetic/chunked/manifest.json
     split: all
     strategies: [chunk_units, chunk_units_repaired, staged_verified, staged_verified_repaired]
     repetitions: 3
@@ -99,7 +99,7 @@ experiments:
 
   pdf_mock:
     description: The four conditions on the PDF rendering (running headers, page footers, page breaks inside requirements, drawn tables).
-    dataset: data/synthetic_pdf/manifest.json
+    dataset: data/synthetic/pdf/manifest.json
     split: all
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
@@ -286,6 +286,6 @@ sweeps:
     description: The same cases as text and as PDF (with header/footer removal), same strategies.
     strategies: [staged, staged_verified, graph_assisted]
     grid:
-      dataset: [data/synthetic/manifest.json, data/synthetic_pdf/manifest.json]
+      dataset: [data/synthetic/text/manifest.json, data/synthetic/pdf/manifest.json]
       processing.pdf_strip_repeated_lines: [true]
     metrics: [requirements.recall, requirements.verbatim_exact_rate, references.f1, conflicts.f1]

@@ -27,7 +27,7 @@ input files ──► loader ──► units ──► chunk plan   (determinist
 ```
 
 Print the exact compiled workflow of any strategy with `csr-lab workflow --strategy NAME`
-(examples in `data/examples/workflow_*.mmd`).
+(examples in `docs/examples/workflow_*.mmd`).
 
 ## Two graphs
 

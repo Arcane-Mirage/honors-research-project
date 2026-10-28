@@ -108,10 +108,10 @@ def cmd_generate_data(args: argparse.Namespace) -> int:
     from csr_lab.datasets.variants import write_chunked_dataset, write_pdf_dataset
 
     if args.pdf:
-        manifest = write_pdf_dataset(args.out or PROJECT_ROOT / "data" / "synthetic_pdf", lines_per_page=args.lines_per_page)
+        manifest = write_pdf_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "pdf", lines_per_page=args.lines_per_page)
     elif args.chunked:
-        default = "synthetic_chunked" if args.chunked == "paragraph" else f"synthetic_chunked_{args.chunked}"
-        manifest = write_chunked_dataset(args.out or PROJECT_ROOT / "data" / default, chunker=args.chunked, words=args.chunk_words)
+        default = "chunked" if args.chunked == "paragraph" else f"chunked_{args.chunked}"
+        manifest = write_chunked_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / default, chunker=args.chunked, words=args.chunk_words)
     elif args.scaled:
         cases = [
             generate_scaled_case(
@@ -124,9 +124,9 @@ def cmd_generate_data(args: argparse.Namespace) -> int:
             )
             for seed in range(args.cases)
         ]
-        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "scaled", cases, name="synthetic_scaled")
+        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "scaled", cases, name="synthetic_scaled")
     else:
-        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "synthetic")
+        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "text")
     print(f"wrote {manifest}")
     return 0
 

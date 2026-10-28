@@ -23,7 +23,7 @@ def test_generator_is_deterministic(tmp_path):
 
 
 def test_committed_dataset_matches_generator(tmp_path):
-    committed = PROJECT_ROOT / "data" / "synthetic"
+    committed = PROJECT_ROOT / "data" / "synthetic" / "text"
     fresh = write_dataset(tmp_path / "fresh").parent
     for path in fresh.rglob("*"):
         if path.is_file():

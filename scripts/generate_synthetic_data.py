@@ -14,7 +14,7 @@ from csr_lab.datasets.synthetic import write_dataset
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", default=str(PROJECT_ROOT / "data" / "synthetic"))
+    parser.add_argument("--out", default=str(PROJECT_ROOT / "data" / "synthetic" / "text"))
     args = parser.parse_args(argv)
     manifest = write_dataset(args.out)
     print(f"wrote {manifest}")

@@ -130,10 +130,10 @@ decisions of `_merge_llm`).
   for any content change (the dataset SHA-256 is stored with every experiment).
 - Scaled cases (`csr-lab generate-data --scaled N --refs K --filler F --position start|middle|end`)
   support the planned ablations on document length, reference density and position.
-- Input variants with the same cases and gold: `data/synthetic_pdf/` (`generate-data --pdf`:
+- Input variants with the same cases and gold: `data/synthetic/pdf/` (`generate-data --pdf`:
   running headers, page footers, page breaks inside requirements, drawn tables; gold offsets are
-  re-anchored to the extracted text when scoring) and `data/synthetic_chunked/`,
-  `data/synthetic_chunked_window/` (`generate-data --chunked paragraph|window`: chunk files from a
+  re-anchored to the extracted text when scoring) and `data/synthetic/chunked/`,
+  `data/synthetic/chunked_window/` (`generate-data --chunked paragraph|window`: chunk files from a
   simulated external chunker; chunk text is copied verbatim).
 
 ## Planned ablations already supported by configuration

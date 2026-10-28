@@ -6,7 +6,7 @@ Offline end-to-end demonstration (no API key needed).
 2. Analyses one two-document bundle with every built-in strategy.
 3. Runs the `demo_mock` experiment and prints where the report is.
 
-With --write-examples it also refreshes the committed examples in data/examples/.
+With --write-examples it also refreshes the committed examples in docs/examples/.
 Everything uses the mock model: the output shows that the system works, not how
 well a real LLM performs.
 """
@@ -33,11 +33,11 @@ EXAMPLE_CASE = "dev_corvane_packaging"
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--write-examples", action="store_true", help="refresh data/examples/")
+    parser.add_argument("--write-examples", action="store_true", help="refresh docs/examples/")
     parser.add_argument("--repetitions", type=int, default=3)
     args = parser.parse_args(argv)
 
-    manifest = PROJECT_ROOT / "data" / "synthetic" / "manifest.json"
+    manifest = PROJECT_ROOT / "data" / "synthetic" / "text" / "manifest.json"
     if not manifest.is_file():
         write_dataset(manifest.parent)
         print(f"generated {manifest}")
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {name:18} {len(result.requirements):>4} {f1(ev.references.f1):>7} {f1(ev.conflicts.f1):>11} {result.metadata.operational.llm_calls:>9}")
 
     if args.write_examples:
-        out = PROJECT_ROOT / "data" / "examples"
+        out = PROJECT_ROOT / "docs" / "examples"
         out.mkdir(parents=True, exist_ok=True)
         result = results["graph_assisted"]
         (out / f"{EXAMPLE_CASE}.graph_assisted.result.json").write_text(result.model_dump_json(indent=2) + "\n", encoding="utf-8")

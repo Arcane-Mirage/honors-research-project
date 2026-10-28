@@ -278,7 +278,7 @@ class AppConfig(_Settings):
 class ExperimentConfig(_Settings):
     name: str
     description: str = ""
-    dataset: str = "data/synthetic/manifest.json"
+    dataset: str = "data/synthetic/text/manifest.json"
     split: Literal["dev", "heldout", "all"] = "heldout"
     strategies: list[str] = Field(default_factory=lambda: ["single_pass", "staged", "staged_verified", "graph_assisted"])
     repetitions: int = Field(default=1, ge=1)
