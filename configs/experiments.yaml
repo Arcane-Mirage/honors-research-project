@@ -126,13 +126,6 @@ experiments:
     evaluation: {baseline_strategy: graph_assisted_ctx_ids}
     llm: lmstudio                   # a profile from configs/llms.yaml; `--llm NAME` picks another
 
-  local_llama_dev:
-    description: Local model through llama.cpp `llama-server` (OpenAI-compatible API) on the dev split.
-    split: dev
-    strategies: [single_pass, staged, staged_verified, graph_assisted]
-    repetitions: 3
-    llm: llama_cpp                  # model: auto records the GGUF name llama-server reports
-
   local_lmstudio_dev:
     description: >-
       Local model through LM Studio's server (OpenAI-compatible, port 1234) on the dev split.

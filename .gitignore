@@ -229,5 +229,9 @@ outputs/
 input/*
 !input/README.md
 graphs/
-# PURE dataset (CC BY 4.0, 85 MB): download from https://zenodo.org/records/7118517
-data/pure/
+# Datasets: only the generated synthetic ones are committed. Everything else in data/
+# (e.g. PURE, https://zenodo.org/records/7118517) stays local.
+data/*
+!data/README.md
+!data/synthetic/
+data/synthetic/scaled/

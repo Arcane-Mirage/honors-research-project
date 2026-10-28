@@ -16,7 +16,7 @@ documents:
 This is an experimentation environment, not a single optimised evaluator. Strategies are
 selectable, every strategy emits the same JSON schema, and all are scored by the same code
 against hand-specified ground truth. Everything runs offline with a mock model; real models
-are used through any OpenAI-compatible endpoint (a commercial API or a local `llama-server`).
+are used through any OpenAI-compatible endpoint (a commercial API or a local LM Studio server).
 
 All documents, companies and identifiers in this repository are fictional. No proprietary
 CSR content, prompts or code are used (see [Academic separation](#academic-separation)).
@@ -156,7 +156,7 @@ Mock error rates for the new model tasks: `llm.mock.merge_revision_drop_rate`, `
 ## Choosing the LLM
 
 Any OpenAI-compatible chat-completions server works. Connections are named **profiles** in
-[configs/llms.yaml](configs/llms.yaml): `mock` (offline), `lmstudio`, `llama_cpp`, `openai`,
+[configs/llms.yaml](configs/llms.yaml): `mock` (offline), `lmstudio`, `openai`,
 `azure`. Every command that calls a model takes `--llm NAME`:
 
 ```bash
@@ -183,8 +183,7 @@ Which profile applies:
 `--model` and `--base-url` adjust the chosen profile for one run. The experiments `dev` and
 `heldout` have no `llm:` of their own, so they run with whatever profile you select.
 
-**llama.cpp**: `llama-server -m /path/to/model.gguf -c 16384 -ngl 99 --port 8080`, then
-`--llm llama_cpp`. **Commercial API**: key in `.env` as `OPENAI_API_KEY`, set `model:` in the
+**Commercial API**: key in `.env` as `OPENAI_API_KEY`, set `model:` in the
 `openai` profile. **Azure OpenAI**: fill in the `azure` profile. Keyless (Microsoft Entra ID):
 `auth: {method: azure_identity}` after `pip install azure-identity`; API key:
 `auth: {method: env, header: api-key, scheme: null}`. `auth: {method: command, command: ...}`

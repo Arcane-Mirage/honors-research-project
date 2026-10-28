@@ -9,7 +9,7 @@
 #
 # Each profile holds any `llm:` settings from configs/default.yaml; anything not set here
 # keeps its value from default.yaml. `model: auto` asks the server which model is loaded
-# (LM Studio, llama-server), so switching models in LM Studio needs no config change. The
+# (LM Studio), so switching models in LM Studio needs no config change. The
 # resolved model name is what gets stored with every result.
 #
 # Experiments that pin a model refer to a profile (`llm: lmstudio` or
@@ -31,16 +31,6 @@ profiles:
     temperature: 0.0
     timeout_seconds: 900
     max_output_tokens: 8192
-
-  llama_cpp:                  # llama-server -m MODEL.gguf -c 16384 -ngl 99 --port 8080
-    provider: openai_compatible
-    base_url: http://localhost:8080/v1
-    model: auto
-    auth: {method: none}
-    structured_output: json_schema
-    temperature: 0.0
-    timeout_seconds: 900
-    max_output_tokens: 4096
 
   openai:                     # key in .env as OPENAI_API_KEY
     provider: openai_compatible

@@ -9,7 +9,7 @@
 llm:
   provider: mock              # mock | openai_compatible
   model: mock-heuristic-v1
-  base_url: null              # e.g. https://api.openai.com/v1 or http://localhost:8080/v1
+  base_url: null              # e.g. https://api.openai.com/v1 or http://localhost:1234/v1
   api_key_env: OPENAI_API_KEY # name of the environment variable that holds the key
   auth:                       # how credentials are sent (see llm/auth.py)
     method: env               # env | command | azure_identity | none

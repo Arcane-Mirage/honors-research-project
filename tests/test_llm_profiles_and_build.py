@@ -62,8 +62,8 @@ def test_experiment_llm_may_name_a_profile():
 
 
 def test_default_profile_from_environment(monkeypatch):
-    monkeypatch.setenv("CSR_LAB_LLM", "llama_cpp")
-    assert default_llm_profile() == "llama_cpp"
+    monkeypatch.setenv("CSR_LAB_LLM", "openai")
+    assert default_llm_profile() == "openai"
 
 
 def test_llms_command_lists_and_sets_default(tmp_path, capsys):
