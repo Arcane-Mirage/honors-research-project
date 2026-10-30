@@ -174,9 +174,6 @@ it, the client switches to schema-in-prompt mode and records a warning; replies 
 validated against the Pydantic model, retried a bounded number of times, and recorded as
 failures if still invalid. Token counts and cost are stored only when the server reports them.
 
-Keep the model fixed when comparing strategies. A model change is a separate variable:
-run it as a separate experiment.
-
 ## Adding a strategy
 
 Without code, as a variant in `configs/experiments.yaml`:
@@ -280,23 +277,16 @@ csr-lab build-graph --graph graphs/main.json --no-update-graph   # use it, do no
 Files already merged (same bytes) are skipped, so re-running after adding files only analyses
 the new ones (`--force` redoes them). The graph is saved after each bundle. Each build writes
 `outputs/graph_builds/<time>-<graph>/build_report.md` (graph size before/after, and per bundle:
-requirements, references, conflicts, nodes/edges added, model calls, tokens, seconds), plus each
-bundle's result JSON. `input/` contents and `graphs/` are git-ignored.
+requirements, references, conflicts, nodes/edges added, model calls, tokens, seconds).
 
-**Graph formats.** JSON is the graph itself: lossless, validated, queryable, and what the
-pipeline reads back. Next to `graphs/main.json`, every update writes:
+**Graph formats.** JSON is the graph itself. Next to `graphs/main.json`, every update writes:
 
-- `main.overview.mmd`: Mermaid, one box per document; the one to show people;
+- `main.overview.mmd`: Mermaid, one box per document;
 - `main.detail.mmd`: Mermaid with every requirement;
 - `main.llm.md`: Markdown for an LLM: documents by name and revision, each requirement's
-  verbatim text with what it refers to, and potential conflicts kept separate as hypotheses.
+  verbatim text with what it refers to, and potential conflicts.
   The same view: `csr-lab graph result.json --llm-text g.md`, `graph-store export PATH --llm-text g.md`.
-
-Same graph, different rendering: for prompting, plain sentences or Markdown are usually better
-than raw JSON (fewer tokens, no opaque IDs to join). Which rendering helps *your* model is
-measurable: the `graph_context_local` experiment compares sentence, triple, JSON and ID
-renderings of the graph context in conflict prompts.
-
+  
 **Curating.**
 
 ```bash
@@ -338,5 +328,3 @@ src/csr_lab/
   storage/          SQLite experiment store
   datasets/         synthetic generator, PDF and chunked variants, manifest loader
 ```
-
-Details and diagrams: [docs/architecture.md](docs/architecture.md).
