@@ -18,9 +18,6 @@ selectable, every strategy emits the same JSON schema, and all are scored by the
 against hand-specified ground truth. Everything runs offline with a mock model; real models
 are used through any OpenAI-compatible endpoint (a commercial API or a local LM Studio server).
 
-All documents, companies and identifiers in this repository are fictional. No proprietary
-CSR content, prompts or code are used (see [Academic separation](#academic-separation)).
-
 ---
 
 ## Quick start
