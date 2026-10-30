@@ -8,7 +8,7 @@ documents:
 2. **Potential conflict detection**: flagging requirements that may be incompatible, with
    source evidence, for human review.
 
-> **Research question.** To what extent do structured, multi-stage processing and JSON-based
+> **Research question.** To what extent do structured, multi-stage processing and
 > document relationship tracking improve the completeness and accuracy of referenced-document
 > extraction and potential conflict identification in CSR documents, compared with a
 > single-pass LLM approach?
