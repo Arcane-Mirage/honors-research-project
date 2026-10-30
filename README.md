@@ -24,18 +24,6 @@ are used through any OpenAI-compatible endpoint (a commercial API or a local LM 
 
 Requires Python 3.11 or later.
 
-**Linux / macOS**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.lock      # exact, pinned versions
-pip install -e . --no-deps            # this package (editable)
-pytest                                # ~156 tests, ~5 s
-python scripts/run_demo.py            # offline end-to-end demo
-```
-
 **Windows (PowerShell)**
 
 ```powershell
@@ -48,16 +36,19 @@ pytest
 python scripts\run_demo.py
 ```
 
-Never install the dependencies globally. Every command below assumes the virtual
-environment is active (or call `.venv/bin/python -m csr_lab ...` directly).
-
-The lockfile was produced with `pip-compile` on Python 3.14/Linux. On another platform pip may
-add a platform-only dependency (for example `colorama` on Windows); the pinned versions are
-otherwise identical. To change dependencies, edit `pyproject.toml` and run:
+**Linux / macOS**
 
 ```bash
-pip-compile --extra dev --strip-extras --no-emit-index-url --output-file requirements.lock pyproject.toml
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.lock      # exact, pinned versions
+pip install -e . --no-deps            # this package (editable)
+pytest                                # ~156 tests, ~5 s
+python scripts/run_demo.py            # offline end-to-end demo
 ```
+
+The lockfile was produced with `pip-compile` on Python 3.14/Linux.
 
 ## Commands
 
