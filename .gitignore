@@ -235,3 +235,5 @@ data/*
 !data/README.md
 !data/synthetic/
 data/synthetic/scaled/
+
+docs/
