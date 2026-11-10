@@ -1,6 +1,6 @@
 # Input
 
-Drop documents here (`.pdf`, `.txt`, or chunk `.json` files), then run:
+Drop documents here (`.pdf`, `.txt`, or `.json` with a `text` field), then run:
 
 ```bash
 csr-lab build-graph --dry-run           # what would run / be skipped

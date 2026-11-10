@@ -16,6 +16,7 @@ from csr_lab.llm.provider import create_provider
 from csr_lab.pipelines.base import PipelineContext, StrategySpec
 from csr_lab.pipelines.registry import build_workflow, get_strategy
 from csr_lab.pipelines.state import initial_state
+from csr_lab.prompts import system_prompt
 from csr_lab.relationships.store import GraphStore
 from csr_lab.schemas import AnalysisResult, InputDocument
 
@@ -55,7 +56,9 @@ def run_analysis(
     ctx = PipelineContext(
         config=config,
         strategy=spec,
-        llm=StructuredLLM(provider, config.llm, recorder, seed=seed),
+        llm=StructuredLLM(
+            provider, config.llm, recorder, seed=seed, extra_system=system_prompt.render(config.system_prompt), extra_system_tasks=system_prompt.TASKS
+        ),
         provider=provider,
         recorder=recorder,
         sources=SourceIndex(documents),

@@ -1,6 +1,10 @@
 """src/csr_lab/prompts/baseline.py
 
-Single-pass baseline prompt: everything in one structured call per chunk.
+Single-pass baseline prompt: references and conflicts for a group of chapters in one call.
+
+Each unit in the input is one requirement (a whole chapter, or a model-made chunk). Units
+marked ``context_only`` repeat the end of the previous group: they may appear in conflicts
+but their references are reported where they are not context.
 """
 
 from __future__ import annotations
@@ -12,13 +16,10 @@ from csr_lab.prompts.references import ExtractedReference
 from csr_lab.schemas import ConflictType
 
 
-class SinglePassRequirement(BaseModel):
+class SinglePassUnitReferences(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    key: str = Field(description="Local key: R1, R2, ...")
-    source_document_id: str
-    chapter: str | None = None
-    requirement_text: str
+    key: str = Field(description="The unit's key from the input: R1, R2, ...")
     references: list[ExtractedReference] = Field(default_factory=list)
 
 
@@ -42,19 +43,17 @@ class SinglePassConflict(BaseModel):
 class SinglePassResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    requirements: list[SinglePassRequirement]
+    results: list[SinglePassUnitReferences]
     potential_conflicts: list[SinglePassConflict] = Field(default_factory=list)
 
 
 SPEC = PromptSpec(
     name="single_pass_extraction",
-    version="baseline.v1",
+    version="baseline.v2",
     system=(
         "You analyse customer-specific requirements (CSR) documents for automotive supplier quality "
         "engineering and return structured JSON.\n\n" + COMMON_RULES + "\n"
-        "- chapter: the section label exactly as printed (e.g. '4.2.1' or 'TSA 2.1'). For a paragraph "
-        "under a heading without its own number, use the heading's label. Do not include the label in "
-        "requirement_text.\n"
+        "- Each input unit is one requirement: a whole chapter, keyed R1, R2, ...\n"
         "- A potential conflict is a pair of requirements whose obligations cannot both be met as "
         "written: contradictory obligations, incompatible numeric limits, incompatible timing, "
         "incompatible processes, contradictory precedence statements, or a document excluded in one "
@@ -63,9 +62,9 @@ SPEC = PromptSpec(
         "which requirement prevails."
     ),
     instructions=(
-        "Extract every requirement from the documents below, the documents each requirement "
-        "references, and potential conflicts between requirements (also across documents). Give each "
-        "requirement a key R1, R2, ... and use these keys in potential_conflicts. Use the document_id "
-        "values from the input as source_document_id."
+        "For each unit below that is not context_only, list every document its text references "
+        "(an empty list when it references none), with one entry in `results` per unit key. Then list "
+        "potential conflicts between units, also across documents, using the unit keys; context_only "
+        "units may take part in conflicts."
     ),
 )

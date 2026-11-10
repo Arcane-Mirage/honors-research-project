@@ -15,17 +15,15 @@ Each condition adds one thing to the previous one, so adjacent conditions
 can be compared to isolate decomposition (A->B), verification (B->C) and
 graph-informed processing (C->D).
 
-A second family starts from *model-made* chunks, the common industry approach
+A second family starts from *model-made* chunks instead of chapters, the common industry approach
 (fill a batch to N words, ask the model for semantic chunks, extract references
 per chunk). It is the realistic baseline to compare the conditions above against:
 
-    condition              chunks          unit          chunk text      isolates
-    llm_chunked            model           chunk         as returned     baseline (per-chunk extraction)
-    llm_chunked_repaired   model           chunk         source slice    effect of the fidelity repair
-    llm_chunked_staged     model           requirement   as returned     effect of per-requirement extraction
+    condition              units                chunk text      isolates
+    llm_chunked            model chunks         as returned     baseline (per-chunk extraction)
+    llm_chunked_repaired   model chunks         source slice    effect of the fidelity repair
 
-Pre-chunked input (a chunks.json file) replaces the chunks of *every* strategy, so
-the same comparisons can be run on chunks made by any external tool.
+All other conditions use whole chapters as units; every unit is one requirement.
 """
 
 from __future__ import annotations
@@ -35,7 +33,7 @@ from csr_lab.pipelines.base import StrategySpec
 
 SINGLE_PASS = StrategySpec(
     name="single_pass",
-    description="Condition A: one structured call per chunk extracts requirements, references and conflicts.",
+    description="Condition A: one structured call per group of chapters returns references and conflicts.",
     options=PipelineOptions(
         workflow="single_pass",
         verification=VerificationSettings(enabled=False),
@@ -46,7 +44,7 @@ SINGLE_PASS = StrategySpec(
 
 STAGED = StrategySpec(
     name="staged",
-    description="Condition B: separate requirement, reference and pairwise conflict stages; no verification, no graph use.",
+    description="Condition B: separate reference and pairwise conflict stages; no verification, no graph use.",
     options=PipelineOptions(
         workflow="staged",
         verification=VerificationSettings(enabled=False),
@@ -83,10 +81,10 @@ GRAPH_ASSISTED = StrategySpec(
     ),
 )
 
-def _llm_chunked(unit: str, repair: str) -> PipelineOptions:
+def _llm_chunked(repair: str) -> PipelineOptions:
     return PipelineOptions(
         workflow="staged",
-        chunking=ChunkingSettings(method="llm", unit=unit, repair=repair),  # type: ignore[arg-type]
+        chunking=ChunkingSettings(method="llm", repair=repair),  # type: ignore[arg-type]
         verification=VerificationSettings(enabled=False),
         conflicts=ConflictSettings(enabled=True, validate_evidence=False),
         graph=GraphSettings(enabled=False),
@@ -97,21 +95,15 @@ LLM_CHUNKED = StrategySpec(
     name="llm_chunked",
     description=(
         "Industry-style baseline: the model splits ~2500-word batches into ~500-word semantic chunks; "
-        "references are extracted per chunk; chunk text is used as returned."
+        "each chunk is one requirement; chunk text is used as returned."
     ),
-    options=_llm_chunked("chunk", "none"),
+    options=_llm_chunked("none"),
 )
 
 LLM_CHUNKED_REPAIRED = StrategySpec(
     name="llm_chunked_repaired",
     description="llm_chunked, but chunks whose wording differs from the source are replaced by the aligned source text.",
-    options=_llm_chunked("chunk", "source_slice"),
+    options=_llm_chunked("source_slice"),
 )
 
-LLM_CHUNKED_STAGED = StrategySpec(
-    name="llm_chunked_staged",
-    description="llm_chunked, but individual requirements are identified inside each chunk before reference extraction.",
-    options=_llm_chunked("requirement", "none"),
-)
-
-BUILT_IN = [SINGLE_PASS, STAGED, STAGED_VERIFIED, GRAPH_ASSISTED, LLM_CHUNKED, LLM_CHUNKED_REPAIRED, LLM_CHUNKED_STAGED]
+BUILT_IN = [SINGLE_PASS, STAGED, STAGED_VERIFIED, GRAPH_ASSISTED, LLM_CHUNKED, LLM_CHUNKED_REPAIRED]

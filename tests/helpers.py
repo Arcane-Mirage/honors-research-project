@@ -35,7 +35,7 @@ class ScriptedProvider(LLMProvider):
 
 
 class GoldOracleProvider(LLMProvider):
-    """TEST ONLY: answers single-pass prompts from gold annotations to check the evaluator end to end."""
+    """TEST ONLY: answers single-pass prompts (one call, all chapters) from gold annotations to check the evaluator."""
 
     is_mock = True
 
@@ -47,35 +47,43 @@ class GoldOracleProvider(LLMProvider):
 
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         assert request.task == "single_pass_extraction"
-        reqs, keys = [], {}
-        for i, g in enumerate(self.gold.requirements, start=1):
-            key = f"R{i}"
-            keys[g.gold_id] = key
+        user = next(m["content"] for m in reversed(request.messages) if "<input_json>" in m["content"])
+        units = parse_input_payload(user)["units"]
+
+        def flat(text: str) -> str:
+            return " ".join(text.split())
+
+        # Each gold requirement lies inside one unit (chapter) of its document.
+        holder: dict[str, str] = {}
+        for g in self.gold.requirements:
+            for u in units:
+                if u["document_id"] == g.source_document_id and flat(g.requirement_text) in flat(u["text"]):
+                    holder[g.gold_id] = u["key"]
+                    break
+        results = []
+        for u in units:
+            if u["context_only"]:
+                continue
             refs = []
-            for r in g.references:
-                ident = r.canonical_identifier if r.resolution == "identifier" else r.mention_text
-                refs.append(
-                    {
-                        "identifier": ident,
-                        "revision": r.revision,
-                        "relation": r.relation.value,
-                        "quoted_text": r.mention_text,
-                    }
-                )
-            reqs.append(
-                {"key": key, "source_document_id": g.source_document_id, "chapter": g.chapter, "requirement_text": g.requirement_text, "references": refs}
-            )
+            for g in self.gold.requirements:
+                if holder.get(g.gold_id) != u["key"]:
+                    continue
+                for r in g.references:
+                    ident = r.canonical_identifier if r.resolution == "identifier" else r.mention_text
+                    refs.append({"identifier": ident, "revision": r.revision, "relation": r.relation.value, "quoted_text": r.mention_text})
+            results.append({"key": u["key"], "references": refs})
         conflicts = [
             {
-                "requirement_keys": [keys[c.requirement_ids[0]], keys[c.requirement_ids[1]]],
+                "requirement_keys": [holder[c.requirement_ids[0]], holder[c.requirement_ids[1]]],
                 "conflict_type": c.conflict_type.value,
                 "description": c.note or "gold",
                 "ambiguous": c.category == "ambiguous",
-                "evidence": [{"requirement_key": keys[e.requirement_id], "quoted_text": e.quoted_text} for e in c.evidence],
+                "evidence": [{"requirement_key": holder[e.requirement_id], "quoted_text": e.quoted_text} for e in c.evidence],
             }
             for c in self.gold.conflicts
+            if c.requirement_ids[0] in holder and c.requirement_ids[1] in holder
         ]
-        return GenerationResponse(text=json.dumps({"requirements": reqs, "potential_conflicts": conflicts}))
+        return GenerationResponse(text=json.dumps({"results": results, "potential_conflicts": conflicts}))
 
 
 def _escape(text: str) -> str:

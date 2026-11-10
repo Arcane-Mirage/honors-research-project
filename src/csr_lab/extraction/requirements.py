@@ -1,17 +1,17 @@
 """src/csr_lab/extraction/requirements.py
 
-Turn model-reported requirements into grounded ``RequirementDraft`` records.
+Turn analysis units (whole chapters, or model-made chunks) into grounded ``RequirementDraft`` records.
 
 Grounding is applied identically in every strategy and only *annotates*:
-* the reported text is located in the source (exact, then whitespace-insensitive);
+* the unit text is located in the source (exact, then whitespace-insensitive);
 * when found, the stored text is the exact source slice, so wording is verbatim;
-* when not found, the model's text is kept and flagged ``not_found`` with no offsets.
+* when not found (a reworded model chunk), the text is kept and flagged ``not_found``
+  with no offsets.
 
-Requirements found twice (for example in overlapping chunks) are merged.
-IDs come from the source document revision, chapter and verbatim text
-(``csr_lab.ids.requirement_id``), so the same requirement gets the same ID in
-every run. The rare exact duplicate inside one chapter gets a ``-2``, ``-3`` suffix
-in source order.
+Units found twice (overlapping model chunks) are merged. The ID is document + chapter
+(``csr_lab.ids.requirement_id``), so a chapter gets the same ID in every run. A repeated
+ID (a chapter label printed twice, or several model chunks in one chapter) gets a ``-2``,
+``-3`` suffix in source order.
 """
 
 from __future__ import annotations
@@ -25,15 +25,14 @@ from csr_lab.ingestion.segmentation import Segment
 
 
 @dataclass
-class ReportedRequirement:
-    """A requirement as reported by a model, before grounding."""
+class UnitText:
+    """One analysis unit before grounding."""
 
     document_id: str | None
     chapter: str | None
     text: str
     chunk_id: str
     segment_id: str | None = None
-    local_key: str | None = None  # single-pass keys (R1, R2 ...)
 
 
 def _segment_for_span(segments: list[Segment], document_id: str, start: int, end: int) -> Segment | None:
@@ -48,19 +47,16 @@ def _segment_for_span(segments: list[Segment], document_id: str, start: int, end
 
 
 def ground_requirements(
-    reported: list[ReportedRequirement],
+    reported: list[UnitText],
     *,
     sources: SourceIndex,
     segments: list[Segment],
     chunk_documents: dict[str, list[str]],
-) -> tuple[list[RequirementDraft], dict[str, str], list[str]]:
-    """Ground, deduplicate and number requirements.
-
-    Returns (drafts, local_key -> requirement_id, warnings).
-    """
+) -> tuple[list[RequirementDraft], list[str]]:
+    """Ground, deduplicate and number requirements. Returns (drafts, warnings)."""
     seg_by_id = {s.segment_id: s for s in segments}
     warnings: list[str] = []
-    grounded: list[tuple[RequirementDraft, ReportedRequirement]] = []
+    grounded: list[tuple[RequirementDraft, UnitText]] = []
 
     for i, rep in enumerate(reported):
         text = rep.text.strip()
@@ -124,7 +120,7 @@ def ground_requirements(
         grounded.append((draft, rep))
 
     # Merge duplicates (same document, overlapping spans or identical text).
-    merged: list[tuple[RequirementDraft, list[ReportedRequirement]]] = []
+    merged: list[tuple[RequirementDraft, list[UnitText]]] = []
     for draft, rep in grounded:
         target = None
         for existing, reps in merged:
@@ -157,14 +153,10 @@ def ground_requirements(
         )
     )
     seen_ids: dict[str, int] = {}
-    key_map: dict[str, str] = {}
     drafts: list[RequirementDraft] = []
-    for draft, reps in merged:
-        rid = requirement_id(draft.document_id, draft.chapter, draft.text)
+    for draft, _ in merged:
+        rid = requirement_id(draft.document_id, draft.chapter)
         seen_ids[rid] = seen_ids.get(rid, 0) + 1
         draft.requirement_id = rid if seen_ids[rid] == 1 else f"{rid}-{seen_ids[rid]}"
         drafts.append(draft)
-        for rep in reps:
-            if rep.local_key:
-                key_map[f"{rep.chunk_id}:{rep.local_key}"] = draft.requirement_id
-    return drafts, key_map, warnings
+    return drafts, warnings

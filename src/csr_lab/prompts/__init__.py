@@ -51,10 +51,7 @@ def parse_input_payload(text: str) -> dict[str, Any]:
 
 COMMON_RULES = """\
 Definitions used in every task:
-- A requirement is a statement that obliges, permits under conditions, or prohibits something,
-  usually with "shall", "must" or "is required". Headings, titles, document identifiers, scope
-  descriptions and purely informational sentences are not requirements.
-- Requirement text is copied verbatim from the source. Never summarise, correct or paraphrase it.
+- Each requirement is a whole chapter (or chunk) of a document, given to you verbatim.
 - A document reference is an explicit mention of another document (specification, standard,
   drawing, procedure, manual, form, customer-specific requirements document) by its identifier
   or by its specific name. Section or clause numbers, part numbers, dates, quantities,
@@ -70,11 +67,10 @@ Definitions used in every task:
 
 
 def prompt_versions() -> dict[str, str]:
-    from csr_lab.prompts import baseline, chunking, conflicts, merging, references, requirements, verification
+    from csr_lab.prompts import baseline, chunking, conflicts, merging, references, verification
 
     specs = [
         baseline.SPEC,
-        requirements.SPEC,
         references.SPEC,
         verification.SPEC,
         conflicts.SPEC,

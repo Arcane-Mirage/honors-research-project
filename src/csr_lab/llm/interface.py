@@ -196,8 +196,18 @@ def _short_error(exc: Exception) -> str:
 class StructuredLLM:
     """Validated JSON calls on top of any ``LLMProvider``."""
 
-    def __init__(self, provider: LLMProvider, settings: LLMSettings, recorder: CallRecorder, seed: int | None = None):
+    def __init__(
+        self,
+        provider: LLMProvider,
+        settings: LLMSettings,
+        recorder: CallRecorder,
+        seed: int | None = None,
+        extra_system: str | None = None,
+        extra_system_tasks: frozenset[str] = frozenset(),
+    ):
         self.provider = provider
+        self.extra_system = extra_system  # prompts/system_prompt.py, appended for extra_system_tasks
+        self.extra_system_tasks = extra_system_tasks
         self.settings = settings
         self.recorder = recorder
         self.seed = seed if seed is not None else settings.seed
@@ -228,6 +238,8 @@ class StructuredLLM:
     ) -> StructuredResult[T]:
         call_id = self.recorder.next_id()
         mode = self._mode
+        if self.extra_system and task in self.extra_system_tasks:
+            system = f"{system}\n\n{self.extra_system}"
         messages = self._messages(system, user, response_model, mode)
         schema = response_model.model_json_schema()
         errors: list[str] = []

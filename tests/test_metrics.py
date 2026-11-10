@@ -24,7 +24,8 @@ def test_gold_oracle_scores_perfectly(dataset, config, case_id):
     _, docs, gold = case_documents(dataset, case_id)
     result = run_analysis(docs, strategy="single_pass", config=config, provider=GoldOracleProvider(gold))
     ev = evaluate_case(result, gold)
-    assert (ev.requirements.precision, ev.requirements.recall) == (1.0, 1.0)
+    # Every gold requirement is found; informational chapters (scope) are extra units, not errors here.
+    assert ev.requirements.recall == 1.0 and ev.units.gold_coverage == 1.0
     assert ev.requirements.chapter_accuracy == 1.0 and ev.requirements.verbatim_exact_rate == 1.0
     assert ev.requirements.location_accuracy == 1.0
     named = sum(1 for g in gold.requirements for r in g.references if r.resolution == "name_alias")
@@ -45,7 +46,8 @@ def test_reference_on_wrong_requirement_is_an_error(dataset, config):
     data = result.model_dump(mode="json")
     reqs = data["requirements"]
     src = next(r for r in reqs if r["reference_mentions"])
-    dst = next(r for r in reqs if not r["reference_mentions"])
+    gold_chapters = {g.chapter for g in gold.requirements}
+    dst = next(r for r in reqs if not r["reference_mentions"] and r["chapter"] in gold_chapters)
     moved = src["reference_mentions"].pop(0)
     src["referenced_document_ids"] = list(dict.fromkeys(m["document_id"] for m in src["reference_mentions"]))
     dst["reference_mentions"].append(moved)

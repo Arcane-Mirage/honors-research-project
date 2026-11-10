@@ -126,7 +126,6 @@ def test_prompt_versions_include_content_hash():
     versions = prompt_versions()
     assert set(versions) == {
         "single_pass_extraction",
-        "requirement_identification",
         "reference_extraction",
         "reference_verification",
         "conflict_analysis",

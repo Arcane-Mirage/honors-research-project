@@ -33,16 +33,15 @@ from csr_lab.extraction.graph_audit import known_document_candidates, resolve_al
 from csr_lab.extraction.grounding import TextIndex
 from csr_lab.extraction.merging import hybrid_merge, llm_merge
 from csr_lab.extraction.references import MentionCounter, extract_references, mentions_from_model
-from csr_lab.extraction.requirements import ReportedRequirement, ground_requirements
+from csr_lab.extraction.requirements import UnitText, ground_requirements
 from csr_lab.extraction.verification import targeted_reextraction, verify_pass
-from csr_lab.ingestion.chunking import chunk_raw_text, plan_chunks
-from csr_lab.ingestion.segmentation import segment_document
-from csr_lab.ingestion.units import ChunkInput, model_chunks, segments_from_chunks
+from csr_lab.ingestion.chapters import split_chapters
+from csr_lab.ingestion.chunking import plan_chunks
+from csr_lab.ingestion.units import model_chunks, segments_from_chunks
 from csr_lab.pipelines.assembly import assemble, provisional_graph
 from csr_lab.pipelines.base import PipelineContext
 from csr_lab.pipelines.state import PipelineState
 from csr_lab.prompts import baseline as baseline_prompt
-from csr_lab.prompts import requirements as requirement_prompt
 from csr_lab.relationships.store import with_saved_documents
 from csr_lab.schemas import ConflictType, CoverageLimitation, GraphDecision, MentionStatus, VerificationEvent
 
@@ -74,20 +73,11 @@ def _copy_mentions(state: PipelineState) -> list[MentionDraft]:
 # ---------------------------------------------------------------------------
 
 
-def _uncertain_segment_limitations(segments) -> list[CoverageLimitation]:
-    return [
-        CoverageLimitation(kind="segmentation_uncertain", document_id=seg.document_id, message=f"{seg.segment_id}: {'; '.join(seg.notes)}")
-        for seg in segments
-        if seg.is_candidate and any(n.startswith("numbering jumps") or n.startswith("long block") for n in seg.notes)
-    ]
-
-
 @timed("prepare_input")
 def prepare_input(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
-    """Make the analysable units: csr-lab segments, or the chunks of a chunk file.
+    """Cut every document into whole chapters (``ingestion/chapters.py``).
 
-    Documents without provided chunks are left to ``llm_chunk`` when the strategy's
-    chunking method is ``llm``.
+    With ``chunking.method: llm`` (staged workflow) the documents are left to ``llm_chunk``.
     """
     ctx = runtime.context
     documents = state["documents"]
@@ -102,24 +92,18 @@ def prepare_input(state: PipelineState, runtime: Runtime[PipelineContext]) -> di
         return {"fatal": "no input document contains analysable text", "limitations": limitations}
 
     chunking = ctx.options.chunking
+    if chunking.method == "llm" and ctx.options.workflow == "staged":
+        return {"segments": [], "limitations": limitations}
     segments = []
-    checks = []
-    pending_llm = False
+    warnings: list[str] = []
     for d in usable:
-        if d.provided_chunks:
-            inputs = [ChunkInput(c.chunk_id, c.content, c.title, c.source_pages) for c in d.provided_chunks]
-            segs, chk = segments_from_chunks(d, inputs, origin="provided", settings=chunking)
-            segments += segs
-            checks += chk
-        elif chunking.method == "llm" and ctx.options.workflow == "staged":
-            pending_llm = True
-        else:
-            segments += segment_document(d)
+        segs, notes = split_chapters(d, chunking)
+        segments += segs
+        warnings += [f"{d.document_id}: {n}" for n in notes]
     plan = plan_chunks(usable, segments, ctx.config.processing)
-    limitations += plan.limitations + _uncertain_segment_limitations(segments)
-    update: dict[str, Any] = {"segments": segments, "chunk_plan": plan, "limitations": limitations, "chunk_checks": checks}
-    if not pending_llm and not any(s.is_candidate for s in segments):
-        update["fatal"] = "no requirement candidates were found in the input"
+    update: dict[str, Any] = {"segments": segments, "chunk_plan": plan, "limitations": limitations + plan.limitations, "warnings": warnings}
+    if not any(s.is_candidate for s in segments):
+        update["fatal"] = "no chapter with text was found in the input"
     return update
 
 
@@ -129,8 +113,7 @@ def llm_chunk(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[s
     ctx = runtime.context
     settings = ctx.options.chunking
     limit = ctx.config.processing.max_document_chars
-    usable = [d for d in state["documents"] if d.parse_status in ("ok", "partial")]
-    targets = [d for d in usable if not d.provided_chunks]
+    targets = [d for d in state["documents"] if d.parse_status in ("ok", "partial")]
     made = model_chunks(ctx.llm, targets, settings, limit)
     by_doc = made.chunks
     limitations = [
@@ -149,7 +132,7 @@ def llm_chunk(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[s
         segs, chk = segments_from_chunks(d, by_doc.get(d.document_id, []), origin="llm", settings=settings, indexes=(TextIndex(text), WordIndex(text)))
         segments += segs
         checks += chk
-    plan = plan_chunks(usable, segments, ctx.config.processing)
+    plan = plan_chunks(targets, segments, ctx.config.processing)
     known = {lim.message for lim in state.get("limitations", [])}
     limitations += [lim for lim in plan.limitations if lim.message not in known]
     update: dict[str, Any] = {"segments": segments, "chunk_plan": plan, "chunk_checks": checks, "limitations": limitations, "errors": errors}
@@ -174,15 +157,36 @@ def route_after_prepare(state: PipelineState) -> str:
 
 @timed("single_pass_extract")
 def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """One call per chunk of chapters: references of every chapter and conflicts between them."""
     ctx = runtime.context
     plan = state["chunk_plan"]
-    seg_by_id = {s.segment_id: s for s in state["segments"]}
+    drafts, warnings = _units_as_requirements(state, ctx)
+    by_id = {d.requirement_id: d for d in drafts}
+    by_segment = {sid: d for d in drafts for sid in d.segment_ids}
     docs = {d.document_id: d for d in state["documents"]}
 
     def run(chunk):
-        payload = {"documents": chunk_raw_text(chunk, seg_by_id, docs)}
-        system, user = baseline_prompt.SPEC.render(payload)
-        return chunk, ctx.llm.call(
+        keys: dict[str, str] = {}  # R1 -> requirement ID
+        units = []
+        shown = [(sid, True) for sid in chunk.context_segment_ids] + [(sid, False) for sid in chunk.segment_ids]
+        for sid, context_only in shown:
+            req = by_segment.get(sid)
+            if req is None:
+                continue
+            key = f"R{len(units) + 1}"
+            keys[key] = req.requirement_id
+            units.append(
+                {
+                    "key": key,
+                    "document_id": req.document_id,
+                    "identifier": docs[req.document_id].canonical_identifier,
+                    "chapter": req.chapter,
+                    "text": req.text,
+                    "context_only": context_only,
+                }
+            )
+        system, user = baseline_prompt.SPEC.render({"units": units})
+        result = ctx.llm.call(
             task="single_pass_extraction",
             stage="single_pass_extract",
             system=system,
@@ -190,69 +194,49 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
             response_model=baseline_prompt.SinglePassResponse,
             prompt_version=baseline_prompt.SPEC.fingerprint,
         )
-
-    reported: list[ReportedRequirement] = []
-    refs_by_key: dict[str, list] = {}
-    raw_conflicts: list[tuple[str, Any]] = []
-    errors: list[PipelineError] = []
-    limitations: list[CoverageLimitation] = []
-    failed_chunks: set[str] = set()
-    for chunk, result in ctx.llm.map(run, plan.chunks):
-        if not result.ok or result.value is None:
-            failed_chunks.add(chunk.chunk_id)
-            errors.append(PipelineError(stage="single_pass_extract", chunk_id=chunk.chunk_id, message="; ".join(result.errors)[:300]))
-            limitations.append(CoverageLimitation(kind="llm_call_failed", chunk_id=chunk.chunk_id, message="single-pass extraction failed for this chunk"))
-            continue
-        for req in result.value.requirements:
-            reported.append(
-                ReportedRequirement(
-                    document_id=req.source_document_id,
-                    chapter=req.chapter,
-                    text=req.requirement_text,
-                    chunk_id=chunk.chunk_id,
-                    local_key=req.key,
-                )
-            )
-            refs_by_key.setdefault(f"{chunk.chunk_id}:{req.key}", req.references)
-        raw_conflicts += [(chunk.chunk_id, c) for c in result.value.potential_conflicts]
-
-    chunk_docs = {c.chunk_id: c.document_ids for c in plan.chunks}
-    drafts, key_map, warnings = ground_requirements(reported, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
-    by_id = {d.requirement_id: d for d in drafts}
+        return chunk, keys, result
 
     counter = MentionCounter(state.get("mention_seq", 0))
     mentions: list[MentionDraft] = []
-    done: set[str] = set()
-    for local, req_id in key_map.items():
-        if req_id in done:
-            continue  # the same requirement seen in an overlapping chunk: keep the first report
-        done.add(req_id)
-        mentions += mentions_from_model(refs_by_key.get(local, []), by_id[req_id], sources=ctx.sources, counter=counter)
-    for d in drafts:
-        d.reference_status = "failed" if set(d.chunk_ids) <= failed_chunks else "unverified"
-
     conflicts: list[ConflictDraft] = []
-    for chunk_id, c in raw_conflicts:
-        ids = [key_map.get(f"{chunk_id}:{k}") for k in c.requirement_keys]
-        if None in ids or ids[0] == ids[1]:
-            errors.append(PipelineError(stage="single_pass_extract", chunk_id=chunk_id, message=f"conflict names unknown requirement keys {c.requirement_keys}"))
+    errors: list[PipelineError] = []
+    limitations: list[CoverageLimitation] = []
+    answered: set[str] = set()
+    for chunk, keys, result in ctx.llm.map(run, plan.chunks):
+        own = {by_segment[sid].requirement_id for sid in chunk.segment_ids if sid in by_segment}
+        if not result.ok or result.value is None:
+            errors.append(PipelineError(stage="single_pass_extract", chunk_id=chunk.chunk_id, message="; ".join(result.errors)[:300]))
+            limitations.append(CoverageLimitation(kind="llm_call_failed", chunk_id=chunk.chunk_id, message="single-pass extraction failed for this chunk"))
             continue
-        quotes = [(key_map.get(f"{chunk_id}:{e.requirement_key}"), e.quoted_text) for e in c.evidence]
-        evidence = build_conflict_evidence([(r, q) for r, q in quotes if r in ids], by_id, ctx.sources)
-        valid = bool(evidence) and all(e.verified for e in evidence) and set(ids) <= {e.requirement_id for e in evidence}
-        conflicts.append(
-            ConflictDraft(
-                requirement_ids=list(ids),  # type: ignore[arg-type]
-                conflict_type=c.conflict_type,
-                description=c.description,
-                evidence=evidence,
-                assessment="ambiguous" if c.ambiguous else "apparent_incompatibility",
-                detection_methods=["llm_single_pass"],
-                evidence_valid=valid,
-                reason_for_review=REVIEW_REASON,
-                related_document_ids=sorted({by_id[i].document_id for i in ids}),  # type: ignore[index]
+        for item in result.value.results:
+            rid = keys.get(item.key)
+            if rid is None or rid not in own or rid in answered:
+                continue  # unknown key, a context unit, or already answered
+            answered.add(rid)
+            mentions += mentions_from_model(item.references, by_id[rid], sources=ctx.sources, counter=counter)
+        for c in result.value.potential_conflicts:
+            ids = [keys.get(k) for k in c.requirement_keys]
+            if None in ids or ids[0] == ids[1]:
+                errors.append(PipelineError(stage="single_pass_extract", chunk_id=chunk.chunk_id, message=f"conflict names unknown unit keys {c.requirement_keys}"))
+                continue
+            quotes = [(keys.get(e.requirement_key), e.quoted_text) for e in c.evidence]
+            evidence = build_conflict_evidence([(r, q) for r, q in quotes if r in ids], by_id, ctx.sources)
+            valid = bool(evidence) and all(e.verified for e in evidence) and set(ids) <= {e.requirement_id for e in evidence}
+            conflicts.append(
+                ConflictDraft(
+                    requirement_ids=list(ids),  # type: ignore[arg-type]
+                    conflict_type=c.conflict_type,
+                    description=c.description,
+                    evidence=evidence,
+                    assessment="ambiguous" if c.ambiguous else "apparent_incompatibility",
+                    detection_methods=["llm_single_pass"],
+                    evidence_valid=valid,
+                    reason_for_review=REVIEW_REASON,
+                    related_document_ids=sorted({by_id[i].document_id for i in ids}),  # type: ignore[index]
+                )
             )
-        )
+    for d in drafts:
+        d.reference_status = "unverified" if d.requirement_id in answered else "failed"
 
     # Implicit candidates: every pair of requirements that shared a prompt.
     candidates: dict[tuple[str, str], CandidatePair] = {}
@@ -288,86 +272,27 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
 # ---------------------------------------------------------------------------
 
 
-@timed("identify_requirements")
-def identify_requirements(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
-    ctx = runtime.context
-    plan = state["chunk_plan"]
-    seg_by_id = {s.segment_id: s for s in state["segments"]}
-    docs = {d.document_id: d for d in state["documents"]}
-
-    def run(chunk):
-        segs = []
-        for sid, context_only in [(s, True) for s in chunk.context_segment_ids] + [(s, False) for s in chunk.segment_ids]:
-            seg = seg_by_id[sid]
-            if not seg.is_candidate:
-                continue
-            segs.append(
-                {
-                    "segment_id": seg.segment_id,
-                    "document_id": seg.document_id,
-                    "chapter": seg.chapter,
-                    "section_path": seg.section_path,
-                    "text": seg.text,
-                    "context_only": context_only,
-                }
-            )
-        payload = {
-            "documents": [
-                {"document_id": d, "identifier": docs[d].canonical_identifier, "title": docs[d].title} for d in chunk.document_ids
-            ],
-            "segments": segs,
-        }
-        system, user = requirement_prompt.SPEC.render(payload)
-        return chunk, ctx.llm.call(
-            task="requirement_identification",
-            stage="identify_requirements",
-            system=system,
-            user=user,
-            response_model=requirement_prompt.RequirementIdentificationResponse,
-            prompt_version=requirement_prompt.SPEC.fingerprint,
-        )
-
-    reported: list[ReportedRequirement] = []
-    errors: list[PipelineError] = []
-    limitations: list[CoverageLimitation] = []
-    for chunk, result in ctx.llm.map(run, plan.chunks):
-        if not result.ok or result.value is None:
-            errors.append(PipelineError(stage="identify_requirements", chunk_id=chunk.chunk_id, message="; ".join(result.errors)[:300]))
-            limitations.append(CoverageLimitation(kind="llm_call_failed", chunk_id=chunk.chunk_id, message="requirement identification failed for this chunk"))
-            continue
-        for item in result.value.requirements:
-            seg = seg_by_id.get(item.segment_id)
-            reported.append(
-                ReportedRequirement(
-                    document_id=seg.document_id if seg else None,
-                    chapter=item.chapter,
-                    text=item.requirement_text,
-                    chunk_id=chunk.chunk_id,
-                    segment_id=item.segment_id if seg else None,
-                )
-            )
-    chunk_docs = {c.chunk_id: c.document_ids for c in plan.chunks}
-    drafts, _, warnings = ground_requirements(reported, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
-    return {"requirements": drafts, "errors": errors, "limitations": limitations, "warnings": warnings}
-
-
-@timed("chunks_as_requirements")
-def chunks_as_requirements(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
-    """``unit: chunk``: every unit is analysed as one requirement-like unit (no requirement identification).
-
-    The unit text goes through the same grounding as model-reported requirements, so a
-    reworded chunk is marked not verbatim and gets no offsets.
-    """
-    ctx = runtime.context
+def _units_as_requirements(state: PipelineState, ctx: PipelineContext):
+    """Every unit (a chapter, or a model-made chunk) becomes one requirement, grounded in the source."""
     plan = state["chunk_plan"]
     owner = {sid: c.chunk_id for c in plan.chunks for sid in c.segment_ids}
-    reported = [
-        ReportedRequirement(document_id=seg.document_id, chapter=seg.chapter, text=seg.text, chunk_id=owner[seg.segment_id], segment_id=seg.segment_id)
+    units = [
+        UnitText(document_id=seg.document_id, chapter=seg.chapter, text=seg.text, chunk_id=owner[seg.segment_id], segment_id=seg.segment_id)
         for seg in state["segments"]
         if seg.is_candidate and seg.segment_id in owner
     ]
     chunk_docs = {c.chunk_id: c.document_ids for c in plan.chunks}
-    drafts, _, warnings = ground_requirements(reported, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
+    return ground_requirements(units, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
+
+
+@timed("units_as_requirements")
+def units_as_requirements(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """Each unit is one requirement: no requirement identification.
+
+    The unit text goes through grounding, so a reworded model chunk is marked not verbatim
+    and gets no offsets.
+    """
+    drafts, warnings = _units_as_requirements(state, runtime.context)
     return {"requirements": drafts, "warnings": warnings}
 
 
@@ -395,10 +320,21 @@ def extract_references_node(state: PipelineState, runtime: Runtime[PipelineConte
     requirements = [r.model_copy(deep=True) for r in state["requirements"]]
     counter = MentionCounter(state.get("mention_seq", 0))
     mentions, statuses, errs = extract_references(ctx, requirements, counter=counter, batch_size=ctx.options.reference_batch_size)
+    limitations: list[CoverageLimitation] = []
     for r in requirements:
         r.reference_status = statuses.get(r.requirement_id, "failed")  # type: ignore[assignment]
+        if r.reference_status == "failed":
+            limitations.append(
+                CoverageLimitation(
+                    kind="llm_call_failed",
+                    document_id=r.document_id,
+                    requirement_id=r.requirement_id,
+                    message=f"reference extraction failed for {r.chapter or r.requirement_id}; its references were not checked",
+                )
+            )
     return {
         "requirements": requirements,
+        "limitations": limitations,
         "mentions": mentions,
         "initial_mentions": [m.model_copy(deep=True) for m in mentions],
         "mention_seq": counter.value,

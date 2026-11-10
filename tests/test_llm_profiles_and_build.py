@@ -236,7 +236,7 @@ def test_llm_markdown_and_overview(simple_docs, config):
     assert "refers to CVM-QS-110" in text
     assert "states that CVM-PKG-050 does not apply" in text
     assert "## Potential conflicts" in text and "105 °C" in text
-    req_id = result.requirements[0].requirement_id
+    req_id = next(r.requirement_id for r in result.requirements if r.referenced_document_ids)
     assert req_id not in text and req_id in to_llm_markdown(graph, include_ids=True)
 
     overview = to_mermaid(graph, documents_only=True)

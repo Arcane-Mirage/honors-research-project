@@ -7,7 +7,7 @@ Defined under ``sweeps:`` in ``configs/experiments.yaml``::
     sweeps:
       chunk_size:
         experiment: chunking_mock              # the experiment to vary
-        strategies: [llm_chunked, llm_chunked_staged]   # optional override
+        strategies: [llm_chunked, staged]   # optional override
         repetitions: 3                         # optional override
         grid:
           options.chunking.target_chunk_words: [100, 250, 500, 1000]
@@ -15,7 +15,7 @@ Defined under ``sweeps:`` in ``configs/experiments.yaml``::
 
 Grid keys:
 
-* ``llm.*``, ``processing.*``, ``evaluation.*``: experiment-level settings (shared by all
+* ``llm.*``, ``system_prompt.*``, ``processing.*``, ``evaluation.*``: experiment-level settings (shared by all
   strategies in the run), e.g. ``llm.mock.merge_confusion_rate`` or ``processing.pdf_backend``;
 * ``options.*``: strategy options; every strategy is re-registered as a variant named
   ``<strategy>__<setting>`` for each value;
@@ -50,7 +50,7 @@ DEFAULT_METRICS = [
     "conflicts.f1",
     "ops.tokens_per_gold_requirement",
 ]
-_EXPERIMENT_SECTIONS = ("llm", "processing", "evaluation")
+_EXPERIMENT_SECTIONS = ("llm", "system_prompt", "processing", "evaluation")
 _EXPERIMENT_FIELDS = ("dataset", "split")
 
 
@@ -93,7 +93,7 @@ def combinations(grid: dict[str, list[Any]]) -> list[list[tuple[str, Any]]]:
     for key in keys:
         head = key.split(".", 1)[0]
         if head not in (*_EXPERIMENT_SECTIONS, "options", *_EXPERIMENT_FIELDS):
-            raise ValueError(f"sweep key {key!r} must start with llm., processing., evaluation., options., or be dataset/split")
+            raise ValueError(f"sweep key {key!r} must start with llm., system_prompt., processing., evaluation., options., or be dataset/split")
         if not grid[key]:
             raise ValueError(f"sweep key {key!r} has no values")
     return [list(zip(keys, values)) for values in itertools.product(*(grid[k] for k in keys))]

@@ -56,15 +56,44 @@ python scripts/run_demo.py
 | `csr-lab strategies` | List strategies, including YAML-defined variants |
 | `csr-lab workflow --strategy staged_verified` | Print a strategy's LangGraph workflow as Mermaid |
 | `csr-lab generate-data [--scaled 60 --refs 3 --position end]` | Regenerate the dataset, or build scaled cases for ablations |
-| `csr-lab generate-data --pdf` / `--chunked paragraph\|window` | Regenerate the PDF / pre-chunked variants of the dataset (same cases and gold) |
+| `csr-lab generate-data --pdf` | Regenerate the PDF variant of the dataset (same cases and gold) |
 | `csr-lab sweep NAME` | Run an experiment over a grid of settings (`sweeps:` in `configs/experiments.yaml`) |
 | `csr-lab check-text SOURCE CHUNKS.json` | Check chunks/quotes against a source: verbatim, reworded (with the edits), missing text. No model |
-| `csr-lab chunk FILES --out-dir DIR` | Run only the model chunking stage and write chunk files |
+| `csr-lab chunk FILES --out-dir DIR` | Run only the model chunking stage and write the chunks as JSON (input for `check-text`) |
 | `csr-lab llm-check [--llm NAME \| --experiment NAME]` | Show the resolved endpoint, auth and served models; send one test request |
 | `csr-lab schema --out schema.json` | JSON Schema of the exported result |
 | `csr-lab history` | List experiments stored in SQLite |
 
 `python -m csr_lab ...` works the same as `csr-lab ...`.
+
+## Units of analysis: one chapter = one requirement
+
+Every strategy cuts each document into whole chapters ([ingestion/chapters.py](src/csr_lab/ingestion/chapters.py))
+and treats each chapter as **one requirement**. Its ID is document + chapter, e.g.
+`REQ-CVS10-REV-2024-08-1.1.4`, so the same chapter gets the same ID in every run and in the saved graph.
+
+- The chapter list comes from the **table of contents** when the document has one (dot-leader
+  lines). Unnumbered entries (`Scope`, `Annex A ...`) are chapters too; headings missing from the
+  contents and numbered lists stay inside their chapter; the contents pages are not analysed.
+- Without a contents page, every numbered heading or numbered paragraph starts a chapter.
+- The chapter text is verbatim (an exact slice of the extracted text) without the heading line.
+- Knobs (`options.chunking.*`): `chapter_use_toc`, `chapter_max_depth` (0 = every level; 2 keeps
+  `4.4.1` inside `4.4`), `chapter_include_front_matter`.
+- Informational chapters (scope, terms) are units too, so requirement precision against the
+  synthetic gold is below 1 by design; `units.*` metrics score references independently of that.
+
+## System prompt: who the documents are read for
+
+`system_prompt:` in [configs/default.yaml](configs/default.yaml) adds a few sentences to the
+reference, verification, conflict and single-pass prompts: the documents are read for **Bendix, a
+direct supplier to Navistar**, only Bendix's own obligations count, and "International" means
+Navistar only when it names the company. The wording lives in
+[prompts/system_prompt.py](src/csr_lab/prompts/system_prompt.py) as named variables with
+`{supplier}`, `{customer}`, `{aliases}` and `{ambiguous}` placeholders; edit the sentences there
+and the names in the config. `other_customers: skip|keep` picks how text for other customers is
+handled. The text's fingerprint is stored in `metadata.prompt_versions.system_prompt`. `analyze`
+and `build-graph` use it (`--no-system-prompt` to compare without); experiments switch it off
+because the synthetic cases have other customers.
 
 ## Experimental conditions
 
@@ -72,8 +101,8 @@ Each condition adds one thing to the previous one, so adjacent pairs isolate one
 
 | Condition | Name | Adds | Comparison isolates |
 |---|---|---|---|
-| A | `single_pass` | One structured call per chunk returns requirements, references and conflicts | baseline |
-| B | `staged` | Separate requirement, reference and pairwise-conflict stages | A→B: task decomposition |
+| A | `single_pass` | One structured call per group of chapters returns references and conflicts | baseline |
+| B | `staged` | Separate reference and pairwise-conflict stages | A→B: task decomposition |
 | C | `staged_verified` | Evidence validation, distractor/duplicate checks, coverage audit, bounded targeted re-extraction, conflict-evidence check | B→C: explicit verification |
 | D | `graph_assisted` | Graph-informed alias resolution, known-document audit, candidate selection, context retrieval, exclusion/precedence rules | C→D: graph-informed processing |
 
@@ -88,18 +117,16 @@ Important for interpretation:
   LangGraph, which only orchestrates the steps. Ready-made ablations are in
   `configs/experiments.yaml` (`ablation_mock`, `candidate_selection_mock`).
 
-A second family starts from **model-made chunks**. Fill a batch
-to N words, ask the model for semantic chunks, extract references per chunk:
+A second family starts from **model-made chunks** instead of chapters (the industry approach):
+fill a batch to N words, ask the model for semantic chunks, treat each chunk as one requirement:
 
-| Name | Chunks | Unit of extraction | Chunk text |
-|---|---|---|---|
-| `llm_chunked` | model | chunk | as returned |
-| `llm_chunked_repaired` | model | chunk | replaced by the aligned source text when reworded |
-| `llm_chunked_staged` | model | requirements inside each chunk | as returned |
-| `llm_chunked_merge_llm` (variant) | model | chunk | as returned, plus model-only reference merging |
+| Name | Chunk text |
+|---|---|
+| `llm_chunked` | as returned |
+| `llm_chunked_repaired` | replaced by the aligned source text when reworded |
+| `llm_chunked_merge_llm` (variant) | as returned, plus model-only reference merging |
 
-Pre-chunked input (a chunk file made by any tool) replaces the chunks of every strategy, so
-the same comparisons run on another pipeline's chunks. See
+See
 [docs/experiment_design.md](docs/experiment_design.md) for metrics, matching rules and
 statistics guidance, and [docs/integration.md](docs/integration.md) for reusing the pieces in
 another evaluator.
@@ -112,20 +139,19 @@ with the mock model, or with a real model by overriding `llm:`.
 | Experiment / sweep | Question | Read in `report.md` |
 |---|---|---|
 | `practice_vs_pipeline_mock` | Industry-style pipeline vs staged + verified + guarded merging, end to end | all tables; cost per page / gold requirement |
-| `chunking_mock`, sweep `chunk_size` | Per-chunk vs per-requirement extraction from the same model chunks | per-requirement vs unit-level F1, error causes |
-| `external_chunks_mock` | The same on chunk files from a simulated external chunker (verbatim chunks) | gold coverage, verbatim rate, unit-level F1 |
+| `chunking_mock`, sweep `chunk_size` | Model chunks (as returned / repaired) vs whole chapters | per-requirement vs unit-level F1, verbatim rate, error causes |
 | `merging_mock`, sweep `merge_errors` | Model-only vs guarded (hybrid) reference merging | reference errors by cause, merges applied/rejected |
 | `pdf_mock`, sweeps `pdf_preprocessing`, `text_vs_pdf` | PDF reader and header/footer removal | requirement verbatim/location accuracy, spurious references |
 
 ```bash
 csr-lab experiment practice_vs_pipeline_mock
 csr-lab sweep merge_errors
-csr-lab check-text data/synthetic_chunked/documents/dev_corvane_packaging/cvm_csr_200.txt \
-                   data/synthetic_chunked/documents/dev_corvane_packaging/cvm_csr_200.chunks.json
+csr-lab chunk data/synthetic/text/documents/dev_corvane_packaging/cvm_csr_200.txt --out-dir chunks/
+csr-lab check-text data/synthetic/text/documents/dev_corvane_packaging/cvm_csr_200.txt chunks/cvm_csr_200.chunks.json
 ```
 
 **Knobs** (strategy options, set in a variant under `strategies:` or swept with `options.*`):
-`chunking.method` (`deterministic`/`llm`), `chunking.unit` (`requirement`/`chunk`),
+`chunking.method` (`chapter`/`llm`), `chunking.chapter_use_toc`, `chunking.chapter_max_depth`,
 `chunking.repair` (`none`/`source_slice`), `chunking.batch_words`, `chunking.target_chunk_words`,
 `reference_merging.method` (`deterministic`/`llm`/`hybrid`), `reference_merging.protect_revisions`,
 `reference_merging.protect_identifiers`. Processing settings (shared by all strategies):
@@ -194,7 +220,7 @@ evaluator need no changes because every strategy returns an `AnalysisResult`.
 
 Each analysis produces one JSON document (schema version `0.3.0`), validated by Pydantic:
 
-- `requirements`: chapter, verbatim text, source offsets, `referenced_document_ids`, per-mention
+- `requirements`: one per chapter: chapter, verbatim text, source offsets and pages, `referenced_document_ids`, per-mention
   evidence, and `department: null` (assignment is deliberately deferred);
 - `referenced_documents`: canonical identifier, raw spellings, revision, type, `content_available`;
 - `relationships`: graph edges (`contains`, `references`, `explicitly_excludes`,
@@ -214,7 +240,10 @@ Field-level documentation: [docs/output_schema.md](docs/output_schema.md). JSON 
 `data/synthetic/` holds 5 cases (7 documents) generated by
 [src/csr_lab/datasets/synthetic.py](src/csr_lab/datasets/synthetic.py):
 
-**I am currently working on getting real data and replacing the synthetic data.**
+**I am currently working on getting real data and replacing the synthetic data.** Real documents
+(public CSRs) go into [input/](input/) for `build-graph`, or are analysed with `csr-lab analyze`;
+they have no gold and are never scored. A PDF without a `Document ID:` header takes its identifier
+and revision from the file name: `CVS10_2024-08.pdf` is CVS10, revision 2024-08.
 
 | Split | Cases | Requirements | References | Conflict pairs | Hard negatives |
 |---|---|---|---|---|---|
@@ -228,11 +257,8 @@ referenced document, mutual precedence claims, cross-document conflicts and non-
 overlaps. Ground truth is written by hand in the generator; offsets are computed while
 rendering, so they always match the files.
 
-Input variants of the same cases and gold, for parser and chunker experiments:
-`data/synthetic_pdf/` (PDFs with running headers, page footers, page breaks inside
-requirements and drawn tables), `data/synthetic_chunked/` and `data/synthetic_chunked_window/`
-(chunk files from a simulated external chunker: verbatim paragraph packing, or
-blind 60-word windows).
+A PDF variant of the same cases and gold, for parser experiments: `data/synthetic/pdf/` (PDFs
+with running headers, page footers, page breaks inside requirements and drawn tables).
 
 Use `dev` for debugging prompts and code. Do not edit `heldout` cases to suit a pipeline;
 change `DATASET_VERSION` whenever content changes. The test suite fails if `data/synthetic/`
@@ -319,7 +345,7 @@ csr-lab graph-store prune graphs/main.json --superseded --mock     # clean up
 src/csr_lab/
   schemas.py        export schema (integration contract) + gold schema
   config.py         typed YAML/env configuration
-  ingestion/        loader (txt/pdf/json/chunk files), segmentation, chunk units, model chunking
+  ingestion/        loader (txt/pdf/json), chapters, labelled-line segmentation, model chunking
   llm/              provider interface + validated structured output, OpenAI-compatible client, auth, mock model
   prompts/          versioned prompt text + response models
   extraction/       grounding, fidelity check, normalisation, requirements, references, verification, merging, graph audit

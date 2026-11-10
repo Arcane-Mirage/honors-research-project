@@ -1,17 +1,12 @@
 """src/csr_lab/datasets/variants.py
 
-Input variants of the synthetic dataset: the same cases and gold, different input form.
+Input variant of the synthetic dataset: the same cases and gold, different input form.
 
 * ``write_pdf_dataset``: every document rendered as a PDF with running headers, page
   footers, page breaks inside requirements and drawn tables.
-* ``write_chunked_dataset``: every document handed over as a ``chunks.json`` file made
-  by a *simulated external chunker*, next to its source text. Two chunkers:
-  - ``paragraph``: packs blank-line-separated paragraphs up to ``words`` words, ignoring
-    sections (like a word-budget batcher), copying the text verbatim;
-  - ``window``: blind windows of ``words`` words that cut through sentences.
 
-Gold annotations are the same as for the text dataset (PDF: table rows as cell text).
-Because the cases are unchanged, results on a variant are directly comparable with
+Gold annotations are the same as for the text dataset (table rows as cell text).
+Because the cases are unchanged, results on the PDF variant are directly comparable with
 results on the text dataset.
 
 **PDF rendering.** No PDF library is needed: the writer emits Helvetica text with
@@ -36,7 +31,6 @@ from pathlib import Path
 
 from csr_lab.datasets.synthetic import DATASET_VERSION, all_cases, build_case
 from csr_lab.ids import document_node_id
-from csr_lab.ingestion.provided_chunks import write_chunk_file
 from csr_lab.schemas import CaseGold
 
 # ---------------------------------------------------------------------------
@@ -195,76 +189,4 @@ def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
         "The synthetic CSR cases rendered as PDFs with running headers, page footers and drawn tables.",
         manifest_cases,
         {"lines_per_page": lines_per_page},
-    )
-
-
-# ---------------------------------------------------------------------------
-# Pre-chunked variant: simulated external chunkers
-# ---------------------------------------------------------------------------
-
-_PARA_BREAK = re.compile(r"\n[ \t]*\n")
-
-
-def paragraph_chunks(text: str, words: int) -> list[dict]:
-    paragraphs = [p for p in _PARA_BREAK.split(text) if p.strip()]
-    groups: list[list[str]] = [[]]
-    count = 0
-    for para in paragraphs:
-        n = len(para.split())
-        if groups[-1] and count + n > words:
-            groups.append([])
-            count = 0
-        groups[-1].append(para.strip("\n"))
-        count += n
-    chunks = []
-    for i, group in enumerate(g for g in groups if g):
-        body = "\n\n".join(group)
-        chunks.append({"chunk_id": f"C{i + 1:03d}", "title": " ".join(group[0].split()[:6]), "content": body})
-    return chunks
-
-
-def window_chunks(text: str, words: int) -> list[dict]:
-    spans = [m.span() for m in re.finditer(r"\S+", text)]
-    chunks = []
-    for i in range(0, len(spans), words):
-        part = spans[i : i + words]
-        body = text[part[0][0] : part[-1][1]]
-        chunks.append({"chunk_id": f"W{i // words + 1:03d}", "title": None, "content": body})
-    return chunks
-
-
-def write_chunked_dataset(
-    out_dir: str | Path, *, chunker: str = "paragraph", words: int = 120
-) -> Path:
-    if chunker not in ("paragraph", "window"):
-        raise ValueError("chunker must be 'paragraph' or 'window'")
-    out = Path(out_dir)
-    manifest_cases = []
-    for case in all_cases():
-        files, gold = build_case(case)
-        doc_paths = []
-        for filename, text in files.items():
-            folder = out / "documents" / case.case_id
-            folder.mkdir(parents=True, exist_ok=True)
-            (folder / filename).write_text(text, encoding="utf-8", newline="\n")
-            chunks = paragraph_chunks(text, words) if chunker == "paragraph" else window_chunks(text, words)
-            chunk_path = write_chunk_file(
-                folder / (Path(filename).stem + ".chunks.json"),
-                chunks,
-                source_file=filename,
-                chunker=f"simulated-{chunker}(words={words})",
-            )
-            doc_paths.append(chunk_path.relative_to(out).as_posix())
-        gold_path = out / "ground_truth" / f"{case.case_id}.json"
-        gold_path.parent.mkdir(parents=True, exist_ok=True)
-        gold_path.write_text(gold.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
-        manifest_cases.append(
-            {"case_id": case.case_id, "split": case.split, "description": case.description + f" (pre-chunked: {chunker})", "documents": doc_paths, "ground_truth": gold_path.relative_to(out).as_posix()}
-        )
-    return _manifest(
-        out,
-        f"synthetic_csr_chunked_{chunker}",
-        "The synthetic CSR cases as chunk files from a simulated external chunker, with their source text.",
-        manifest_cases,
-        {"chunker": chunker, "words": words},
     )

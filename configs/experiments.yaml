@@ -1,4 +1,4 @@
-# Experiments override parts of configs/default.yaml (llm, processing, evaluation).
+# Experiments override parts of configs/default.yaml (llm, system_prompt, processing, evaluation).
 # Run one with:  csr-lab experiment <name>
 #
 # `strategies:` defines extra strategies as variants of existing ones.
@@ -70,10 +70,10 @@ experiments:
 
   chunking_mock:
     description: >-
-      Model-made chunks: per-chunk extraction vs. source repair vs. per-requirement extraction,
-      with the deterministic-segmentation `staged` condition as the control.
+      Model-made chunks against whole chapters: per-chunk extraction with and without source
+      repair, with the chapter-based `staged` condition as the control.
     split: all
-    strategies: [llm_chunked, llm_chunked_repaired, llm_chunked_staged, staged]
+    strategies: [llm_chunked, llm_chunked_repaired, staged]
     repetitions: 3
     llm: {provider: mock}
     evaluation: {baseline_strategy: llm_chunked}
@@ -85,17 +85,6 @@ experiments:
     repetitions: 3
     llm: {provider: mock}
     evaluation: {baseline_strategy: staged_verified}
-
-  external_chunks_mock:
-    description: >-
-      Chunks from a simulated external chunker (paragraph packing, verbatim) given as chunk
-      files. Per-chunk vs. per-requirement extraction, with and without source repair.
-    dataset: data/synthetic/chunked/manifest.json
-    split: all
-    strategies: [chunk_units, chunk_units_repaired, staged_verified, staged_verified_repaired]
-    repetitions: 3
-    llm: {provider: mock}
-    evaluation: {baseline_strategy: chunk_units}
 
   pdf_mock:
     description: The four conditions on the PDF rendering (running headers, page footers, page breaks inside requirements, drawn tables).
@@ -186,22 +175,7 @@ strategies:
     description: "Industry-style pipeline end to end: model chunks, per-chunk references, model-only reference merging."
     options: {reference_merging: {method: llm}}
 
-  # --- units of analysis (configs: chunking) ---
-  chunk_units:
-    base: staged
-    description: Each chunk (from a chunk file, or a csr-lab segment) is one unit; references per chunk; no verification.
-    options: {chunking: {unit: chunk}}
-
-  chunk_units_repaired:
-    base: chunk_units
-    description: chunk_units with reworded chunks replaced by the aligned source text.
-    options: {chunking: {repair: source_slice}}
-
-  staged_verified_repaired:
-    base: staged_verified
-    description: Condition C; chunk units whose wording differs from the source are replaced by the source text first.
-    options: {chunking: {repair: source_slice}}
-
+  # --- ablations ---
   graph_assisted_no_alias:
     base: graph_assisted
     description: Condition D without graph alias resolution (isolates name-to-identifier resolution).
@@ -248,8 +222,8 @@ sweeps:
 
   chunk_size:
     experiment: chunking_mock
-    description: How chunk size changes per-chunk vs. per-requirement extraction.
-    strategies: [llm_chunked, llm_chunked_staged]
+    description: How the model chunk size changes per-chunk extraction, with chapters as the control.
+    strategies: [llm_chunked, staged]
     grid:
       options.chunking.target_chunk_words: [60, 150, 500]
     metrics: [references.f1, units.f1, units.mean_gold_per_unit, requirements.verbatim_exact_rate, ops.tokens_per_gold_requirement]

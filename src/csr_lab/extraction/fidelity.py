@@ -95,7 +95,7 @@ class FidelitySummary(_Model):
 
 
 class FidelityReport(_Model):
-    origin: str = Field(default="external", description="Who produced the fragments: provided, llm, external ...")
+    origin: str = Field(default="external", description="Who produced the fragments: llm, external ...")
     fragments: list[FragmentCheck] = Field(default_factory=list)
     gaps: list[SourceGap] = Field(default_factory=list)
     summary: FidelitySummary = Field(default_factory=FidelitySummary)

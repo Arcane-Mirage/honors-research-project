@@ -53,18 +53,13 @@ def chapter_slug(chapter: str | None) -> str:
     return value or "NOCHAPTER"
 
 
-def text_fingerprint(text: str, length: int = 8) -> str:
-    """Short hash of requirement text. Whitespace is collapsed first, so line wrapping does not matter."""
-    return stable_hash(" ".join(text.split()), length=length)
+def requirement_id(document_id: str, chapter: str | None) -> str:
+    """A requirement is a whole chapter, identified by its document and chapter label.
 
-
-def requirement_id(document_id: str, chapter: str | None, text: str) -> str:
-    """A requirement is identified by its source document (revision), chapter and verbatim text.
-
-    'DOC-CVM-CSR-100-REV-C', '2.1', 'The supplier shall ...' -> 'REQ-CVM-CSR-100-REV-C-2.1-3f9c2a1b'
+    'DOC-CVS10-REV-2024-08', '1.1.4' -> 'REQ-CVS10-REV-2024-08-1.1.4'; 'Scope' -> '...-SCOPE'
     """
     base = document_id[4:] if document_id.startswith("DOC-") else slug(document_id)
-    return f"REQ-{base}-{chapter_slug(chapter)}-{text_fingerprint(text)}"
+    return f"REQ-{base}-{chapter_slug(chapter)}"
 
 
 def relationship_id(source: str, relationship_type: str, target: str) -> str:

@@ -83,8 +83,23 @@ def parse_header(text: str) -> tuple[str | None, str | None, str | None]:
     return identifier, title, revision
 
 
+# 'CVS10_2024-08.pdf' -> CVS10, revision 2024-08; 'XYZ-100_rev-C.pdf' -> XYZ-100, revision C
+_FILENAME_REV_RE = re.compile(
+    r"^(?P<id>.+?)[_ ]+(?:(?P<date>\d{4}-\d{2}(?:-\d{2})?)|rev(?:ision)?[-_ ]?(?P<rev>[A-Za-z0-9]{1,4}))$",
+    re.IGNORECASE,
+)
+
+
 def _identifier_from_filename(path: Path) -> str:
     return slug(path.stem)
+
+
+def _filename_parts(path: Path) -> tuple[str, str | None, str | None]:
+    """(identifier, revision, ISO date) from a file name such as 'CVS10_2024-08.pdf'."""
+    if m := _FILENAME_REV_RE.match(path.stem):
+        date = m.group("date")
+        return slug(m.group("id")), date or m.group("rev"), date
+    return _identifier_from_filename(path), None, None
 
 
 def _build_document(
@@ -109,8 +124,12 @@ def _build_document(
     elif header_id:
         identifier, source = header_id, "header"
     else:
-        identifier, source = _identifier_from_filename(path), "filename"
-        warnings.append("no 'Document ID:' header found; identifier taken from the filename")
+        identifier, file_rev, file_date = _filename_parts(path)
+        source = "filename"
+        revision = revision or (file_rev if not header_rev else None)
+        effective_date = effective_date or file_date
+        note = " (and revision)" if file_rev else ""
+        warnings.append(f"no 'Document ID:' header found; identifier{note} taken from the filename")
     canonical = canonical_input_identifier(identifier)
     rev = normalize_revision(revision or header_rev)
     if rev is None:
@@ -157,7 +176,7 @@ def load_text_file(path: Path) -> InputDocument:
 
 PDF_BACKENDS = ("pypdf", "pypdf_layout", "pymupdf")
 _DIGITS_RE = re.compile(r"\d+")
-_EDGE_LINES = 3  # header/footer zone: this many non-empty lines at the top and bottom of a page
+_EDGE_LINES = 4  # header/footer zone: this many non-empty lines at the top and bottom of a page
 
 
 def _page_texts(path: Path, backend: str) -> list[str]:
@@ -274,15 +293,10 @@ def load_pdf_file(
     return _build_document(path=path, text=text, raw=raw, fmt="pdf", pages=pages, parse_status=status, warnings=warnings)
 
 
-def load_json_file(path: Path, *, load_source=None) -> InputDocument:
-    """JSON input: {"identifier": ..., "title": ..., "revision": ..., "effective_date": ..., "text": ...},
-    or a pre-chunked file with a ``chunks`` list (see ``ingestion.provided_chunks``)."""
+def load_json_file(path: Path) -> InputDocument:
+    """JSON input: {"identifier": ..., "title": ..., "revision": ..., "effective_date": ..., "text": ...}."""
     raw = path.read_bytes()
     data = json.loads(raw.decode("utf-8"))
-    from csr_lab.ingestion.provided_chunks import is_chunk_payload, load_chunk_file
-
-    if is_chunk_payload(data):
-        return load_chunk_file(path, data, raw, load_source=load_source or load_document)
     if not isinstance(data, dict) or not isinstance(data.get("text"), str):
         raise UnsupportedInputError(f"{path}: JSON input needs an object with a 'text' string")
     text = _normalise_newlines(data["text"])
@@ -310,12 +324,6 @@ def load_document(
 ) -> InputDocument:
     path = Path(path)
     suffix = path.suffix.lower()
-    options = dict(
-        min_chars_per_page=min_chars_per_page,
-        pdf_backend=pdf_backend,
-        pdf_strip_repeated_lines=pdf_strip_repeated_lines,
-        pdf_repeated_line_min_share=pdf_repeated_line_min_share,
-    )
     if suffix == ".txt":
         return load_text_file(path)
     if suffix == ".pdf":
@@ -327,7 +335,7 @@ def load_document(
             repeated_min_share=pdf_repeated_line_min_share,
         )
     if suffix == ".json":
-        return load_json_file(path, load_source=lambda p: load_document(p, **options))
+        return load_json_file(path)
     raise UnsupportedInputError(f"unsupported input type: {path.name} (supported: {sorted(SUPPORTED_SUFFIXES)})")
 
 
@@ -359,9 +367,6 @@ def load_bundle(paths: list[str | Path], **options) -> list[InputDocument]:
     ``options`` are passed to ``load_document`` (see ``processing_load_options``).
     """
     loaded = [load_document(path, **options) for path in expand_inputs(paths)]
-    # A folder holding a chunk file and the source it points to: keep only the chunked version.
-    chunked_ids = {d.document_id for d in loaded if d.provided_chunks}
-    loaded = [d for d in loaded if d.provided_chunks or d.document_id not in chunked_ids]
     documents: list[InputDocument] = []
     seen: dict[str, int] = {}
     for doc in loaded:

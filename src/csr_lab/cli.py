@@ -45,7 +45,10 @@ def _llm_flags(args: argparse.Namespace) -> dict:
 
 def _llm_overrides(args: argparse.Namespace) -> dict:
     llm = _llm_flags(args)
-    return {"llm": llm} if llm else {}
+    out: dict = {"llm": llm} if llm else {}
+    if getattr(args, "system_prompt", None) is not None:
+        out["system_prompt"] = {"enabled": args.system_prompt}
+    return out
 
 
 def _resolve_model(config: AppConfig) -> AppConfig:
@@ -105,13 +108,10 @@ def _graph_choice(args: argparse.Namespace, config: AppConfig) -> tuple[str | No
 
 def cmd_generate_data(args: argparse.Namespace) -> int:
     from csr_lab.datasets.synthetic import generate_scaled_case, write_dataset
-    from csr_lab.datasets.variants import write_chunked_dataset, write_pdf_dataset
+    from csr_lab.datasets.variants import write_pdf_dataset
 
     if args.pdf:
         manifest = write_pdf_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "pdf", lines_per_page=args.lines_per_page)
-    elif args.chunked:
-        default = "chunked" if args.chunked == "paragraph" else f"chunked_{args.chunked}"
-        manifest = write_chunked_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / default, chunker=args.chunked, words=args.chunk_words)
     elif args.scaled:
         cases = [
             generate_scaled_case(
@@ -387,17 +387,12 @@ def cmd_sweep(args: argparse.Namespace) -> int:
 def cmd_check_text(args: argparse.Namespace) -> int:
     from csr_lab.extraction.fidelity import check_fragments, format_report
     from csr_lab.ingestion.loader import load_document, processing_load_options
-    from csr_lab.ingestion.provided_chunks import is_chunk_payload, parse_chunks
 
     config = load_config(args.config)
     source = load_document(args.source, **processing_load_options(config.processing))
-    data = json.loads(Path(args.fragments).read_text(encoding="utf-8"))
-    if is_chunk_payload(data):
-        fragments = [{"id": c.chunk_id, "title": c.title, "text": c.content, "source_pages": c.source_pages} for c in parse_chunks(data["chunks"])]
-    elif isinstance(data, list):
-        fragments = data
-    else:
-        raise ValueError("fragments must be a chunk file, or a JSON list of strings or {id, text} objects")
+    fragments = json.loads(Path(args.fragments).read_text(encoding="utf-8"))
+    if not isinstance(fragments, list):
+        raise ValueError("fragments must be a JSON list of strings or {id, text} objects (as written by `csr-lab chunk`)")
     report = check_fragments(source.text or "", fragments, document_id=source.document_id, pages=source.pages, min_ratio=args.min_ratio)
     print(format_report(report))
     if args.out:
@@ -407,12 +402,9 @@ def cmd_check_text(args: argparse.Namespace) -> int:
 
 
 def cmd_chunk(args: argparse.Namespace) -> int:
-    import os
-
     from csr_lab.config import ChunkingSettings
     from csr_lab.extraction.fidelity import format_report
-    from csr_lab.ingestion.loader import expand_inputs, load_bundle, processing_load_options
-    from csr_lab.ingestion.provided_chunks import write_chunk_file
+    from csr_lab.ingestion.loader import load_bundle, processing_load_options
     from csr_lab.ingestion.units import model_chunks, segments_from_chunks
     from csr_lab.llm.interface import CallRecorder, StructuredLLM
     from csr_lab.llm.provider import create_provider
@@ -429,18 +421,12 @@ def cmd_chunk(args: argparse.Namespace) -> int:
         provider.close()
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    by_path = {p.name: p for p in expand_inputs(args.inputs)}
     for doc in documents:
         inputs = made.chunks.get(doc.document_id, [])
         _, checks = segments_from_chunks(doc, inputs, origin="llm", settings=settings)
-        source = by_path.get(doc.filename)
-        rel = os.path.relpath(source.resolve(), out_dir.resolve()) if source else None
-        path = write_chunk_file(
-            out_dir / f"{Path(doc.filename).stem}.chunks.json",
-            [{"chunk_id": c.chunk_id, "title": c.title, "content": c.content} for c in inputs],
-            source_file=rel,
-            chunker=f"csr-lab semantic_chunking ({config.llm.provider}/{config.llm.model})",
-        )
+        path = out_dir / f"{Path(doc.filename).stem}.chunks.json"
+        body = [{"id": c.chunk_id, "title": c.title, "text": c.content} for c in inputs]
+        path.write_text(json.dumps(body, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         report = fidelity_report({"chunk_checks": checks, "documents": [doc], "segments": []})
         print(f"== {path}")
         if report:
@@ -679,6 +665,11 @@ def build_parser() -> argparse.ArgumentParser:
         g.add_argument("--base-url", help="server URL on top of the profile, e.g. http://localhost:1234/v1")
         g.add_argument("--provider", choices=["mock", "openai_compatible"], help=argparse.SUPPRESS)
 
+    def system_prompt_arg(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--system-prompt", action=argparse.BooleanOptionalAction, default=None,
+                       help="add the supplier text of `system_prompt:` in the config to the prompts "
+                       "(--no-system-prompt: without it, to measure its effect; default: system_prompt.enabled)")
+
     def graph_args(p: argparse.ArgumentParser, default_note: str) -> None:
         g = p.add_argument_group("saved graph")
         g.add_argument("--graph", metavar="PATH", help=f"saved graph JSON to work on ({default_note})")
@@ -696,8 +687,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cases", type=int, default=3, help="number of scaled cases")
     p.add_argument("--pdf", action="store_true", help="write the PDF variant (headers, footers, page breaks, drawn tables)")
     p.add_argument("--lines-per-page", type=int, default=44, help="PDF variant: lines per page")
-    p.add_argument("--chunked", choices=["paragraph", "window"], help="write a pre-chunked variant made by a simulated external chunker")
-    p.add_argument("--chunk-words", type=int, default=120, help="chunked variant: words per chunk")
     p.set_defaults(func=cmd_generate_data)
 
     p = sub.add_parser("strategies", help="list available strategies")
@@ -714,6 +703,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--llm-text", metavar="PATH", help="also write the graph as Markdown for an LLM to read")
     p.add_argument("--seed", type=int)
     llm_args(p)
+    system_prompt_arg(p)
     graph_args(p, "no saved graph unless given")
     p.add_argument("--graph-store", metavar="PATH", help=argparse.SUPPRESS)  # older name: --graph PATH --no-use-graph
     p.add_argument("--use-saved-graph", action="store_true", help=argparse.SUPPRESS)
@@ -723,6 +713,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("build-graph", help="analyse a folder of PDFs (default: input/) and build up a saved graph")
     p.add_argument("folder", nargs="?", help="folder to read; subfolders are bundles (default: `input:` in the config)")
     graph_args(p, "default: graph_store.path in the config, graphs/main.json")
+    system_prompt_arg(p)
     p.add_argument("--strategy", default="graph_assisted")
     p.add_argument("--group", choices=["folder", "file", "all"], default="folder",
                    help="folder: each subfolder is one bundle, loose files another; file: one file at a time; all: one bundle")
@@ -839,13 +830,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("check-text", help="check whether chunks/quotes occur verbatim in a source document")
     p.add_argument("source", help=".txt/.pdf/.json source document")
-    p.add_argument("fragments", help="chunk file, or JSON list of strings / {id, text} objects")
+    p.add_argument("fragments", help="JSON list of strings or {id, text} objects (e.g. written by `csr-lab chunk`)")
     p.add_argument("--min-ratio", type=float, default=0.6, help="word ratio below which a fragment is 'not found'")
     p.add_argument("--out", help="also write the full report as JSON")
     common(p, experiments=False)
     p.set_defaults(func=cmd_check_text)
 
-    p = sub.add_parser("chunk", help="run only the model chunking stage and write chunk files")
+    p = sub.add_parser("chunk", help="run only the model chunking stage and write the chunks as JSON")
     p.add_argument("inputs", nargs="+")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--batch-words", type=int, default=2500)

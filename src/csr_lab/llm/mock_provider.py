@@ -26,15 +26,10 @@ from typing import Any
 
 from csr_lab.config import MockSettings
 from csr_lab.extraction.normalization import normalize_name, parse_identifier, squash
-from csr_lab.ingestion.segmentation import LABEL_RE, segment_document
+from csr_lab.ingestion.segmentation import LABEL_RE
 from csr_lab.llm import mock_rules as rules
 from csr_lab.llm.interface import GenerationRequest, GenerationResponse, LLMProvider
 from csr_lab.prompts import parse_input_payload
-from csr_lab.schemas import InputDocument
-
-
-def _collapse(text: str) -> str:
-    return " ".join(text.split())
 
 
 class MockProvider(LLMProvider):
@@ -67,7 +62,6 @@ class MockProvider(LLMProvider):
         payload = parse_input_payload(user)
         handler = {
             "single_pass_extraction": self._single_pass,
-            "requirement_identification": self._identify,
             "reference_extraction": self._references,
             "reference_verification": self._verify,
             "conflict_analysis": self._conflicts,
@@ -132,36 +126,9 @@ class MockProvider(LLMProvider):
     # -- tasks ---------------------------------------------------------------
 
     def _single_pass(self, payload: dict[str, Any]) -> dict[str, Any]:
-        requirements: list[dict[str, Any]] = []
-        texts: dict[str, tuple[str, str]] = {}
-        for doc in payload.get("documents", []):
-            temp = InputDocument(
-                document_id=doc["document_id"],
-                canonical_identifier=doc.get("identifier"),
-                identifier_source="manifest",
-                filename="(prompt)",
-                format="txt",
-                sha256="",
-                char_count=len(doc["text"]),
-                parse_status="ok",
-                text=doc["text"],
-            )
-            for seg in segment_document(temp):
-                if not seg.is_candidate or not rules.has_modal(seg.text):
-                    continue
-                if self._chance(self.settings.requirement_miss_rate, "requirement", hash_text(seg.text)):
-                    continue
-                key = f"R{len(requirements) + 1}"
-                requirements.append(
-                    {
-                        "key": key,
-                        "source_document_id": doc["document_id"],
-                        "chapter": seg.chapter,
-                        "requirement_text": _collapse(seg.text),
-                        "references": self._mock_references(seg.text),
-                    }
-                )
-                texts[key] = (seg.text, doc.get("identifier") or "")
+        units = payload.get("units", [])
+        results = [{"key": u["key"], "references": self._mock_references(u["text"])} for u in units if not u.get("context_only")]
+        texts = {u["key"]: (u["text"], u.get("identifier") or "") for u in units if rules.has_modal(u["text"])}
         conflicts = []
         keys = list(texts)
         for i, ka in enumerate(keys):
@@ -180,21 +147,7 @@ class MockProvider(LLMProvider):
                             ],
                         }
                     )
-        return {"requirements": requirements, "potential_conflicts": conflicts}
-
-    def _identify(self, payload: dict[str, Any]) -> dict[str, Any]:
-        found = []
-        for seg in payload.get("segments", []):
-            if seg.get("context_only"):
-                continue
-            # A unit may hold several requirements (a chunk): report each numbered part separately.
-            for chapter, text in _requirement_parts(seg["text"], seg.get("chapter")):
-                if not rules.has_modal(text):
-                    continue
-                if self._chance(self.settings.requirement_miss_rate, "requirement", hash_text(text)):
-                    continue
-                found.append({"segment_id": seg["segment_id"], "chapter": chapter, "requirement_text": _collapse(text)})
-        return {"requirements": found}
+        return {"results": results, "potential_conflicts": conflicts}
 
     # -- semantic chunking ---------------------------------------------------
 
@@ -397,23 +350,6 @@ class MockProvider(LLMProvider):
                 }
             )
         return {"assessments": assessments}
-
-
-def _requirement_parts(text: str, chapter: str | None) -> list[tuple[str | None, str]]:
-    """Numbered parts of a unit's text (the whole text when it has no inner numbering)."""
-    temp = InputDocument(
-        document_id="DOC-MOCK",
-        canonical_identifier=None,
-        identifier_source="manifest",
-        filename="(prompt)",
-        format="txt",
-        sha256="",
-        char_count=len(text),
-        parse_status="ok",
-        text=text,
-    )
-    parts = [(seg.chapter or chapter, seg.text) for seg in segment_document(temp) if seg.is_candidate]
-    return parts or [(chapter, text)]
 
 
 def _look_alike(a: str, b: str) -> bool:

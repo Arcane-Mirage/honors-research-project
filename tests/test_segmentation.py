@@ -1,11 +1,11 @@
 """tests/test_segmentation.py
 
-Segmentation into exact source slices; chunking limits, overlap and truncation.
+Labelled-line segmentation (the chapter fallback) into exact source slices; chunking limits, overlap and truncation.
 """
 
 from csr_lab.config import ProcessingSettings
-from csr_lab.ingestion.chunking import chunk_raw_text, plan_chunks
-from csr_lab.ingestion.segmentation import requirement_candidates, segment_document
+from csr_lab.ingestion.chunking import plan_chunks
+from csr_lab.ingestion.segmentation import segment_document
 from csr_lab.schemas import InputDocument
 
 TEXT = """\
@@ -51,7 +51,7 @@ def test_segments_are_exact_slices_with_chapters():
     segs = segment_document(doc)
     for s in segs:
         assert doc.text[s.start_offset : s.end_offset] == s.text
-    cands = requirement_candidates(segs)
+    cands = [s for s in segs if s.is_candidate]
     chapters = [s.chapter for s in cands]
     assert chapters == ["1.1", "4.2", "4.2.1", "TSA 2.1", "5", "5"]
     assert all(s.kind != "heading" for s in cands)
@@ -59,7 +59,7 @@ def test_segments_are_exact_slices_with_chapters():
 
 
 def test_wrapped_number_line_and_tables_are_continuations():
-    cands = requirement_candidates(segment_document(_doc()))
+    cands = [s for s in segment_document(_doc()) if s.is_candidate]
     control = next(s for s in cands if s.chapter == "4.2")
     assert "10 years after the end of production." in control.text
     table = next(s for s in cands if s.chapter == "4.2.1")
@@ -100,10 +100,3 @@ def test_oversized_segment_is_kept_whole():
     assert any(c.oversized for c in plan.chunks)
     assert any(lim.kind == "oversized_segment" for lim in plan.limitations)
 
-
-def test_chunk_raw_text_includes_labels():
-    doc = _doc()
-    segs = segment_document(doc)
-    plan = plan_chunks([doc], segs, ProcessingSettings())
-    raw = chunk_raw_text(plan.chunks[0], {s.segment_id: s for s in segs}, {doc.document_id: doc})
-    assert "4.2.1 The supplier shall perform" in raw[0]["text"]

@@ -21,7 +21,7 @@ from csr_lab.extraction.normalization import reference_key
 from csr_lab.ids import conflict_id, document_family_id, stable_hash
 from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment
-from csr_lab.prompts import prompt_versions
+from csr_lab.prompts import prompt_versions, system_prompt
 from csr_lab.relationships.builder import RelationshipGraph, build_graph
 from csr_lab.relationships.validation import validate_graph
 from csr_lab.schemas import (
@@ -308,7 +308,7 @@ def add_unit_costs(stats, documents: list[InputDocument], n_requirements: int) -
 
 
 def fidelity_report(state: dict) -> FidelityReport | None:
-    """How the chunk units (provided or model-made) matched the source text."""
+    """How model-made chunks matched the source text."""
     checks = state.get("chunk_checks", [])
     if not checks:
         return None
@@ -378,6 +378,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         ctx.case_id,
         ctx.run_seed,
         json.dumps(options_dump, sort_keys=True),
+        system_prompt.fingerprint(ctx.config.system_prompt),
         *[d.sha256 for d in documents],
         *([ctx.saved_graph_info["fingerprint"]] if ctx.saved_graph_info else []),
         length=16,
@@ -390,7 +391,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         package_version=package_version(),
         provider=ctx.provider.describe(),
         provider_is_mock=ctx.provider.is_mock,
-        prompt_versions=prompt_versions(),
+        prompt_versions={**prompt_versions(), "system_prompt": system_prompt.fingerprint(ctx.config.system_prompt)},
         run_seed=ctx.run_seed,
         case_id=ctx.case_id,
         operational=stats,

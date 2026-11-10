@@ -1,10 +1,10 @@
 """src/csr_lab/ingestion/segmentation.py
 
-Deterministic segmentation of document text into candidate requirement blocks.
+Find the labelled lines of a document: numbered headings and numbered paragraphs.
 
-The segmenter only *proposes* blocks. Deciding which blocks are requirements is
-done later (by the LLM in the staged workflows). Headings, front matter and
-document identifiers are never emitted as requirement candidates.
+``ingestion/chapters.py`` uses this when a document has no table of contents: every
+labelled line starts a chapter. ``Segment`` is also the unit record every stage works on
+(one per chapter or model-made chunk).
 
 Recognised layouts:
 * numbered paragraphs:            ``4.2.1 The supplier shall ...``
@@ -54,8 +54,8 @@ class Segment(BaseModel):
     has_modal: bool = False
     confidence: Literal["high", "low"] = "low"
     notes: list[str] = Field(default_factory=list)
-    origin: Literal["deterministic", "provided", "llm"] = Field(
-        default="deterministic", description="Who made this unit: csr-lab's segmenter, a chunk file, or the model."
+    origin: Literal["deterministic", "llm"] = Field(
+        default="deterministic", description="Who made this unit: csr-lab (chapters) or the model (semantic chunks)."
     )
     text_is_source_slice: bool = Field(
         default=True, description="False when the unit's text is a chunk whose wording differs from the source."
@@ -242,7 +242,3 @@ def segment_document(doc: InputDocument) -> list[Segment]:
     if not seen_first_label:
         emit(front_matter)
     return segments
-
-
-def requirement_candidates(segments: list[Segment]) -> list[Segment]:
-    return [s for s in segments if s.is_candidate]

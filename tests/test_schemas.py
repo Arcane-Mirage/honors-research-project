@@ -68,8 +68,9 @@ def test_result_round_trip_and_integrity(simple_docs, config):
     assert {"schema_version", "analysis_id", "input_documents", "requirements", "referenced_documents", "relationships", "potential_conflicts", "coverage", "metadata"} <= set(result.model_dump())
 
     data = result.model_dump(mode="json")
-    data["requirements"][0]["referenced_document_ids"] = ["DOC-MISSING"]
-    data["requirements"][0]["reference_mentions"][0]["document_id"] = "DOC-MISSING"
+    req = next(r for r in data["requirements"] if r["reference_mentions"])
+    req["referenced_document_ids"] = ["DOC-MISSING"]
+    req["reference_mentions"][0]["document_id"] = "DOC-MISSING"
     with pytest.raises(ValidationError):
         AnalysisResult.model_validate(data)
 

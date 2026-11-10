@@ -1,6 +1,6 @@
 """src/csr_lab/ingestion/units.py
 
-Chunks from a chunk file or from the model, turned into analysable units.
+Model-made chunks (``chunking.method: llm``), turned into analysable units.
 
 **Model chunking** (``chunking.method: llm``, also usable on its own via ``csr-lab chunk``)::
 
@@ -12,7 +12,7 @@ never lost silently. The chunks are returned as ``ChunkInput`` records that reme
 their batch span.
 
 **Checking chunks against the source** (``segments_from_chunks``). Every chunk becomes
-one ``Segment`` (``origin`` = ``provided`` or ``llm``). The chunk is first located in the
+one ``Segment`` (``origin`` = ``llm``). The chunk is first located in the
 source text (``extraction.fidelity.check_fragment``):
 
 * found verbatim (exact or whitespace-only differences): the unit's text is the exact
@@ -70,7 +70,7 @@ def segments_from_chunks(
 ) -> tuple[list[Segment], list[FragmentCheck]]:
     text = doc.text or ""
     text_index, word_index = indexes or (TextIndex(text), WordIndex(text))
-    prefix = {"provided": "P", "llm": "L"}.get(origin, "X")
+    prefix = {"llm": "L"}.get(origin, "X")
     segments: list[Segment] = []
     checks: list[FragmentCheck] = []
     for n, chunk in enumerate(chunks, start=1):

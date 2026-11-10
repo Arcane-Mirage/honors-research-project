@@ -42,7 +42,6 @@ class MockSettings(_Settings):
     "look" is an independent seeded draw.
     """
 
-    requirement_miss_rate: float = Field(default=0.0, ge=0, le=1)
     reference_miss_rate: float = Field(default=0.15, ge=0, le=1)
     hallucination_rate: float = Field(default=0.08, ge=0, le=1)
     quote_paraphrase_rate: float = Field(default=0.10, ge=0, le=1)
@@ -187,23 +186,23 @@ class GraphSettings(_Settings):
 
 
 class ChunkingSettings(_Settings):
-    """What the analysed text units are and where they come from.
+    """What the analysed units are. Every unit is one requirement.
 
-    * ``method``: ``deterministic`` uses csr-lab's section-aware segmenter; ``llm`` asks the
-      model to split word-count batches into semantic chunks (a common industry approach).
-      Pre-chunked input (a ``chunks.json`` file) always uses its own chunks.
-    * ``unit``: ``requirement`` identifies individual requirements inside the units;
-      ``chunk`` treats each chunk as one unit and extracts references per chunk.
-    * ``repair``: ``source_slice`` replaces a chunk whose wording differs from the source
-      with the source text it was aligned to; ``none`` analyses the chunk as given.
+    * ``method``: ``chapter`` (default) cuts each document at its chapter headings
+      (``ingestion/chapters.py``); ``llm`` asks the model to split word-count batches into
+      semantic chunks (the industry approach, for the ``llm_chunked`` baselines).
+    * ``repair`` (llm): ``source_slice`` replaces a chunk whose wording differs from the
+      source with the source text it was aligned to; ``none`` analyses the chunk as given.
     """
 
-    method: Literal["deterministic", "llm"] = "deterministic"
-    unit: Literal["requirement", "chunk"] = "requirement"
+    method: Literal["chapter", "llm"] = "chapter"
+    chapter_use_toc: bool = Field(default=True, description="take the chapter list from the table of contents when there is one")
+    chapter_max_depth: int = Field(default=0, ge=0, description="deepest heading level that starts a chapter (0 = every level); deeper headings stay in their parent")
+    chapter_include_front_matter: bool = Field(default=False, description="analyse the text before the first chapter (cover page) as one more unit")
     repair: Literal["none", "source_slice"] = "none"
-    batch_words: int = Field(default=2500, ge=50, description="llm method: words per chunking request")
-    target_chunk_words: int = Field(default=500, ge=20, description="llm method: requested chunk size")
-    min_match_ratio: float = Field(default=0.6, ge=0, le=1, description="below this word ratio a chunk counts as not found in the source")
+    batch_words: int = Field(default=2500, ge=50, description="llm: words per chunking request")
+    target_chunk_words: int = Field(default=500, ge=20, description="llm: requested chunk size")
+    min_match_ratio: float = Field(default=0.6, ge=0, le=1, description="llm: below this word ratio a chunk counts as not found in the source")
 
 
 class MergingSettings(_Settings):
@@ -256,8 +255,30 @@ class EvaluationSettings(_Settings):
     baseline_strategy: str = "single_pass"
 
 
+class SystemPromptSettings(_Settings):
+    """Extra system-prompt text: who the documents are read for (``prompts/system_prompt.py``).
+
+    * ``enabled``: append it to the reference, verification, conflict and single-pass prompts.
+    * ``supplier`` / ``customer``: the company the documents are read for, and its customer.
+    * ``customer_aliases``: other names of the customer; ``ambiguous_aliases``: those that are
+      also ordinary words ('International'), which get an extra sentence.
+    * ``other_customers``: ``skip`` or ``keep`` text that applies only to other customers.
+
+    Experiments start with it off (``ExperimentConfig.system_prompt``): the synthetic cases have
+    other customers. ``analyze`` and ``build-graph`` use these settings.
+    """
+
+    enabled: bool = False
+    supplier: str = "the supplier"
+    customer: str = "the customer"
+    customer_aliases: list[str] = Field(default_factory=list)
+    ambiguous_aliases: list[str] = Field(default_factory=list)
+    other_customers: Literal["skip", "keep"] = "skip"
+
+
 class AppConfig(_Settings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    system_prompt: SystemPromptSettings = Field(default_factory=SystemPromptSettings)
     processing: ProcessingSettings = Field(default_factory=ProcessingSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
     graph_store: GraphStoreSettings = Field(default_factory=GraphStoreSettings)
@@ -289,6 +310,10 @@ class ExperimentConfig(_Settings):
         "(optionally with `profile:` plus overrides). Empty: the default profile.",
     )
     processing: dict[str, Any] = Field(default_factory=dict)
+    system_prompt: dict[str, Any] = Field(
+        default_factory=lambda: {"enabled": False},
+        description="Overrides of the extra system-prompt text. Off by default: the synthetic cases have other customers.",
+    )
     evaluation: dict[str, Any] = Field(default_factory=dict)
     case_ids: list[str] | None = None
 
@@ -413,6 +438,11 @@ def apply_experiment(config: AppConfig, experiment: ExperimentConfig) -> AppConf
     """Return a new AppConfig with the experiment's overrides applied (``profile:`` names expanded)."""
     merged = deep_merge(
         config.model_dump(),
-        {"llm": expand_llm_block(experiment.llm), "processing": experiment.processing, "evaluation": experiment.evaluation},
+        {
+            "llm": expand_llm_block(experiment.llm),
+            "system_prompt": experiment.system_prompt,
+            "processing": experiment.processing,
+            "evaluation": experiment.evaluation,
+        },
     )
     return AppConfig.model_validate(merged)

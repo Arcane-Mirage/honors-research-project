@@ -88,7 +88,7 @@ def test_public_settings_hide_the_auth_command():
 def test_stage_costs_and_unit_costs(simple_docs, config):
     result = run_analysis(simple_docs, strategy="staged_verified", config=config)
     ops = result.metadata.operational
-    assert set(ops.stage_costs) >= {"identify_requirements", "extract_references", "analyze_conflicts"}
+    assert set(ops.stage_costs) >= {"extract_references", "analyze_conflicts"}
     assert sum(sc.calls for sc in ops.stage_costs.values()) == ops.llm_calls
     assert ops.token_source == "estimated_from_chars"
     assert ops.estimated_tokens == sum(sc.estimated_tokens for sc in ops.stage_costs.values()) > 0

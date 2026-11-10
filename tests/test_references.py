@@ -112,8 +112,6 @@ def test_scan_candidates_finds_ids_and_names():
 
 def _scripted_missing_drawing(always_reject: bool = False):
     def respond(task, payload, request):
-        if task == "requirement_identification":
-            return {"requirements": [{"segment_id": s["segment_id"], "chapter": s["chapter"], "requirement_text": s["text"]} for s in payload["segments"] if "shall" in s["text"] and not s["context_only"]]}
         if task == "reference_extraction":
             results = []
             for r in payload["requirements"]:

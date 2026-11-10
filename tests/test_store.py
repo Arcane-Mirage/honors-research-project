@@ -63,14 +63,12 @@ def _run(tmp_path, name, text, config, **kwargs):
 # -- identity ------------------------------------------------------------------
 
 
-def test_requirement_id_comes_from_revision_chapter_and_text():
-    rid = requirement_id("DOC-CVM-CSR-700-REV-C", "2.1", "The supplier shall comply.")
-    assert rid.startswith("REQ-CVM-CSR-700-REV-C-2.1-")
-    assert rid == requirement_id("DOC-CVM-CSR-700-REV-C", "2.1", "The supplier\nshall  comply.")  # wrapping ignored
-    assert rid != requirement_id("DOC-CVM-CSR-700-REV-C", "2.2", "The supplier shall comply.")
-    assert rid != requirement_id("DOC-CVM-CSR-700-REV-D", "2.1", "The supplier shall comply.")
-    assert rid != requirement_id("DOC-CVM-CSR-700-REV-C", "2.1", "The supplier shall not comply.")
-    assert "-NOCHAPTER-" in requirement_id("DOC-X", None, "text")
+def test_requirement_id_comes_from_revision_and_chapter():
+    rid = requirement_id("DOC-CVM-CSR-700-REV-C", "2.1")
+    assert rid == "REQ-CVM-CSR-700-REV-C-2.1"
+    assert rid != requirement_id("DOC-CVM-CSR-700-REV-C", "2.2")
+    assert rid != requirement_id("DOC-CVM-CSR-700-REV-D", "2.1")
+    assert requirement_id("DOC-X", None) == "REQ-X-NOCHAPTER"
 
 
 def test_pipeline_ids_are_stable_across_runs(tmp_path, config):

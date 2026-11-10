@@ -11,7 +11,7 @@ Runtime decisions use conditional edges:
   targeted re-extraction -> verification again (bounded, no infinite loop).
 
     prepare_input [-> llm_chunk]                            (chunking.method == llm)
-      -> identify_requirements | chunks_as_requirements      (chunking.unit)
+      -> units_as_requirements                               (one requirement per chapter / chunk)
       -> extract_references
       [-> verify_references <-> targeted_reextraction]      (verification.enabled)
       [-> merge_references]                                 (reference_merging.method != deterministic)
@@ -33,8 +33,8 @@ from csr_lab.pipelines.state import PipelineState
 def build_staged_workflow(options: PipelineOptions):
     g = StateGraph(PipelineState, context_schema=PipelineContext)
     g.add_node("prepare_input", nodes.prepare_input)
-    unit_node = "identify_requirements" if options.chunking.unit == "requirement" else "chunks_as_requirements"
-    g.add_node(unit_node, nodes.identify_requirements if unit_node == "identify_requirements" else nodes.chunks_as_requirements)
+    unit_node = "units_as_requirements"
+    g.add_node(unit_node, nodes.units_as_requirements)
     g.add_node("extract_references", nodes.extract_references_node)
     g.add_node("finalize", nodes.finalize)
 

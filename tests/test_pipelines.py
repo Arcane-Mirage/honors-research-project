@@ -7,6 +7,7 @@ import json
 
 import pytest
 
+from csr_lab.evaluation.metrics import evaluate_case
 from csr_lab.pipelines.registry import build_workflow, derive_strategy, get_strategy, register_variants
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import AnalysisResult
@@ -23,7 +24,12 @@ def test_every_strategy_produces_valid_output(dataset, noisy_config, strategy, c
     AnalysisResult.model_validate_json(result.model_dump_json())
     assert result.status == "completed"
     assert result.metadata.strategy == strategy and result.metadata.provider_is_mock
-    assert len(result.requirements) == len(gold.requirements)
+    # Whole chapters: at least one unit per gold requirement (informational chapters are units too),
+    # one requirement per chapter, and every gold requirement inside some unit.
+    assert len(result.requirements) >= len(gold.requirements)
+    keys = [(r.source_document_id, r.chapter) for r in result.requirements]
+    assert len(keys) == len(set(keys))
+    assert evaluate_case(result, gold).units.gold_contained == len(gold.requirements)
     assert all(r.department is None and r.department_status == "deferred" for r in result.requirements)
     assert all(c.review_status == "requires_human_review" for c in result.potential_conflicts)
     graph_calls = result.metadata.operational.graph_informed_calls
@@ -96,26 +102,27 @@ def test_malformed_output_is_retried_then_recorded(simple_docs, config):
         calls["n"] += 1
         if calls["n"] == 1:
             return "Sure! Here is the JSON: {not valid"
-        return {"requirements": [], "potential_conflicts": []}
+        return {"results": [], "potential_conflicts": []}
 
     result = run_analysis(simple_docs, strategy="single_pass", config=config, provider=ScriptedProvider(respond))
     call = result.metadata.llm_calls[0]
     assert call.success and call.attempts == 2
     assert result.metadata.operational.json_validation_failures == 1
-    assert result.requirements == []
+    # The chapters are the requirements even when the model answers for none of them: each is 'failed'.
+    assert result.requirements and all(not r.reference_mentions for r in result.requirements)
+    assert {r.extraction_metadata.reference_analysis_status for r in result.requirements} == {"failed"}
 
     always_bad = ScriptedProvider(lambda *a: "no json at all")
     failed = run_analysis(simple_docs, strategy="staged", config=config, provider=always_bad)
     assert failed.status == "completed_with_errors"
     assert not failed.metadata.llm_calls[0].success
-    assert failed.metadata.operational.json_validation_failures == 1 + config.llm.max_validation_retries
+    assert all(not c.success for c in failed.metadata.llm_calls)  # every stage after the chapters fails
+    assert failed.metadata.operational.json_validation_failures == len(failed.metadata.llm_calls) * (1 + config.llm.max_validation_retries)
     assert any(lim.kind == "llm_call_failed" for lim in failed.coverage.limitations)
 
 
 def test_missing_requirement_in_reference_response_is_failed_not_empty(simple_docs, config):
     def respond(task, payload, request):
-        if task == "requirement_identification":
-            return {"requirements": [{"segment_id": s["segment_id"], "requirement_text": s["text"]} for s in payload["segments"] if "shall" in s["text"]]}
         if task == "reference_extraction":
             first = payload["requirements"][0]["requirement_id"]
             return {"results": [{"requirement_id": first, "references": []}]}

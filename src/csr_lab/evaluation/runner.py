@@ -346,7 +346,12 @@ def build_summary(*, experiment_id, experiment, config, dataset, cases, strategi
         "baseline_strategy": baseline,
         "prompt_versions": prompt_versions(),
         "environment": env,
-        "config": {"llm": config.llm.public_dict(), "processing": config.processing.model_dump(), "evaluation": config.evaluation.model_dump()},
+        "config": {
+            "llm": config.llm.public_dict(),
+            "system_prompt": config.system_prompt.model_dump(),
+            "processing": config.processing.model_dump(),
+            "evaluation": config.evaluation.model_dump(),
+        },
         "validation_warnings": problems,
         "runs": run_records,
         "aggregates": agg("metrics_strict"),

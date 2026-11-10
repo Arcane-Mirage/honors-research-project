@@ -187,15 +187,6 @@ class Evidence(_Model):
 # ---------------------------------------------------------------------------
 
 
-class ProvidedChunk(_Model):
-    """A chunk produced outside csr-lab (another chunker), analysed instead of csr-lab's own segmentation."""
-
-    chunk_id: str
-    title: str | None = None
-    content: str
-    source_pages: list[int] = Field(default_factory=list, description="Pages the chunker said the chunk came from.")
-
-
 class InputDocument(_Model):
     document_id: str
     canonical_identifier: str | None
@@ -213,11 +204,6 @@ class InputDocument(_Model):
     text: str | None = Field(
         default=None,
         description="Extracted text. Verbatim relative to the parser's output; offsets refer to it.",
-    )
-    provided_chunks: list[ProvidedChunk] | None = Field(
-        default=None,
-        exclude=True,
-        description="Pre-chunked input (not exported; see metadata.input_fidelity for how the chunks matched the source).",
     )
 
 
@@ -532,7 +518,7 @@ class AnalysisMetadata(_Model):
     reference_merges: list[ReferenceMergeDecision] = Field(default_factory=list)
     input_fidelity: FidelityReport | None = Field(
         default=None,
-        description="How the analysed text units (provided or model-made chunks) matched the source text.",
+        description="How model-made chunks matched the source text (llm_chunked strategies).",
     )
     saved_graph: dict[str, Any] | None = Field(
         default=None,

@@ -33,7 +33,6 @@ llm:
     input_usd_per_million_tokens: null
     output_usd_per_million_tokens: null
   mock:                       # error injection for the offline mock model
-    requirement_miss_rate: 0.0
     reference_miss_rate: 0.15
     hallucination_rate: 0.08
     quote_paraphrase_rate: 0.10
@@ -45,6 +44,17 @@ llm:
     merge_alias_miss_rate: 0.2 # a document name not linked to its identifier
     seed: 0
 
+# Extra system-prompt text: who the documents are read for (edit the wording in
+# src/csr_lab/prompts/system_prompt.py). Used by `analyze` and `build-graph`; experiments
+# switch it off (the synthetic cases have other customers). `--no-system-prompt` compares.
+system_prompt:
+  enabled: true
+  supplier: Bendix
+  customer: Navistar
+  customer_aliases: [International, International Motors, Navistar International Corporation]
+  ambiguous_aliases: [International]   # also an ordinary word
+  other_customers: skip                # skip | keep text that applies only to other customers
+
 processing:
   max_document_chars: 200000
   chunk_max_chars: 24000
@@ -52,7 +62,7 @@ processing:
   include_source_text: true
   pdf_min_chars_per_page: 20
   pdf_backend: pypdf                 # pypdf | pypdf_layout | pymupdf (optional, AGPL)
-  pdf_strip_repeated_lines: false    # remove running headers / page footers
+  pdf_strip_repeated_lines: true     # remove running headers / page footers (sweeps compare false/true)
   pdf_repeated_line_min_share: 0.5   # share of pages a header/footer line must appear on
 
 evaluation:
