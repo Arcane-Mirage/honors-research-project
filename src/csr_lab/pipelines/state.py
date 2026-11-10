@@ -14,11 +14,11 @@ import operator
 from typing import Annotated, Any, TypedDict
 
 from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineError, RequirementDraft
+from csr_lab.extraction.fidelity import FragmentCheck
 from csr_lab.extraction.verification import AuditCandidate
 from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment
 from csr_lab.relationships.builder import RelationshipGraph
-from csr_lab.extraction.fidelity import FragmentCheck
 from csr_lab.schemas import AnalysisResult, CoverageLimitation, GraphDecision, InputDocument, ReferenceMergeDecision, VerificationEvent
 
 

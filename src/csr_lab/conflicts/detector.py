@@ -16,10 +16,13 @@ precedence or resolves a conflict.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from csr_lab.config import GraphSettings
+from csr_lab.conflicts.candidate_selection import attribute_score
 from csr_lab.drafts import CandidatePair, ConflictDraft, RequirementDraft, ordered_pair
 from csr_lab.extraction.grounding import SourceIndex, build_evidence
 from csr_lab.prompts import conflicts as conflict_prompt
@@ -70,8 +73,18 @@ def analyze_pairs(
     pairs_per_call: int,
     context_for: Callable[[tuple[str, str]], list[str | dict]] | None = None,
     graph_informed: bool = False,
+    evidence_for: Callable[[list[tuple[str, str]]], list[Evidence]] | None = None,
+    document_info: dict[str, tuple[str | None, str | None]] | None = None,
+    stage: str = "analyze_conflicts",
+    method: str = "llm_pairwise",
 ) -> tuple[list[ConflictDraft], set[tuple[str, str]], int, list[str]]:
-    """Returns (conflicts, analysed pairs, failed pair count, errors)."""
+    """Returns (conflicts, analysed pairs, failed pair count, errors).
+
+    ``evidence_for`` (quotes -> evidence) and ``document_info`` (document ID -> identifier,
+    revision) replace the source lookups for units whose document is not in this run
+    (the saved-graph conflict check).
+    """
+    make_evidence = evidence_for or (lambda quotes: build_conflict_evidence(quotes, requirements, ctx.sources))
     numbered = [(f"P{i + 1:03d}", c) for i, c in enumerate(candidates)]
     batches = [numbered[i : i + pairs_per_call] for i in range(0, len(numbered), pairs_per_call)]
 
@@ -80,10 +93,11 @@ def analyze_pairs(
     def describe(req_id: str, key: str) -> dict:
         req = requirements[req_id]
         doc = ctx.sources.documents.get(req.document_id)
+        identifier, revision = (doc.canonical_identifier, doc.revision) if doc else (document_info or {}).get(req.document_id, (None, None))
         return {
             "requirement_id": key,
-            "document_identifier": doc.canonical_identifier if doc else None,
-            "document_revision": doc.revision if doc else None,
+            "document_identifier": identifier,
+            "document_revision": revision,
             "chapter": req.chapter,
             "text": req.text,
         }
@@ -101,7 +115,7 @@ def analyze_pairs(
         system, user = conflict_prompt.SPEC.render({"pairs": pairs})
         result = ctx.llm.call(
             task="conflict_analysis",
-            stage="analyze_conflicts",
+            stage=stage,
             system=system,
             user=user,
             response_model=conflict_prompt.ConflictAnalysisResponse,
@@ -132,7 +146,7 @@ def analyze_pairs(
             ids = list(cand.requirement_ids)
             keys = {"A": ids[0], "B": ids[1]}
             quotes = [(keys[k], e.quoted_text) for e in assessment.evidence if (k := e.requirement_id.strip().upper()) in keys]
-            evidence = build_conflict_evidence(quotes, requirements, ctx.sources)
+            evidence = make_evidence(quotes)
             conflicts.append(
                 ConflictDraft(
                     requirement_ids=ids,
@@ -140,7 +154,7 @@ def analyze_pairs(
                     description=assessment.description or "Potential incompatibility reported by the model.",
                     evidence=evidence,
                     assessment="ambiguous" if assessment.ambiguous else "apparent_incompatibility",
-                    detection_methods=["llm_pairwise"],
+                    detection_methods=[method],
                     evidence_valid=_evidence_valid(evidence, ids),
                     reason_for_review=REVIEW_REASON,
                     related_document_ids=sorted({requirements[i].document_id for i in ids}),
@@ -372,3 +386,86 @@ def graph_context_for_pair(
         raise ValueError(f"unknown graph context_format {context_format!r}; choose from {CONTEXT_FORMATS}")
     facts = graph_context_facts(graph, pair, max_items, collapse=context_format != "ids")
     return [render_fact(f, pair, context_format) for f in facts]
+
+
+# ---------------------------------------------------------------------------
+# Conflicts with the saved graph
+# ---------------------------------------------------------------------------
+
+
+def saved_graph_candidates(
+    units: list[RequirementDraft],
+    unit_refs: dict[str, set[str]],
+    saved: dict,
+    *,
+    max_pairs: int,
+    min_score: float,
+    max_fanout: int,
+    families: dict[str, str],
+) -> tuple[list[CandidatePair], list[str]]:
+    """Pairs (new unit, saved unit) whose documents are linked by references.
+
+    ``unit_refs``: new unit ID -> document nodes it references (with their families);
+    ``families``: new document ID -> its document-level node.
+    A pair is linked when the new unit references the saved unit's document, the saved
+    unit references the new unit's document, or both reference a document that at most
+    ``max_fanout`` saved units reference (common standards would link everything).
+    Linked pairs need a topic overlap of at least ``min_score``; the best ``max_pairs`` are kept.
+    """
+    fanout: dict[str, int] = {}
+    for s in saved.values():
+        for d in s.referenced:
+            fanout[d] = fanout.get(d, 0) + 1
+    scored: list[tuple[float, tuple[str, str], list[str]]] = []
+    for u in units:
+        u_family = families.get(u.document_id, u.document_id)
+        refs = unit_refs.get(u.requirement_id, set())
+        for s in saved.values():
+            selectors = []
+            if s.document_id in refs or s.family_id in refs:
+                selectors.append(f"saved_graph:references:{s.family_id}")
+            if u.document_id in s.referenced or u_family in s.referenced:
+                selectors.append(f"saved_graph:referenced_by:{s.family_id}")
+            shared = sorted(d for d in refs & s.referenced if fanout.get(d, 0) <= max_fanout)
+            selectors += [f"saved_graph:shared_reference:{d}" for d in shared[:3]]
+            if not selectors:
+                continue
+            score = attribute_score(u.text, s.text)
+            if score >= min_score:
+                scored.append((score, ordered_pair(u.requirement_id, s.unit_id), selectors))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    notes = []
+    if len(scored) > max_pairs:
+        notes.append(f"saved-graph conflict check: {len(scored)} linked pairs, best {max_pairs} analysed (saved_max_pairs)")
+    return [CandidatePair(requirement_ids=pair, selectors=sel, graph_derived=True) for _, pair, sel in scored[:max_pairs]], notes
+
+
+def saved_unit_evidence(quotes: list[tuple[str, str]], units: dict[str, RequirementDraft], sources: SourceIndex, saved: dict) -> list[Evidence]:
+    """Evidence for a pair with one saved unit: its quotes are located in the stored text.
+
+    Offsets are the unit's stored start offset plus the quote's position in the unit text.
+    """
+    out = []
+    for unit_id, quote in quotes:
+        if unit_id not in saved:
+            out += build_conflict_evidence([(unit_id, quote)], units, sources)
+            continue
+        quote = quote.strip()
+        if not quote:
+            continue
+        unit = saved[unit_id]
+        pattern = r"\s+".join(re.escape(w) for w in quote.split())
+        m = re.search(pattern, unit.text) or re.search(pattern, unit.text, re.IGNORECASE)
+        located = m is not None and unit.start_offset is not None
+        out.append(
+            Evidence(
+                source_document_id=unit.document_id,
+                requirement_id=unit_id,
+                quoted_text=quote,
+                start_offset=unit.start_offset + m.start() if located else None,  # type: ignore[union-attr, operator]
+                end_offset=unit.start_offset + m.end() if located else None,  # type: ignore[union-attr, operator]
+                verified=True if located else (None if m is not None else False),  # found but offsets unknown: unchecked
+                verification=("exact" if m.group(0) == quote else "whitespace_normalized") if m else "not_found",
+            )
+        )
+    return out

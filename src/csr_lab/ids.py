@@ -62,6 +62,12 @@ def requirement_id(document_id: str, chapter: str | None) -> str:
     return f"REQ-{base}-{chapter_slug(chapter)}"
 
 
+def passage_id(document_id: str, label: str) -> str:
+    """A passage of a document without chapters: 'DOC-NDA-1', 'P003' -> 'PSG-NDA-1-P003'."""
+    base = document_id[4:] if document_id.startswith("DOC-") else slug(document_id)
+    return f"PSG-{base}-{label}"
+
+
 def relationship_id(source: str, relationship_type: str, target: str) -> str:
     return f"REL-{stable_hash(source, relationship_type, target, length=12)}"
 

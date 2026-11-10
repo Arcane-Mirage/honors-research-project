@@ -14,10 +14,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from csr_lab.config import AppConfig, load_config  # noqa: E402
-from csr_lab.datasets.loader import load_dataset  # noqa: E402
-from csr_lab.datasets.synthetic import write_dataset  # noqa: E402
-from csr_lab.ingestion.loader import load_bundle  # noqa: E402
+from csr_lab.config import AppConfig, load_config
+from csr_lab.datasets.loader import load_dataset
+from csr_lab.datasets.synthetic import write_dataset
+from csr_lab.ingestion.loader import load_bundle
 
 SIMPLE_DOC = """\
 CORVANE MOTORS

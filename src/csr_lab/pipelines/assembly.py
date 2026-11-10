@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 
 from csr_lab.drafts import ConflictDraft, MentionDraft, RequirementDraft
@@ -32,6 +32,7 @@ from csr_lab.schemas import (
     Coverage,
     CoverageLimitation,
     DocumentCoverage,
+    DocumentPassage,
     DocumentType,
     InputDocument,
     PotentialConflict,
@@ -107,6 +108,36 @@ def requirement_records(
     return out
 
 
+def passage_records(passages: list[RequirementDraft], mentions: list[MentionDraft]) -> list[DocumentPassage]:
+    """Passages of documents without chapters: analysed like chapters, exported apart from requirements."""
+    by_unit: dict[str, list[MentionDraft]] = {}
+    for m in mentions:
+        if m.active:
+            by_unit.setdefault(m.requirement_id, []).append(m)
+    out = []
+    for p in passages:
+        ms = by_unit.get(p.requirement_id, [])
+        out.append(
+            DocumentPassage(
+                passage_id=p.requirement_id,
+                source_document_id=p.document_id,
+                text=p.text,
+                source_location=SourceLocation(
+                    source_document_id=p.document_id,
+                    page_start=p.page_start,
+                    page_end=p.page_end,
+                    start_offset=p.start_offset,
+                    end_offset=p.end_offset,
+                    match=p.match,
+                ),
+                referenced_document_ids=list(dict.fromkeys(m.document_id for m in ms)),
+                reference_mentions=[to_reference_mention(m) for m in ms],
+                reference_analysis_status=p.reference_status,
+            )
+        )
+    return out
+
+
 def referenced_document_records(mentions: list[MentionDraft], documents: list[InputDocument]) -> list[ReferencedDocument]:
     """One record per referenced document node.
 
@@ -154,14 +185,21 @@ def referenced_document_records(mentions: list[MentionDraft], documents: list[In
     return sorted(out, key=lambda d: d.document_id)
 
 
-def conflict_records(conflicts: list[ConflictDraft], relationship_ids: set[str] | None = None) -> list[PotentialConflict]:
+def conflict_records(
+    conflicts: list[ConflictDraft], relationship_ids: set[str] | None = None, kinds: dict[str, str] | None = None
+) -> list[PotentialConflict]:
+    """``kinds``: unit ID -> chapter | passage | saved (missing: chapter)."""
+    kinds = kinds or {}
     out = []
     for c in conflicts:
         rel_ids = [r for r in c.related_relationship_ids if relationship_ids is None or r in relationship_ids]
+        ids = sorted(c.requirement_ids)
         out.append(
             PotentialConflict(
                 conflict_id=conflict_id(c.requirement_ids),
-                related_requirement_ids=sorted(c.requirement_ids),
+                related_requirement_ids=[i for i in ids if kinds.get(i, "chapter") == "chapter"],
+                related_passage_ids=[i for i in ids if kinds.get(i) == "passage"],
+                related_saved_ids=[i for i in ids if kinds.get(i) == "saved"],
                 related_document_ids=c.related_document_ids,
                 related_relationship_ids=rel_ids,
                 conflict_type=c.conflict_type,
@@ -338,12 +376,14 @@ def assemble(state: dict, ctx) -> AnalysisResult:
     mentions: list[MentionDraft] = state.get("mentions", [])
     fatal = state.get("fatal")
 
-    reqs = requirement_records(requirements, mentions, ctx.strategy.name)
+    reqs = requirement_records([r for r in requirements if r.unit_kind == "chapter"], mentions, ctx.strategy.name)
+    passages = passage_records([r for r in requirements if r.unit_kind == "passage"], mentions)
+    kinds = {r.requirement_id: r.unit_kind for r in requirements} | {u: "saved" for u in ctx.saved_units}
     referenced = referenced_document_records(mentions, documents)
-    conflicts_preview = conflict_records(state.get("conflicts", []))
-    graph = build_graph(documents, reqs, referenced, conflicts_preview)
+    conflicts_preview = conflict_records(state.get("conflicts", []), kinds=kinds)
+    graph = build_graph(documents, reqs, referenced, conflicts_preview, passages)
     edge_ids = {e.relationship_id for e in graph.edges}
-    conflicts = conflict_records(state.get("conflicts", []), edge_ids)
+    conflicts = conflict_records(state.get("conflicts", []), edge_ids, kinds)
     graph_report = validate_graph(graph)
 
     errors = [f"[{e.stage}] {e.message}" for e in state.get("errors", [])]
@@ -387,7 +427,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         strategy=ctx.strategy.name,
         strategy_description=ctx.strategy.description,
         strategy_options=options_dump,
-        created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        created_at=datetime.now(UTC).isoformat(timespec="seconds"),
         package_version=package_version(),
         provider=ctx.provider.describe(),
         provider_is_mock=ctx.provider.is_mock,
@@ -419,6 +459,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         status=status,  # type: ignore[arg-type]
         input_documents=exported_docs,
         requirements=reqs,
+        document_passages=passages,
         referenced_documents=referenced,
         relationships=graph.edges,
         potential_conflicts=conflicts,

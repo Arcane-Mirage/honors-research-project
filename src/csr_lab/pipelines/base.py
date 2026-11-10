@@ -5,8 +5,9 @@ Shared types for strategies: the run context and the strategy specification.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
 
 from csr_lab.config import AppConfig, PipelineOptions
 from csr_lab.extraction.grounding import SourceIndex
@@ -49,6 +50,9 @@ class PipelineContext:
     # Documents from a saved graph (``GraphStore.document_graph()``); graph-assisted runs only.
     saved_graph: RelationshipGraph | None = None
     saved_graph_info: dict | None = None
+    # Requirements and passages already in the saved graph (``GraphStore.saved_units()``),
+    # for the saved-graph conflict check; unit ID -> unit.
+    saved_units: dict[str, Any] = field(default_factory=dict)
 
     @property
     def options(self) -> PipelineOptions:

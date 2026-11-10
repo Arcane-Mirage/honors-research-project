@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -198,7 +199,7 @@ def check_fragment(
     reported = sorted({int(p) for p in reported_pages})
     fwords_raw = [m.group() for m in _WORD_RE.finditer(fragment)]
     fwords = [w for w in (_norm_word(x) for x in fwords_raw) if w]
-    base = dict(fragment_id=fragment_id, document_id=document_id, title=title, reported_pages=reported, fragment_words=len(fwords))
+    base = {"fragment_id": fragment_id, "document_id": document_id, "title": title, "reported_pages": reported, "fragment_words": len(fwords)}
 
     def finish(check: FragmentCheck) -> FragmentCheck:
         check.page_start, check.page_end = _pages_for(check.start_offset, check.end_offset, pages)
@@ -385,10 +386,10 @@ def format_report(report: FidelityReport, *, max_rows: int = 60) -> str:
     """Plain-text table for the command line."""
     s = report.summary
     lines = [
-        f"fragments: {s.fragments}  exact: {s.exact}  whitespace-only: {s.whitespace_normalized}  "
-        f"fuzzy (rewritten): {s.fuzzy}  not found: {s.not_found}",
-        f"verbatim rate: {_pct(s.verbatim_rate)}  mean word ratio: {_pct(s.mean_fragment_ratio)}  "
-        f"source coverage: {_pct(s.source_coverage)}  gaps: {s.gaps} ({s.requirement_like_gaps} look like requirements)",
+        (f"fragments: {s.fragments}  exact: {s.exact}  whitespace-only: {s.whitespace_normalized}  "
+        f"fuzzy (rewritten): {s.fuzzy}  not found: {s.not_found}"),
+        (f"verbatim rate: {_pct(s.verbatim_rate)}  mean word ratio: {_pct(s.mean_fragment_ratio)}  "
+        f"source coverage: {_pct(s.source_coverage)}  gaps: {s.gaps} ({s.requirement_like_gaps} look like requirements)"),
     ]
     if s.pages_checked:
         lines.append(f"reported pages agree with located pages: {s.pages_agree}/{s.pages_checked}")

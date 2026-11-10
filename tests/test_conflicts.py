@@ -3,6 +3,8 @@
 Conflict candidate selection, evidence validation and the graph flagging rules.
 """
 
+from helpers import case_documents
+
 from csr_lab.config import ConflictSettings, GraphSettings
 from csr_lab.conflicts.candidate_selection import attribute_score, select_candidates
 from csr_lab.conflicts.detector import graph_rule_conflicts, merge_conflicts, validate_conflict_evidence
@@ -11,7 +13,6 @@ from csr_lab.extraction.grounding import SourceIndex
 from csr_lab.pipelines.assembly import provisional_graph
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import ConflictType, InputDocument
-from helpers import case_documents
 
 
 def _reqs(texts):
@@ -27,7 +28,7 @@ TEXTS = [
 
 
 def test_all_pairs_when_small():
-    cands, total, notes, decisions = select_candidates(_reqs(TEXTS), ConflictSettings())
+    cands, total, _notes, decisions = select_candidates(_reqs(TEXTS), ConflictSettings())
     assert total == 6 and len(cands) == 6
     assert all(c.selectors == ["all_pairs"] for c in cands) and not decisions
 

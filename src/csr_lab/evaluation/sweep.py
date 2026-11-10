@@ -19,7 +19,13 @@ Grid keys:
   strategies in the run), e.g. ``llm.mock.merge_confusion_rate`` or ``processing.pdf_backend``;
 * ``options.*``: strategy options; every strategy is re-registered as a variant named
   ``<strategy>__<setting>`` for each value;
-* ``dataset``, ``split``: run the same strategies on another dataset (e.g. the PDF variant).
+* ``dataset``, ``split``: run the same strategies on another dataset (e.g. the PDF variant);
+* ``saved_graph``: compare saved graphs, e.g. ``[{path: graphs/a.json}, {path: graphs/b.json}]``.
+
+**Saved graphs.** An experiment with ``saved_graph: {build_from: FOLDER}`` builds its graph
+once for the whole sweep (``<sweep>/saved_graph.json``), so every setting is graded against
+the same graph. It is rebuilt per setting only when the grid changes how it is built
+(``llm.*``, ``system_prompt.*``, ``processing.*``) or which graph is used (``saved_graph``).
 
 Each combination is a normal experiment (stored in SQLite, with its own report.md);
 the sweep writes ``sweep_report.md`` and ``sweep.csv`` with the chosen metrics side by side.
@@ -29,9 +35,10 @@ from __future__ import annotations
 
 import itertools
 import json
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,7 +58,8 @@ DEFAULT_METRICS = [
     "ops.tokens_per_gold_requirement",
 ]
 _EXPERIMENT_SECTIONS = ("llm", "system_prompt", "processing", "evaluation")
-_EXPERIMENT_FIELDS = ("dataset", "split")
+_EXPERIMENT_FIELDS = ("dataset", "split", "saved_graph")
+_BUILD_SECTIONS = ("llm", "system_prompt", "processing", "saved_graph")  # grid keys that change the saved graph
 
 
 class SweepConfig(BaseModel):
@@ -93,7 +101,9 @@ def combinations(grid: dict[str, list[Any]]) -> list[list[tuple[str, Any]]]:
     for key in keys:
         head = key.split(".", 1)[0]
         if head not in (*_EXPERIMENT_SECTIONS, "options", *_EXPERIMENT_FIELDS):
-            raise ValueError(f"sweep key {key!r} must start with llm., system_prompt., processing., evaluation., options., or be dataset/split")
+            raise ValueError(
+                f"sweep key {key!r} must start with llm., system_prompt., processing., evaluation., options., or be dataset/split/saved_graph"
+            )
         if not grid[key]:
             raise ValueError(f"sweep key {key!r} has no values")
     return [list(zip(keys, values)) for values in itertools.product(*(grid[k] for k in keys))]
@@ -109,12 +119,13 @@ def run_sweep(
     progress: Callable[[str], None] | None = None,
 ) -> tuple[Path, list[dict[str, Any]]]:
     say = progress or (lambda _m: None)
-    stamp = f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+    stamp = f"{datetime.now(UTC):%Y%m%dT%H%M%S}"
     out_dir = (output_root or base_config.resolve_path(base_config.output_dir)) / f"sweep-{sweep.name}-{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     base_strategies = sweep.strategies or base_experiment.strategies
     rows: list[dict[str, Any]] = []
     settings_done: list[dict[str, Any]] = []
+    shared_graph = _build_shared_graph(sweep, base_experiment, base_config, out_dir, say)
 
     for index, combo in enumerate(combinations(sweep.grid), start=1):
         label = ", ".join(_label(k, v) for k, v in combo)
@@ -145,6 +156,8 @@ def run_sweep(
             repetitions=sweep.repetitions or base_experiment.repetitions,
             split=sweep.split or exp_data["split"],
         )
+        if shared_graph:
+            exp_data["saved_graph"] = shared_graph
         experiment = ExperimentConfig.model_validate(exp_data)
         config = apply_experiment(base_config, experiment)
         outcome = run_experiment(config, experiment, output_root=out_dir, database_path=database_path)
@@ -162,6 +175,24 @@ def run_sweep(
     return out_dir, rows
 
 
+def _build_shared_graph(sweep: SweepConfig, base: ExperimentConfig, config: AppConfig, out_dir: Path, say) -> dict[str, Any] | None:
+    """Build the experiment's saved graph once when no grid key changes how it is built."""
+    from csr_lab.evaluation.runner import build_saved_graph
+
+    spec = base.saved_graph or {}
+    if not spec.get("build_from") or any(k.split(".", 1)[0] in _BUILD_SECTIONS for k in sweep.grid):
+        return None
+    say(f"sweep {sweep.name}: building the saved graph once for every setting")
+    return build_saved_graph(
+        config.resolve_path(spec["build_from"]),
+        apply_experiment(config, base),
+        out_dir / "saved_graph.json",
+        seed=base.base_seed,
+        output_root=out_dir,
+        strategy=spec.get("strategy", "graph_assisted"),
+    )
+
+
 def _fmt(value: Any, std: Any) -> str:
     if value is None:
         return "–"
@@ -176,9 +207,9 @@ def _write(out_dir: Path, sweep: SweepConfig, rows: list[dict], settings: list[d
     lines = [f"# Sweep report: {sweep.name}", ""]
     if is_mock:
         lines += [
-            "> **Mock provider.** The offline mock model's behaviour is set by its error-injection rates. "
+            ("> **Mock provider.** The offline mock model's behaviour is set by its error-injection rates. "
             "A sweep over those rates shows how each strategy *reacts* to a given kind of model error; "
-            "it is not evidence of how often a real model makes that error.",
+            "it is not evidence of how often a real model makes that error."),
             "",
         ]
     lines += [

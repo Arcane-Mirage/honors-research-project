@@ -10,6 +10,7 @@ from pathlib import Path
 
 from csr_lab.config import AppConfig
 from csr_lab.extraction.grounding import SourceIndex
+from csr_lab.ids import document_family_id
 from csr_lab.ingestion.loader import load_bundle, processing_load_options
 from csr_lab.llm.interface import CallRecorder, LLMProvider, StructuredLLM
 from csr_lab.llm.provider import create_provider
@@ -67,12 +68,19 @@ def run_analysis(
     )
     warnings: list[str] = []
     if saved_graph is not None:
-        if spec.options.graph.enabled:
+        if not spec.options.graph.use_saved:
+            warnings.append(f"saved graph not used: strategy {spec.name} has graph.use_saved: false")
+        elif spec.options.graph.enabled:
             ctx.saved_graph = saved_graph.document_graph()
+            if spec.options.graph.saved_conflicts:
+                own = {document_family_id(d.canonical_identifier) for d in documents if d.canonical_identifier}
+                own |= {d.document_id for d in documents}
+                ctx.saved_units = saved_graph.saved_units(exclude_families=own)
             ctx.saved_graph_info = {
                 "path": str(saved_graph_path) if saved_graph_path else None,
                 "fingerprint": saved_graph.fingerprint(),
                 "documents": len(ctx.saved_graph.nodes),
+                "saved_units": len(ctx.saved_units),
                 "sources": len(saved_graph.sources),
             }
         else:

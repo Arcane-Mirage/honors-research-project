@@ -14,6 +14,7 @@
       "revision": "A"
     }
   ],
+  "graph_documents": [],
   "requirements": [
     {
       "gold_id": "CVM-CSR-500#1.2",

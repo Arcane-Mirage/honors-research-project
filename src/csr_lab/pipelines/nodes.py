@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import functools
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from langgraph.runtime import Runtime
 
@@ -25,9 +26,11 @@ from csr_lab.conflicts.detector import (
     graph_context_for_pair,
     graph_rule_conflicts,
     merge_conflicts,
+    saved_graph_candidates,
+    saved_unit_evidence,
     validate_conflict_evidence,
 )
-from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineError, ordered_pair
+from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineError, RequirementDraft, comparable, ordered_pair
 from csr_lab.extraction.fidelity import WordIndex
 from csr_lab.extraction.graph_audit import known_document_candidates, resolve_aliases
 from csr_lab.extraction.grounding import TextIndex
@@ -35,6 +38,7 @@ from csr_lab.extraction.merging import hybrid_merge, llm_merge
 from csr_lab.extraction.references import MentionCounter, extract_references, mentions_from_model
 from csr_lab.extraction.requirements import UnitText, ground_requirements
 from csr_lab.extraction.verification import targeted_reextraction, verify_pass
+from csr_lab.ids import document_family_id
 from csr_lab.ingestion.chapters import split_chapters
 from csr_lab.ingestion.chunking import plan_chunks
 from csr_lab.ingestion.units import model_chunks, segments_from_chunks
@@ -219,6 +223,8 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
             if None in ids or ids[0] == ids[1]:
                 errors.append(PipelineError(stage="single_pass_extract", chunk_id=chunk.chunk_id, message=f"conflict names unknown unit keys {c.requirement_keys}"))
                 continue
+            if not comparable(by_id[ids[0]], by_id[ids[1]]):
+                continue  # two passages of one document are not compared
             quotes = [(keys.get(e.requirement_key), e.quoted_text) for e in c.evidence]
             evidence = build_conflict_evidence([(r, q) for r, q in quotes if r in ids], by_id, ctx.sources)
             valid = bool(evidence) and all(e.verified for e in evidence) and set(ids) <= {e.requirement_id for e in evidence}
@@ -244,9 +250,11 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
         ids = sorted({d.requirement_id for d in drafts if chunk.chunk_id in d.chunk_ids})
         for i, a in enumerate(ids):
             for b in ids[i + 1 :]:
+                if not comparable(by_id[a], by_id[b]):
+                    continue
                 pair = ordered_pair(a, b)
                 candidates.setdefault(pair, CandidatePair(requirement_ids=pair, selectors=[f"single_pass_context:{chunk.chunk_id}"], analyzed=True))
-    n = len(drafts)
+    n = sum(1 for i, a in enumerate(drafts) for b in drafts[i + 1 :] if comparable(a, b))
     return {
         "requirements": drafts,
         "mentions": mentions,
@@ -258,8 +266,8 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
             "candidate_pairs": len(candidates),
             "pairs_analyzed": len(candidates),
             "pairs_failed": 0,
-            "total_pairs": n * (n - 1) // 2,
-            "notes": [] if len(candidates) == n * (n - 1) // 2 else ["single-pass prompts only compare requirements within the same chunk"],
+            "total_pairs": n,
+            "notes": [] if len(candidates) == n else ["single-pass prompts only compare requirements within the same chunk"],
         },
         "errors": errors,
         "limitations": limitations,
@@ -560,4 +568,75 @@ def analyze_conflicts(state: PipelineState, runtime: Runtime[PipelineContext]) -
         "conflict_stats": stats,
         "graph_decisions": decisions,
         "errors": [PipelineError(stage="analyze_conflicts", message=e) for e in errs],
+    }
+
+
+@timed("check_saved_conflicts")
+def check_saved_conflicts(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """LLM: check the new units against requirements and passages already in the saved graph.
+
+    Only pairs whose documents are linked by references are checked (see
+    ``saved_graph_candidates``). The saved units are read from the graph; their quotes are
+    located in the stored text.
+    """
+    ctx = runtime.context
+    gs = ctx.options.graph
+    saved = ctx.saved_units
+    if not saved or not gs.saved_conflicts:
+        return {}
+    documents = state["documents"]
+    families = {d.document_id: document_family_id(d.canonical_identifier) for d in documents if d.canonical_identifier}
+    unit_refs: dict[str, set[str]] = {}
+    for m in state.get("mentions", []):
+        if m.active:
+            refs = unit_refs.setdefault(m.requirement_id, set())
+            refs.add(m.document_id)
+            if m.canonical:
+                refs.add(document_family_id(m.canonical))
+    units = state["requirements"]
+    candidates, notes = saved_graph_candidates(
+        units,
+        unit_refs,
+        saved,
+        max_pairs=gs.saved_max_pairs,
+        min_score=gs.saved_min_score,
+        max_fanout=gs.max_shared_reference_fanout,
+        families=families,
+    )
+    stats = dict(state.get("conflict_stats", {}))
+    stats["saved_graph_units"] = len(saved)
+    stats["saved_graph_pairs"] = len(candidates)
+    decision = GraphDecision(
+        decision_type="saved_graph_conflict_check",
+        detail=f"{len(candidates)} pairs of new and saved units (linked by references) out of {len(saved)} saved units",
+    )
+    if not candidates:
+        return {"conflict_stats": stats | {"notes": [*stats.get("notes", []), *notes]}, "graph_decisions": [decision]}
+
+    stored = {
+        u.unit_id: RequirementDraft(requirement_id=u.unit_id, document_id=u.document_id, chapter=u.chapter, text=u.text, unit_kind="saved")
+        for u in saved.values()
+    }
+    req_map = {r.requirement_id: r for r in units} | stored
+    found, analysed, failed, errs = analyze_pairs(
+        ctx,
+        candidates,
+        req_map,
+        pairs_per_call=ctx.options.conflicts.pairs_per_call,
+        graph_informed=True,
+        evidence_for=lambda quotes: saved_unit_evidence(quotes, req_map, ctx.sources, saved),
+        document_info={u.document_id: (u.identifier, u.revision) for u in saved.values()},
+        stage="check_saved_conflicts",
+        method="saved_graph_check",
+    )
+    for c in found:
+        c.graph_informed = True
+    stats.update(saved_graph_pairs_analyzed=len(analysed), saved_graph_pairs_failed=failed, saved_graph_conflicts=len(found))
+    stats["notes"] = [*stats.get("notes", []), *notes]
+    return {
+        "conflicts": merge_conflicts([*state.get("conflicts", []), *found]),
+        "conflict_candidates": [*state.get("conflict_candidates", []), *candidates],
+        "conflict_stats": stats,
+        "graph_decisions": [decision],
+        "errors": [PipelineError(stage="check_saved_conflicts", message=e) for e in errs],
     }

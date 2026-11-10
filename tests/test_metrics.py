@@ -4,11 +4,11 @@ Scoring: undefined ratios, a perfect gold oracle, reference and conflict matchin
 """
 
 import pytest
+from helpers import GoldOracleProvider, case_documents
 
 from csr_lab.evaluation.metrics import aggregate, describe, evaluate_case, prf
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import AnalysisResult
-from helpers import GoldOracleProvider, case_documents
 
 
 def test_prf_undefined_values():

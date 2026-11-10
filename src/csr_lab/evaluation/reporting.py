@@ -59,6 +59,19 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow({k: (json.dumps(v) if isinstance(v, (list, dict)) else v) for k, v in row.items()})
 
 
+def _saved_graph_rows(info: dict[str, Any] | None) -> list[list[str]]:
+    if not info:
+        return []
+    made = f"built from `{info['built_from']}` ({info['build_llm_calls']} LLM calls)" if info.get("built_from") else f"`{info['path']}`"
+    return [
+        [
+            "Saved graph",
+            (f"{made} · {info['documents']} documents, {info['requirements']} requirements · fingerprint `{info['fingerprint']}`; "
+            "used by graph-assisted strategies with `graph.use_saved`"),
+        ]
+    ]
+
+
 def markdown_report(summary: dict[str, Any]) -> str:
     agg = summary["aggregates"]
     names = list(agg)
@@ -77,11 +90,12 @@ def markdown_report(summary: dict[str, Any]) -> str:
                 ["Strategies", ", ".join(f"`{n}`" for n in names)],
                 ["Repetitions", f"{summary['repetitions']} (seeds {summary['base_seed']}–{summary['base_seed'] + summary['repetitions'] - 1})"],
                 ["Code", f"commit `{(summary['environment'].get('git_commit') or 'unknown')[:10]}`{' (uncommitted changes)' if summary['environment'].get('git_dirty') else ''}"],
+                *_saved_graph_rows(summary.get("saved_graph")),
             ],
         ),
         "",
-        "Values are micro-averaged over cases within a run, then shown as mean ± sample standard "
-        "deviation over repetitions. Failed cases are scored as empty predictions (strict scoring).",
+        ("Values are micro-averaged over cases within a run, then shown as mean ± sample standard "
+        "deviation over repetitions. Failed cases are scored as empty predictions (strict scoring)."),
         "",
         "## Reference extraction (primary outcome)",
         "",
@@ -101,8 +115,8 @@ def markdown_report(summary: dict[str, Any]) -> str:
             ],
         ),
         "",
-        "Scored per (requirement, document) pair: a correct document on the wrong requirement is an error. "
-        "Complete-set accuracy is the share of gold requirements whose whole reference set is exactly right.",
+        ("Scored per (requirement, document) pair: a correct document on the wrong requirement is an error. "
+        "Complete-set accuracy is the share of gold requirements whose whole reference set is exactly right."),
         "",
         "## Reference extraction at unit level (granularity-independent)",
         "",
@@ -122,11 +136,11 @@ def markdown_report(summary: dict[str, Any]) -> str:
             ],
         ),
         "",
-        "A unit is whatever the strategy extracts references from: one requirement, or a chunk holding "
+        ("A unit is whatever the strategy extracts references from: one requirement, or a chunk holding "
         "several. A predicted document counts as correct when any gold requirement inside the unit "
         "references it. This is the most favourable fair reading of per-chunk extraction; the "
         "per-requirement table above is the strict one. The gap between the two is the cost of not "
-        "knowing *which* requirement references a document.",
+        "knowing *which* requirement references a document."),
         "",
         "## Reference errors by cause",
         "",
@@ -149,7 +163,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "## Potential conflicts",
         "",
         markdown_table(
-            ["Strategy", "Precision", "Recall", "F1", "Candidate-pair recall", "Evidence valid", "Hard-negative FPs", "Ambiguous recall", "Cross-doc recall"],
+            ["Strategy", "Precision", "Recall", "F1", "Candidate-pair recall", "Evidence valid", "Hard-negative FPs", "Ambiguous recall", "Cross-doc recall", "With saved graph (correct)"],
             [
                 [
                     f"`{n}`",
@@ -161,6 +175,7 @@ def markdown_report(summary: dict[str, Any]) -> str:
                     _fmt_int(agg[n].get("conflicts.hard_negative_false_positives")),
                     _fmt(agg[n].get("conflicts.ambiguous_recall")),
                     _fmt(agg[n].get("conflicts.cross_document_recall")),
+                    f"{_fmt_int(agg[n].get('conflicts.saved_graph_predicted'))} ({_fmt_int(agg[n].get('conflicts.saved_graph_hits'))})",
                 ]
                 for n in names
             ],
@@ -286,12 +301,12 @@ def markdown_report(summary: dict[str, Any]) -> str:
                 ],
             ),
             "",
-            "Only strategies or inputs that analyse chunks have values. Verbatim chunks: share found word "
+            ("Only strategies or inputs that analyse chunks have values. Verbatim chunks: share found word "
             "for word in the source. Word ratio: share of a chunk's words that are source words in order. "
             "Source coverage: share of source words inside some chunk. Requirement-like gaps: uncovered "
             "source passages containing shall/must/required (possible lost requirements). Per-chunk "
             "details, including what each rewritten chunk changed, are in each prediction's "
-            "`metadata.input_fidelity`.",
+            "`metadata.input_fidelity`."),
             "",
         ]
 
@@ -307,8 +322,8 @@ def markdown_report(summary: dict[str, Any]) -> str:
             "",
             markdown_table(["Strategy", "Metric", "Mean Δ", "Better", "Worse", "Tied", "Cases"], rows),
             "",
-            "Each case's metric is averaged over repetitions and compared on the same case. This is "
-            "descriptive: with few cases and repetitions it does not establish statistical significance.",
+            ("Each case's metric is averaged over repetitions and compared on the same case. This is "
+            "descriptive: with few cases and repetitions it does not establish statistical significance."),
             "",
         ]
 

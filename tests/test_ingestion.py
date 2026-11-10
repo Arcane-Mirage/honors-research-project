@@ -5,9 +5,10 @@ Document loading: header detection, filename fallback, line endings, text and sc
 
 import json
 
+from helpers import make_pdf
+
 from csr_lab.ingestion.loader import load_bundle, load_document
 from csr_lab.pipelines.run import run_analysis
-from helpers import make_pdf
 
 
 def test_text_header_detection(simple_doc_path):

@@ -46,7 +46,7 @@ _NAME_CANDIDATE_RE = re.compile(
     r"\bthe\s+(?P<name>[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|and|of|for))*\s+(?:Manual|Specification|Standard|Procedure|Policy|Drawing))\b"
     r"(?!\s*\(?\s*[A-Z]{2,6}[-\s][A-Z0-9.-]*\d)"
 )
-_TYPE_CUE_RE = re.compile(r"(specification|standard|procedure|drawing|manual|method|form|policy|according to|per)\s*$", re.I)
+_TYPE_CUE_RE = re.compile(r"(specification|standard|procedure|drawing|manual|method|form|policy|according to|per)\s*$", re.IGNORECASE)
 
 
 @dataclass
@@ -71,11 +71,6 @@ def _sentence_around(text: str, start: int, end: int, limit: int = 200) -> str:
         left = max(left, start - limit // 2)
         right = min(right, end + limit // 2)
     return text[left:right].strip()
-
-
-def candidate_key(text: str) -> str:
-    parsed = parse_identifier(text)
-    return parsed.key
 
 
 def scan_candidates(text: str) -> list[tuple[int, int, str]]:

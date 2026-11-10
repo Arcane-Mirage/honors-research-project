@@ -123,9 +123,7 @@ def plan_chunks(
     for seg in processed:
         size = _segment_size(seg)
         is_top_heading = seg.kind == "heading" and seg.label is not None and "." not in seg.label.split()[-1]
-        if current and current_size + size > settings.chunk_max_chars:
-            close()
-        elif current and is_top_heading and current_size >= _PREFERRED_BREAK_FILL * settings.chunk_max_chars:
+        if current and current_size + size > settings.chunk_max_chars or current and is_top_heading and current_size >= _PREFERRED_BREAK_FILL * settings.chunk_max_chars:
             close()
         current.append(seg)
         current_size += size

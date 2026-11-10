@@ -25,7 +25,7 @@ import re
 from itertools import combinations
 
 from csr_lab.config import ConflictSettings, GraphSettings
-from csr_lab.drafts import CandidatePair, RequirementDraft, ordered_pair
+from csr_lab.drafts import CandidatePair, RequirementDraft, comparable, ordered_pair
 from csr_lab.relationships.builder import RelationshipGraph
 from csr_lab.relationships.queries import (
     find_applicability_conflicts,
@@ -35,12 +35,7 @@ from csr_lab.relationships.queries import (
 )
 from csr_lab.schemas import GraphDecision
 
-_STOP = set(
-    """the a an and or of to in on for with by be is are shall must not no any all each this that these those as at
-    from per its it which when where than then into under over such other only also may can will been being has have
-    had their there was were within before after least more most less according accordance document supplier
-    suppliers requirement requirements""".split()
-)
+_STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "by", "be", "is", "are", "shall", "must", "not", "no", "any", "all", "each", "this", "that", "these", "those", "as", "at", "from", "per", "its", "it", "which", "when", "where", "than", "then", "into", "under", "over", "such", "other", "only", "also", "may", "can", "will", "been", "being", "has", "have", "had", "their", "there", "was", "were", "within", "before", "after", "least", "more", "most", "less", "according", "accordance", "document", "supplier", "suppliers", "requirement", "requirements"}
 _UNIT_RE = re.compile(r"°C|°F|\bmm\b|\bkg\b|%|µg|\bhours?\b|\bdays?\b|\byears?\b|\bminutes?\b|\blux\b")
 
 
@@ -76,17 +71,19 @@ def select_candidates(
     """Return (candidates, total possible pairs, notes, graph decisions)."""
     ids = [r.requirement_id for r in requirements]
     texts = {r.requirement_id: r.text for r in requirements}
-    total = len(ids) * (len(ids) - 1) // 2
+    by_id = {r.requirement_id: r for r in requirements}
+    pairs = [(a, b) for a, b in combinations(ids, 2) if comparable(by_id[a], by_id[b])]  # never two passages of one document
+    total = len(pairs)
     notes: list[str] = []
     selected: dict[tuple[str, str], CandidatePair] = {}
 
     if total <= settings.all_pairs_max:
-        for a, b in combinations(ids, 2):
+        for a, b in pairs:
             pair = ordered_pair(a, b)
             selected[pair] = CandidatePair(requirement_ids=pair, selectors=["all_pairs"])
     else:
         scored = []
-        for a, b in combinations(ids, 2):
+        for a, b in pairs:
             score = attribute_score(texts[a], texts[b])
             if score >= settings.attribute_min_score:
                 scored.append((score, ordered_pair(a, b)))
@@ -120,6 +117,8 @@ def select_candidates(
 
         added = 0
         for pair, selectors in sorted(graph_pairs.items()):
+            if not comparable(by_id[pair[0]], by_id[pair[1]]):
+                continue
             selectors = list(dict.fromkeys(selectors))
             if pair in selected:
                 selected[pair].selectors.extend(selectors)

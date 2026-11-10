@@ -183,6 +183,14 @@ class GraphSettings(_Settings):
         ),
     )
     max_shared_reference_fanout: int = Field(default=8, ge=2)
+    use_saved: bool = Field(default=True, description="use a saved graph when the run is given one (False: analyse alone, the A/B arm)")
+    saved_conflicts: bool = Field(
+        default=True,
+        description="with a saved graph: also check the new units against units already in the graph "
+        "(documents linked by references), so adding a document finds conflicts with earlier ones",
+    )
+    saved_max_pairs: int = Field(default=200, ge=0, description="saved-graph conflict check: most pairs sent to the model")
+    saved_min_score: float = Field(default=0.08, ge=0, description="saved-graph conflict check: least topic overlap of a linked pair")
 
 
 class ChunkingSettings(_Settings):
@@ -199,6 +207,10 @@ class ChunkingSettings(_Settings):
     chapter_use_toc: bool = Field(default=True, description="take the chapter list from the table of contents when there is one")
     chapter_max_depth: int = Field(default=0, ge=0, description="deepest heading level that starts a chapter (0 = every level); deeper headings stay in their parent")
     chapter_include_front_matter: bool = Field(default=False, description="analyse the text before the first chapter (cover page) as one more unit")
+    chapter_min_count: int = Field(
+        default=2, ge=1, description="fewer chapters than this: the document has no chapters and is cut into passages (no requirements)"
+    )
+    passage_words: int = Field(default=300, ge=50, description="documents without chapters: words per passage")
     repair: Literal["none", "source_slice"] = "none"
     batch_words: int = Field(default=2500, ge=50, description="llm: words per chunking request")
     target_chunk_words: int = Field(default=500, ge=20, description="llm: requested chunk size")
@@ -235,19 +247,24 @@ class PipelineOptions(_Settings):
 class GraphStoreSettings(_Settings):
     """The saved graph that ``csr-lab build-graph`` (and ``analyze --graph``) work on.
 
-    * ``use``: graph-assisted strategies start from the saved graph's documents
-      (identifiers, names, revisions). Other strategies ignore it.
+    * ``use``: graph-assisted strategies start from the saved graph: its documents (identifiers,
+      names, revisions) for alias resolution, and its requirements and passages for the
+      saved-graph conflict check (``graph.saved_conflicts``). Other strategies ignore it.
     * ``update``: each run's result is merged into the saved graph.
     * ``write_views``: after an update, also write ``<graph>.mmd`` (Mermaid, for people)
       and ``<graph>.md`` (plain Markdown, for an LLM) next to the graph file.
 
-    The experiment runner never reads or writes a saved graph.
+    Experiments use a saved graph only when they ask for one (``ExperimentConfig.saved_graph``),
+    and then only read it.
     """
 
     path: str = "graphs/main.json"
     use: bool = True
     update: bool = True
     write_views: bool = True
+    prune_superseded_conflicts: bool = Field(
+        default=True, description="after an update, drop conflicts that involve requirements of superseded revisions"
+    )
 
 
 class EvaluationSettings(_Settings):
@@ -283,6 +300,11 @@ class AppConfig(_Settings):
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
     graph_store: GraphStoreSettings = Field(default_factory=GraphStoreSettings)
     input: str = Field(default="input", description="Folder `csr-lab build-graph` reads when no folder is given.")
+    input_formats: list[str] = Field(
+        default_factory=lambda: [".pdf"],
+        description="File types `build-graph` analyses (the data pool). Other files are skipped; they still "
+        "become document nodes when an analysed document references them.",
+    )
     output_dir: str = "outputs"
     database_path: str = "outputs/experiments.sqlite"
 
@@ -316,6 +338,12 @@ class ExperimentConfig(_Settings):
     )
     evaluation: dict[str, Any] = Field(default_factory=dict)
     case_ids: list[str] | None = None
+    saved_graph: dict[str, Any] | None = Field(
+        default=None,
+        description="A saved graph every graph-assisted strategy starts from (read-only). "
+        "{build_from: FOLDER}: build it first with build-graph (this experiment's model) into the output folder; "
+        "{path: FILE}: use an existing graph file. Strategies with graph.use_saved: false analyse without it.",
+    )
 
     @field_validator("llm", mode="before")
     @classmethod
@@ -359,7 +387,7 @@ def _read_yaml(path: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"config file not found: {path}")
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
-        raise ValueError(f"{path} must contain a mapping at the top level")
+        raise ValueError(f"{path} must contain a mapping at the top level")  # noqa: TRY004 (CLI prints ValueError)
     return data
 
 
@@ -374,7 +402,7 @@ def load_llm_profiles(path: str | Path | None = None) -> dict[str, Any]:
     data = _read_yaml(path)
     profiles = data.get("profiles") or {}
     if not isinstance(profiles, dict):
-        raise ValueError(f"{path}: `profiles` must be a mapping of name -> llm settings")
+        raise ValueError(f"{path}: `profiles` must be a mapping of name -> llm settings")  # noqa: TRY004 (CLI prints ValueError)
     return {"default": data.get("default"), "profiles": profiles}
 
 

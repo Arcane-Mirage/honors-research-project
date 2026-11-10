@@ -34,12 +34,7 @@ SUPERSEDE_RE = re.compile(r"\bsupersed(?:es|e|ed)\b|\breplaces\b|\bin place of\b
 PRECEDENCE_RE = re.compile(r"take[s]? precedence|shall govern|shall prevail|\bgoverns\b", re.IGNORECASE)
 _ABBREVIATIONS = {"rev", "no", "fig", "e.g", "i.e", "approx", "min", "max"}
 
-STOPWORDS = set(
-    """the a an and or of to in on for with by be is are shall must not no any all each this that these those as at
-    from per its it which when where than then into under over such other only also may can will been being has
-    have had their there was were within before after least more most less according accordance document
-    supplier suppliers""".split()
-)
+STOPWORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "by", "be", "is", "are", "shall", "must", "not", "no", "any", "all", "each", "this", "that", "these", "those", "as", "at", "from", "per", "its", "it", "which", "when", "where", "than", "then", "into", "under", "over", "such", "other", "only", "also", "may", "can", "will", "been", "being", "has", "have", "had", "their", "there", "was", "were", "within", "before", "after", "least", "more", "most", "less", "according", "accordance", "document", "supplier", "suppliers"}
 
 
 @dataclass
@@ -226,8 +221,8 @@ _DURATION_RE = re.compile(
     r"(?:\s+(?P<rel>before|after|of|from|following))?",
     re.IGNORECASE,
 )
-_APPROVAL_REQ = re.compile(r"require[sd]?\s+(?:prior\s+|written\s+)*approval|approval\s+(?:is|shall be)\s+required", re.I)
-_APPROVAL_NEG = re.compile(r"without\s+(?:prior\s+|written\s+)*approval|do(?:es)?\s+not\s+require\s+(?:\w+\s+)?approval", re.I)
+_APPROVAL_REQ = re.compile(r"require[sd]?\s+(?:prior\s+|written\s+)*approval|approval\s+(?:is|shall be)\s+required", re.IGNORECASE)
+_APPROVAL_NEG = re.compile(r"without\s+(?:prior\s+|written\s+)*approval|do(?:es)?\s+not\s+require\s+(?:\w+\s+)?approval", re.IGNORECASE)
 _OPPOSITES = [("100%", "sampling"), ("returnable", "expendable"), ("returnable", "one-way"), ("reusable", "single-use")]
 
 
@@ -303,14 +298,13 @@ def assess_pair(text_a: str, doc_a: str, text_b: str, doc_b: str) -> PairJudgeme
     refs_a, refs_b = find_references(text_a), find_references(text_b)
 
     # Mutual precedence claims between two documents.
-    if PRECEDENCE_RE.search(text_a) and PRECEDENCE_RE.search(text_b) and doc_a != doc_b:
-        if doc_b in text_a and doc_a in text_b:
-            return PairJudgement(
-                "potential_precedence_conflict",
-                "Each document states that it takes precedence over the other.",
-                _clause(text_a, PRECEDENCE_RE.search(text_a).start()),  # type: ignore[union-attr]
-                _clause(text_b, PRECEDENCE_RE.search(text_b).start()),  # type: ignore[union-attr]
-            )
+    if PRECEDENCE_RE.search(text_a) and PRECEDENCE_RE.search(text_b) and doc_a != doc_b and doc_b in text_a and doc_a in text_b:
+        return PairJudgement(
+            "potential_precedence_conflict",
+            "Each document states that it takes precedence over the other.",
+            _clause(text_a, PRECEDENCE_RE.search(text_a).start()),  # type: ignore[union-attr]
+            _clause(text_b, PRECEDENCE_RE.search(text_b).start()),  # type: ignore[union-attr]
+        )
 
     # A document excluded in one requirement and required in the other.
     for x, y, flip in ((refs_a, refs_b, False), (refs_b, refs_a, True)):

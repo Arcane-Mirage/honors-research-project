@@ -28,6 +28,7 @@
       "revision": "C"
     }
   ],
+  "graph_documents": [],
   "requirements": [
     {
       "gold_id": "TSA-CSR-400#1.2",

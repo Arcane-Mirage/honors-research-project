@@ -21,9 +21,10 @@ import re
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ValidationError
 

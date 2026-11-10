@@ -3,12 +3,13 @@
 The extra system-prompt text: placeholders, which prompts get it, how it is recorded, its switches.
 """
 
+from helpers import ScriptedProvider
+
 from csr_lab.config import SystemPromptSettings, apply_experiment, load_config, load_experiment
 from csr_lab.llm.interface import CallRecorder, StructuredLLM
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.prompts import system_prompt
 from csr_lab.prompts.references import ReferenceExtractionResponse
-from helpers import ScriptedProvider
 
 NAVISTAR = SystemPromptSettings(
     enabled=True,

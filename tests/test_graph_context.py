@@ -6,14 +6,13 @@ Graph context formats for the conflict prompt (graph.context_format).
 import json
 
 import pytest
+from helpers import ScriptedProvider, case_documents
 
 from csr_lab.conflicts.detector import CONTEXT_FORMATS, graph_context_for_pair
+from csr_lab.llm.mock_provider import MockProvider
 from csr_lab.pipelines.registry import derive_strategy
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.relationships.builder import graph_from_result
-from helpers import ScriptedProvider, case_documents
-
-from csr_lab.llm.mock_provider import MockProvider
 
 
 @pytest.fixture

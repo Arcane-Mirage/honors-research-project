@@ -6,12 +6,12 @@ Every strategy end to end: valid output, determinism, workflow shapes and failur
 import json
 
 import pytest
+from helpers import ScriptedProvider, case_documents
 
 from csr_lab.evaluation.metrics import evaluate_case
 from csr_lab.pipelines.registry import build_workflow, derive_strategy, get_strategy, register_variants
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import AnalysisResult
-from helpers import ScriptedProvider, case_documents
 
 STRATEGIES = ["single_pass", "staged", "staged_verified", "graph_assisted"]
 

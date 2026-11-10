@@ -8,6 +8,9 @@ Grounding is applied identically in every strategy and only *annotates*:
 * when not found (a reworded model chunk), the text is kept and flagged ``not_found``
   with no offsets.
 
+Passages of documents without chapters keep ``unit_kind="passage"`` and a passage ID
+(``csr_lab.ids.passage_id``); they are not requirements.
+
 Units found twice (overlapping model chunks) are merged. The ID is document + chapter
 (``csr_lab.ids.requirement_id``), so a chapter gets the same ID in every run. A repeated
 ID (a chapter label printed twice, or several model chunks in one chapter) gets a ``-2``,
@@ -20,7 +23,7 @@ from dataclasses import dataclass
 
 from csr_lab.drafts import RequirementDraft
 from csr_lab.extraction.grounding import SourceIndex
-from csr_lab.ids import requirement_id
+from csr_lab.ids import passage_id, requirement_id
 from csr_lab.ingestion.segmentation import Segment
 
 
@@ -155,7 +158,12 @@ def ground_requirements(
     seen_ids: dict[str, int] = {}
     drafts: list[RequirementDraft] = []
     for draft, _ in merged:
-        rid = requirement_id(draft.document_id, draft.chapter)
+        seg = seg_by_id.get(draft.segment_ids[0]) if draft.segment_ids else None
+        if seg is not None and seg.kind == "passage":
+            draft.unit_kind = "passage"
+            rid = passage_id(draft.document_id, seg.label or "P")
+        else:
+            rid = requirement_id(draft.document_id, draft.chapter)
         seen_ids[rid] = seen_ids.get(rid, 0) + 1
         draft.requirement_id = rid if seen_ids[rid] == 1 else f"{rid}-{seen_ids[rid]}"
         drafts.append(draft)

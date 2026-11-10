@@ -1,9 +1,13 @@
 """src/csr_lab/datasets/variants.py
 
-Input variant of the synthetic dataset: the same cases and gold, different input form.
+Input variants of the synthetic dataset: the same cases and gold, different input form.
 
 * ``write_pdf_dataset``: every document rendered as a PDF with running headers, page
   footers, page breaks inside requirements and drawn tables.
+* ``write_incremental_dataset``: the cases with several documents, split for the
+  saved-graph experiment. The supporting documents go to ``graph_input/`` (built into a
+  graph first, with ``build-graph``); the CSR is the new document of the case. The gold
+  lists the supporting documents as ``graph_documents``.
 
 Gold annotations are the same as for the text dataset (table rows as cell text).
 Because the cases are unchanged, results on the PDF variant are directly comparable with
@@ -189,4 +193,52 @@ def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
         "The synthetic CSR cases rendered as PDFs with running headers, page footers and drawn tables.",
         manifest_cases,
         {"lines_per_page": lines_per_page},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Incremental variant: a saved graph first, then a new document
+# ---------------------------------------------------------------------------
+
+
+def write_incremental_dataset(out_dir: str | Path) -> Path:
+    out = Path(out_dir)
+    manifest_cases = []
+    for case in all_cases():
+        if len(case.documents) < 2:
+            continue
+        files, gold = build_case(case)
+        new, *supporting = case.documents  # the CSR comes first in every case
+        new_path = out / "documents" / case.case_id / new.filename
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.write_text(files[new.filename], encoding="utf-8", newline="\n")
+        for spec in supporting:
+            path = out / "graph_input" / case.case_id / spec.filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(files[spec.filename], encoding="utf-8", newline="\n")
+        new_id = document_node_id(new.identifier, new.revision)
+        split_gold = gold.model_copy(
+            update={
+                "documents": [d for d in gold.documents if d.document_id == new_id],
+                "graph_documents": [d for d in gold.documents if d.document_id != new_id],
+            }
+        )
+        gold_path = out / "ground_truth" / f"{case.case_id}.json"
+        gold_path.parent.mkdir(parents=True, exist_ok=True)
+        gold_path.write_text(split_gold.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
+        manifest_cases.append(
+            {
+                "case_id": case.case_id,
+                "split": case.split,
+                "description": case.description + f" (new document {new.identifier}; the others are in the saved graph)",
+                "documents": [new_path.relative_to(out).as_posix()],
+                "ground_truth": gold_path.relative_to(out).as_posix(),
+            }
+        )
+    return _manifest(
+        out,
+        "synthetic_csr_incremental",
+        "Multi-document synthetic cases split into a saved graph (graph_input/) and a new CSR to analyse.",
+        manifest_cases,
+        {"graph_input": "graph_input"},
     )

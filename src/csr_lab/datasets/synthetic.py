@@ -156,9 +156,7 @@ def _safe_line_start(word: str, next_word: str | None) -> bool:
     """Wrapped lines must not start like a section label or table row."""
     if re.match(r"\d", word) or word.startswith("|"):
         return False
-    if re.fullmatch(r"[A-Z]{2,6}", word) and next_word and re.match(r"\d", next_word):
-        return False
-    return True
+    return not (re.fullmatch(r"[A-Z]{2,6}", word) and next_word and re.match(r"\d", next_word))
 
 
 def wrap(first_prefix: str, text: str, width: int = WRAP_WIDTH) -> list[str]:

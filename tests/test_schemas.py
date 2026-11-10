@@ -19,14 +19,14 @@ from csr_lab.schemas import (
 
 
 def _requirement(**kw):
-    base = dict(
-        requirement_id="REQ-X-001",
-        source_document_id="DOC-X",
-        chapter="1.1",
-        requirement_text="The supplier shall comply.",
-        source_location=SourceLocation(source_document_id="DOC-X"),
-        extraction_metadata=RequirementExtractionMetadata(strategy="t", reference_analysis_status="not_run"),
-    )
+    base = {
+        "requirement_id": "REQ-X-001",
+        "source_document_id": "DOC-X",
+        "chapter": "1.1",
+        "requirement_text": "The supplier shall comply.",
+        "source_location": SourceLocation(source_document_id="DOC-X"),
+        "extraction_metadata": RequirementExtractionMetadata(strategy="t", reference_analysis_status="not_run"),
+    }
     base.update(kw)
     return Requirement(**base)
 

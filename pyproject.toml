@@ -39,3 +39,8 @@ filterwarnings = [
     # Emitted by langsmith (a LangGraph dependency) on Python 3.14; not ours.
     "ignore::DeprecationWarning:langsmith.*",
 ]
+
+[tool.ruff]
+# The code base uses long lines; match it rather than Ruff's 88-character default.
+line-length = 160
+target-version = "py311"

@@ -189,7 +189,7 @@ def model_chunks(llm: StructuredLLM, documents: list[InputDocument], settings: C
             jobs.append((d, b, span))
 
     def run(job):
-        d, b, (start, end) = job
+        d, _b, (start, end) = job
         payload = {"document_id": d.document_id, "target_chunk_words": settings.target_chunk_words, "text": (d.text or "")[start:end]}
         system, user = chunking_prompt.SPEC.render(payload)
         return job, llm.call(

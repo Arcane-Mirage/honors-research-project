@@ -1,0 +1,28 @@
+TESSALY AUTOMOTIVE
+Production Part Approval Procedure
+Document ID: TSA-PPAP-410
+Revision: F
+Effective Date: 2025-09-12
+All names, companies and document identifiers in this document are fictional.
+
+1 Purpose
+1.1 This procedure describes the production part approval process for Tessaly Automotive
+suppliers.
+
+2 Submission
+2.1 The production part approval package shall be submitted no earlier than 10 working days
+before the planned start of production.
+
+2.2 The package shall contain material certifications according to TSA-MAT-420 and a control
+plan prepared according to TSA-QP-020.
+
+2.3 Dimensional results shall be reported for all characteristics shown on drawing
+TSA-DRW-2210.
+
+2.4 Run-at-rate verification shall be completed before the production part approval package
+is submitted.
+
+3 Precedence
+3.1 Where this procedure conflicts with any customer-specific requirements document,
+including TSA-CSR-400, this procedure shall govern.
+

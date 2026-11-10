@@ -32,6 +32,14 @@ Design rules
   Consecutive analysed revisions are compared chapter by chapter
   (``csr_lab.relationships.revisions``); requirements of older revisions are
   marked ``superseded``, never deleted.
+* **Documents without chapters** keep their passages on the document node
+  (``attributes.passages``); what the passages state hangs off the document node
+  (edges with ``metadata.passage_ids``). Re-analysing the document replaces both.
+* **Conflicts with earlier content.** A graph-assisted run with a saved graph also
+  checks its new units against the stored ones (``saved_units``); those conflicts
+  carry ``related_saved_ids`` and become edges here (``found_by: saved_graph_check``).
+* **Pruning on update.** ``prune_superseded_conflicts`` drops conflicts that involve
+  requirements of superseded revisions; the newer revision is checked instead.
 * **Storage.** One JSON file, kept apart from the experiment database: the
   store is reusable knowledge, while the SQLite file records experiment runs.
 
@@ -45,7 +53,9 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Any, Literal
 
@@ -56,7 +66,9 @@ from csr_lab.relationships.builder import (
     MAX_AGGREGATED_EVIDENCE,
     GraphNode,
     RelationshipGraph,
+    add_conflict_edge,
     add_revision_structure,
+    conflict_edge,
     graph_from_result,
     make_edge,
 )
@@ -74,7 +86,7 @@ _OR_ATTRIBUTES = {"content_available", "analyzed", "is_input_document", "referen
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class StoreSource(BaseModel):
@@ -96,6 +108,22 @@ class StoreSource(BaseModel):
     note: str = ""
 
 
+@dataclass
+class SavedUnit:
+    """A requirement or passage already in the store, offered to new runs for conflict checks."""
+
+    unit_id: str  # requirement node ID, or passage ID
+    kind: Literal["chapter", "passage"]
+    document_id: str  # the document (revision) node that holds it
+    family_id: str
+    identifier: str | None
+    revision: str | None
+    chapter: str | None
+    text: str
+    start_offset: int | None = None  # in its document's extracted text
+    referenced: set[str] = field(default_factory=set)  # document nodes it references (and their families)
+
+
 class StoreChangeReport(BaseModel):
     """What a store operation changed."""
 
@@ -104,6 +132,8 @@ class StoreChangeReport(BaseModel):
     edges_added: int = 0
     edges_removed: int = 0
     requirements_replaced: int = 0
+    saved_graph_conflicts_added: int = 0
+    superseded_conflicts_pruned: int = 0
     notes: list[str] = Field(default_factory=list)
 
 
@@ -195,6 +225,65 @@ class GraphStore(BaseModel):
         ]
         return RelationshipGraph(nodes=nodes, edges=edges)
 
+    def saved_units(self, exclude_families: set[str] | None = None) -> dict[str, SavedUnit]:
+        """Current requirements and passages, except those of documents in ``exclude_families``
+        (the documents a new run analyses itself)."""
+        exclude = exclude_families or set()
+
+        def family(node_id: str) -> str:
+            node = self.nodes.get(node_id)
+            return (node.attributes.get("revision_of") if node else None) or node_id
+
+        refs: dict[str, set[str]] = {}
+        for e in self.edges.values():
+            if e.relationship_type != RelationshipType.REFERENCES or e.metadata.get("origin") != "extraction":
+                continue
+            for unit in e.metadata.get("passage_ids") or [e.source_node_id]:
+                refs.setdefault(unit, set()).update({e.target_node_id, family(e.target_node_id)})
+        container = {e.target_node_id: e.source_node_id for e in self.edges.values() if e.relationship_type == RelationshipType.CONTAINS}
+        out: dict[str, SavedUnit] = {}
+        for k, n in self.nodes.items():
+            if n.node_type == "requirement":
+                doc_id = container.get(k)
+                if doc_id is None or family(doc_id) in exclude or n.attributes.get("revision_status") == "superseded":
+                    continue
+                kind, text, chapter = "chapter", n.attributes.get("requirement_text"), n.attributes.get("chapter")
+                units = [(k, None, n.attributes.get("start_offset"))]
+            elif n.node_type == "document" and n.attributes.get("passages") and family(k) not in exclude:
+                doc_id, kind, chapter = k, "passage", None
+                units = [(p["passage_id"], p.get("text"), p.get("start_offset")) for p in n.attributes["passages"]]
+                text = None
+            else:
+                continue
+            doc = self.nodes.get(doc_id)
+            attrs = doc.attributes if doc else {}
+            for unit_id, unit_text, start in units:
+                body = text if kind == "chapter" else unit_text
+                if not body:
+                    continue
+                out[unit_id] = SavedUnit(
+                    unit_id=unit_id,
+                    kind=kind,  # type: ignore[arg-type]
+                    document_id=doc_id,
+                    family_id=family(doc_id),
+                    identifier=attrs.get("canonical_identifier"),
+                    revision=attrs.get("revision"),
+                    chapter=chapter,
+                    text=body,
+                    start_offset=start,
+                    referenced=refs.get(unit_id, set()),
+                )
+        return out
+
+    def unit_node(self, unit_id: str) -> str | None:
+        """Graph node of a stored unit: the requirement itself, or the document holding a passage."""
+        if unit_id in self.nodes:
+            return unit_id
+        for k, n in self.nodes.items():
+            if any(p.get("passage_id") == unit_id for p in n.attributes.get("passages") or []):
+                return k
+        return None
+
     def known_file_hashes(self) -> set[str]:
         """sha256 of every file an analysis in the store has read."""
         return {f["sha256"] for s in self.sources.values() for f in s.input_files if f.get("sha256")}
@@ -231,7 +320,7 @@ class GraphStore(BaseModel):
         """Changes between each pair of consecutive analysed revisions of a document."""
         out = []
         revisions = [r for r in self._revisions(document_id) if self.nodes[r].attributes.get("analyzed")]
-        for older, newer in zip(revisions, revisions[1:]):
+        for older, newer in pairwise(revisions):
             for change in self._compare(older, newer):
                 out.append({"from_revision": older, "to_revision": newer, **change.as_dict()})
         return out
@@ -247,10 +336,12 @@ class GraphStore(BaseModel):
         replace: bool = True,
         note: str = "",
         input_files: list[dict[str, str]] | None = None,
+        prune_superseded_conflicts: bool = False,
     ) -> StoreChangeReport:
         """Add one analysis result. See the module docstring for the rules.
 
         ``input_files``: ``{name, sha256}`` of the files read; defaults to the result's input documents.
+        ``prune_superseded_conflicts``: afterwards drop conflicts with requirements of superseded revisions.
         """
         sid = source_id or result.analysis_id
         report = StoreChangeReport()
@@ -266,6 +357,14 @@ class GraphStore(BaseModel):
                 if old_reqs:
                     report.requirements_replaced += len(old_reqs)
                     self._remove_nodes(set(old_reqs), report)
+                # An earlier reading of a document without chapters: its passages and what they stated.
+                for rid, e in list(self.edges.items()):
+                    if e.metadata.get("passage_ids") and doc_id in (e.source_node_id, e.target_node_id):
+                        del self.edges[rid]
+                        report.edges_removed += 1
+                if doc_id in self.nodes:
+                    for key in ("passages", "has_chapters"):
+                        self.nodes[doc_id].attributes.pop(key, None)
 
         req_data = {r.requirement_id: r for r in result.requirements}
         for node in graph.nodes:
@@ -301,6 +400,9 @@ class GraphStore(BaseModel):
             else:
                 existing.metadata["sources"] = list(dict.fromkeys([*existing.metadata.get("sources", []), sid]))
 
+        if include_conflicts:
+            report.saved_graph_conflicts_added = self._add_saved_conflicts(result, sid)
+
         self.sources[sid] = StoreSource(
             source_id=sid,
             kind="analysis",
@@ -318,7 +420,40 @@ class GraphStore(BaseModel):
         if result.metadata.provider_is_mock:
             report.notes.append("this result came from the offline mock model")
         self.refresh()
+        if prune_superseded_conflicts:
+            report.superseded_conflicts_pruned = self.prune_superseded_conflicts()
+            if report.superseded_conflicts_pruned:
+                report.notes.append(f"{report.superseded_conflicts_pruned} conflicts with superseded requirements were dropped")
         return report
+
+    def _add_saved_conflicts(self, result: AnalysisResult, sid: str) -> int:
+        """Edges for conflicts between the new units and units already in the store."""
+        owner = {p.passage_id: p.source_document_id for p in result.document_passages}
+        added = 0
+        for c in result.potential_conflicts:
+            if not c.related_saved_ids:
+                continue
+            new_side = [owner.get(u, u) for u in [*c.related_requirement_ids, *c.related_passage_ids]]
+            saved_side = [self.unit_node(u) for u in c.related_saved_ids]
+            ends = [n for n in [*new_side, *saved_side] if n and n in self.nodes]
+            if len(ends) < 2:
+                continue
+            passages = [u for u in [*c.related_passage_ids, *c.related_saved_ids] if u not in self.nodes]
+            edge = conflict_edge(ends[0], ends[1], c, passages, found_by="saved_graph_check", sources=[sid])
+            added += add_conflict_edge(self.edges, edge)
+        return added
+
+    def prune_superseded_conflicts(self) -> int:
+        """Drop conflict hypotheses that involve a requirement of a superseded revision."""
+        stale = [
+            rid
+            for rid, e in self.edges.items()
+            if e.relationship_type == RelationshipType.POTENTIALLY_CONFLICTS_WITH
+            and any(self.nodes.get(n) and self.nodes[n].attributes.get("revision_status") == "superseded" for n in (e.source_node_id, e.target_node_id))
+        ]
+        for rid in stale:
+            del self.edges[rid]
+        return len(stale)
 
     def add_node(self, node: GraphNode, *, source_id: str = "manual", note: str = "") -> None:
         """Add or update a node by hand (for example a document the pipeline cannot see)."""
@@ -504,7 +639,7 @@ class GraphStore(BaseModel):
                     in_family.add(req)
             if not ordered:
                 continue
-            for older, newer in zip(revisions, revisions[1:]):
+            for older, newer in pairwise(revisions):
                 edge = make_edge(older, RelationshipType.SUPERSEDED_BY, newer, [], origin="revision_tracking")
                 self.edges[edge.relationship_id] = edge
                 for change in self._compare(older, newer):
@@ -531,8 +666,12 @@ class GraphStore(BaseModel):
 
     def _requirements(self, document_id: str) -> list[str]:
         reqs = [e.target_node_id for e in self.edges.values() if e.source_node_id == document_id and e.relationship_type == RelationshipType.CONTAINS]
-        offset = lambda r: self.nodes[r].attributes.get("start_offset")  # noqa: E731
-        return sorted(reqs, key=lambda r: (offset(r) is None, offset(r) or 0, r))
+
+        def order(r: str) -> tuple[bool, int, str]:
+            offset = self.nodes[r].attributes.get("start_offset")
+            return offset is None, offset or 0, r
+
+        return sorted(reqs, key=order)
 
     def _versions(self, document_id: str) -> list[RequirementVersion]:
         return [
@@ -584,8 +723,8 @@ def _merge_attributes(existing: dict[str, Any], new: dict[str, Any]) -> None:
             existing["names"] = list(dict.fromkeys([*existing.get("names", []), *(value or [])]))
         elif key in _OR_ATTRIBUTES:
             existing[key] = bool(existing.get(key)) or bool(value)
-        elif key in ("requirement_text", "start_offset", "chapter"):
-            existing[key] = value  # a requirement's own data: latest reading wins
+        elif key in ("requirement_text", "start_offset", "chapter", "passages", "has_chapters"):
+            existing[key] = value  # a unit's own data: latest reading wins
         elif existing.get(key) in (None, "", "unknown", []):
             existing[key] = value
 

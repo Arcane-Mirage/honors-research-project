@@ -1,0 +1,40 @@
+CORVANE MOTORS
+Logistics and Packaging Requirements for Production Suppliers
+Document ID: CVM-CSR-200
+Revision: A
+Effective Date: 2026-01-10
+All names, companies and document identifiers in this document are fictional.
+
+1 General
+1.1 This document applies to all shipments of production parts to Corvane Motors assembly
+plants.
+
+1.2 The supplier shall package all production parts in accordance with the Packaging and
+Labeling Specification CVM-PKG-210.
+
+1.3 Packaging Standard CVM-PKG-050 does not apply to parts shipped under this document and
+shall not be used for packaging design.
+
+1.4 The supplier shall comply with the shipping requirements of the Corvane Supplier Quality
+Manual CVM-SQM-001.
+
+2 Labels
+2.1 Each container shall carry a shipping label that conforms to CVM-LBL-220.
+
+2.2 Container labels shall be printed with a minimum barcode height of 25 mm.
+
+3 Containers
+3.1 Production parts shall be shipped only in returnable containers approved by Corvane
+Logistics.
+
+4 Deliveries
+4.1 The supplier shall transmit an advance shipping notice no later than 2 hours after
+shipment departure, using the message format defined in CVM-LG-140.
+
+4.2 Damaged packaging shall be reported to Corvane Logistics using the reporting procedure
+described in the Packaging and Labeling Specification.
+
+5 Precedence
+5.1 Where this document conflicts with CVM-PKG-210, the requirements of this document shall
+take precedence.
+

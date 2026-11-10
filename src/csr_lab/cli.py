@@ -108,10 +108,12 @@ def _graph_choice(args: argparse.Namespace, config: AppConfig) -> tuple[str | No
 
 def cmd_generate_data(args: argparse.Namespace) -> int:
     from csr_lab.datasets.synthetic import generate_scaled_case, write_dataset
-    from csr_lab.datasets.variants import write_pdf_dataset
+    from csr_lab.datasets.variants import write_incremental_dataset, write_pdf_dataset
 
     if args.pdf:
         manifest = write_pdf_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "pdf", lines_per_page=args.lines_per_page)
+    elif args.incremental:
+        manifest = write_incremental_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "incremental")
     elif args.scaled:
         cases = [
             generate_scaled_case(
@@ -179,9 +181,14 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         Path(args.llm_text).write_text(to_llm_markdown(graph), encoding="utf-8")
         print(f"wrote {args.llm_text}")
     if store is not None and update_graph and result.status != "failed":
-        report = store.merge_result(result)
+        report = store.merge_result(result, prune_superseded_conflicts=config.graph_store.prune_superseded_conflicts)
         store.save(graph_path)
-        print(f"merged into {graph_path}: +{report.nodes_added} nodes, +{report.edges_added} edges, {report.requirements_replaced} requirements replaced", file=sys.stderr)
+        print(
+            f"merged into {graph_path}: +{report.nodes_added} nodes, +{report.edges_added} edges, "
+            f"{report.requirements_replaced} requirements replaced, {report.saved_graph_conflicts_added} conflicts with "
+            f"earlier documents, {report.superseded_conflicts_pruned} superseded conflicts pruned",
+            file=sys.stderr,
+        )
         if config.graph_store.write_views:
             from csr_lab.pipelines.graph_build import write_views
 
@@ -371,7 +378,7 @@ def cmd_sweep(args: argparse.Namespace) -> int:
         sweep = sweep.model_copy(update={"repetitions": args.repetitions})
     base = _experiment_llm(args, load_experiment(sweep.experiment, args.experiments))
     _print_llm(apply_experiment(load_config(args.config), base))
-    out_dir, rows = run_sweep(
+    out_dir, _rows = run_sweep(
         sweep,
         base,
         load_config(args.config),
@@ -392,7 +399,7 @@ def cmd_check_text(args: argparse.Namespace) -> int:
     source = load_document(args.source, **processing_load_options(config.processing))
     fragments = json.loads(Path(args.fragments).read_text(encoding="utf-8"))
     if not isinstance(fragments, list):
-        raise ValueError("fragments must be a JSON list of strings or {id, text} objects (as written by `csr-lab chunk`)")
+        raise ValueError("fragments must be a JSON list of strings or {id, text} objects (as written by `csr-lab chunk`)")  # noqa: TRY004 (CLI prints ValueError)
     report = check_fragments(source.text or "", fragments, document_id=source.document_id, pages=source.pages, min_ratio=args.min_ratio)
     print(format_report(report))
     if args.out:
@@ -544,7 +551,7 @@ def cmd_llms(args: argparse.Namespace) -> int:
 
     path = Path(args.llms_file) if args.llms_file else DEFAULT_LLMS_PATH
     text = path.read_text(encoding="utf-8")
-    text, n = re.subn(r"^default:.*$", f"default: {args.name}", text, count=1, flags=re.M)
+    text, n = re.subn(r"^default:.*$", f"default: {args.name}", text, count=1, flags=re.MULTILINE)
     if not n:
         text = f"default: {args.name}\n" + text
     path.write_text(text, encoding="utf-8")
@@ -555,7 +562,7 @@ def cmd_llms(args: argparse.Namespace) -> int:
 
 
 def cmd_build_graph(args: argparse.Namespace) -> int:
-    from csr_lab.pipelines.graph_build import build_graph, file_sha256, plan_bundles
+    from csr_lab.pipelines.graph_build import build_graph, file_sha256, files_outside_pool, plan_bundles
     from csr_lab.relationships.store import GraphStore
 
     _register_yaml_strategies(args.experiments)
@@ -564,9 +571,9 @@ def cmd_build_graph(args: argparse.Namespace) -> int:
     graph = Path(args.graph) if args.graph else config.resolve_path(config.graph_store.path)
     use = config.graph_store.use if args.use_graph is None else args.use_graph
     update = config.graph_store.update if args.update_graph is None else args.update_graph
-    bundles = plan_bundles(folder, args.group)
+    bundles = plan_bundles(folder, args.group, config.input_formats)
     if not bundles:
-        print(f"no .pdf/.txt/.json files in {folder}", file=sys.stderr)
+        print(f"no {'/'.join(config.input_formats)} files in {folder}", file=sys.stderr)
         return 1
     known = GraphStore.load(graph).known_file_hashes() if graph.is_file() else set()
     print(f"graph:  {graph} ({'exists' if graph.is_file() else 'new'}; {'used' if use else 'not used'} as context, {'updated' if update else 'NOT updated'})", file=sys.stderr)
@@ -575,6 +582,8 @@ def cmd_build_graph(args: argparse.Namespace) -> int:
         for b in bundles:
             done = not args.force and all(file_sha256(f) in known for f in b.files)
             print(f"  {'skip' if done else 'run '}  {b.name}: {', '.join(f.name for f in b.files)}")
+        for f in files_outside_pool(folder, config.input_formats):
+            print(f"  out   {f.relative_to(folder)} (not in the data pool; still a node if referenced)")
         return 0
     config = _resolve_model(config)
     _print_llm(config)
@@ -687,6 +696,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cases", type=int, default=3, help="number of scaled cases")
     p.add_argument("--pdf", action="store_true", help="write the PDF variant (headers, footers, page breaks, drawn tables)")
     p.add_argument("--lines-per-page", type=int, default=44, help="PDF variant: lines per page")
+    p.add_argument("--incremental", action="store_true", help="write the saved-graph variant (graph_input/ + new documents)")
     p.set_defaults(func=cmd_generate_data)
 
     p = sub.add_parser("strategies", help="list available strategies")

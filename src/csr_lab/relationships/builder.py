@@ -21,6 +21,12 @@ Edges, each with ``metadata.origin``:
 * ``explicitly_*``    requirement -> document, only when the text states it (extraction)
 * ``references``      document -> document, derived from its requirements (aggregation)
 * ``potentially_conflicts_with`` requirement -> requirement (analysis; analytical_hypothesis: true)
+
+Documents without chapters have no requirement nodes. Their passages are stored on the
+document node (``attributes.passages``: ID, pages, text), and what the passages state is
+drawn from the document node itself, with ``metadata.passage_ids`` naming the passages:
+* ``references`` / ``explicitly_*``  document -> document, with evidence      (extraction)
+* ``potentially_conflicts_with``     requirement or document -> document       (analysis)
 * ``superseded_by``   older -> newer revision or requirement version (revision_tracking;
   added by the saved graph store, see ``csr_lab.relationships.store``)
 """
@@ -37,6 +43,7 @@ from csr_lab.schemas import (
     RELATION_EDGE_TYPES,
     SCHEMA_VERSION,
     AnalysisResult,
+    DocumentPassage,
     Evidence,
     InputDocument,
     PotentialConflict,
@@ -69,7 +76,7 @@ class RelationshipGraph(BaseModel):
     _out: dict[str, list[Relationship]] = PrivateAttr(default_factory=dict)
     _in: dict[str, list[Relationship]] = PrivateAttr(default_factory=dict)
 
-    def model_post_init(self, __context: Any) -> None:
+    def model_post_init(self, context: Any, /) -> None:
         self.reindex()
 
     def reindex(self) -> None:
@@ -152,6 +159,39 @@ def _edge(source: str, edge_type: RelationshipType, target: str, evidence: list[
 make_edge = _edge  # public name for other modules (the saved graph store)
 
 
+def conflict_edge(a: str, b: str, conflict: PotentialConflict, passage_ids: list[str] | tuple = (), **extra: Any) -> Relationship:
+    """A ``potentially_conflicts_with`` hypothesis between two nodes (requirements or documents)."""
+    a, b = sorted((a, b))
+    return _edge(
+        a,
+        RelationshipType.POTENTIALLY_CONFLICTS_WITH,
+        b,
+        list(conflict.evidence),
+        origin="analysis",
+        analytical_hypothesis=True,
+        conflict_id=conflict.conflict_id,
+        conflict_ids=[conflict.conflict_id],
+        conflict_type=conflict.conflict_type.value,
+        review_status=conflict.review_status,
+        **({"passage_ids": sorted(passage_ids)} if passage_ids else {}),
+        **extra,
+    )
+
+
+def add_conflict_edge(edges: dict[str, Relationship], edge: Relationship) -> bool:
+    """Add ``edge``; several conflicts between the same two nodes (passages of one document)
+    share one edge listing them all. Returns True when the edge is new."""
+    existing = edges.get(edge.relationship_id)
+    if existing is None:
+        edges[edge.relationship_id] = edge
+        return True
+    existing.evidence = [*existing.evidence, *edge.evidence]
+    for key in ("conflict_ids", "passage_ids", "sources"):
+        if edge.metadata.get(key):
+            existing.metadata[key] = list(dict.fromkeys([*existing.metadata.get(key, []), *edge.metadata[key]]))
+    return False
+
+
 def _iso_date(value: str | None) -> date | None:
     try:
         return date.fromisoformat(value.strip()) if value else None
@@ -227,7 +267,9 @@ def build_graph(
     requirements: list[Requirement],
     referenced_documents: list[ReferencedDocument],
     conflicts: list[PotentialConflict] | None = None,
+    passages: list[DocumentPassage] | None = None,
 ) -> RelationshipGraph:
+    passages = passages or []
     nodes: dict[str, GraphNode] = {}
     for doc in input_documents:
         available = doc.parse_status in ("ok", "partial")
@@ -303,6 +345,20 @@ def build_graph(
             attributes={"chapter": req.chapter, "source_document_id": req.source_document_id},
         )
 
+    for p in passages:
+        doc = nodes.get(p.source_document_id)
+        if doc is not None:
+            doc.attributes["has_chapters"] = False
+            doc.attributes.setdefault("passages", []).append(
+                {
+                    "passage_id": p.passage_id,
+                    "page_start": p.source_location.page_start,
+                    "page_end": p.source_location.page_end,
+                    "start_offset": p.source_location.start_offset,
+                    "text": p.text,
+                }
+            )
+
     def family_of(node_id: str) -> str:
         node = nodes.get(node_id)
         return (node.attributes.get("revision_of") if node else None) or node_id
@@ -361,21 +417,36 @@ def build_graph(
             )
         )
 
-    for conflict in conflicts or []:
-        a, b = sorted(conflict.related_requirement_ids)[:2]
+    # What passages state, drawn from their document: one edge per (document, target, type).
+    stated: dict[tuple[str, RelationshipType, str], list[tuple[str, object]]] = {}
+    for p in passages:
+        for m in p.reference_mentions:
+            if family_of(m.document_id) == family_of(p.source_document_id):
+                continue  # a self-reference
+            stated.setdefault((p.source_document_id, RelationshipType.REFERENCES, m.document_id), []).append((p.passage_id, m))
+            if m.relation in RELATION_EDGE_TYPES:
+                stated.setdefault((p.source_document_id, RELATION_EDGE_TYPES[m.relation], m.document_id), []).append((p.passage_id, m))
+    for (src, edge_type, tgt), items in sorted(stated.items(), key=lambda kv: (kv[0][0], kv[0][1].value, kv[0][2])):
+        mentions = [m for _, m in items]
         add(
             _edge(
-                a,
-                RelationshipType.POTENTIALLY_CONFLICTS_WITH,
-                b,
-                conflict.evidence,
-                origin="analysis",
-                analytical_hypothesis=True,
-                conflict_id=conflict.conflict_id,
-                conflict_type=conflict.conflict_type.value,
-                review_status=conflict.review_status,
+                src,
+                edge_type,
+                tgt,
+                [m.evidence for m in mentions],
+                origin="extraction",
+                passage_ids=sorted({pid for pid, _ in items}),
+                mention_ids=[m.mention_id for m in mentions],
+                verified=all(m.verified for m in mentions),
             )
         )
+
+    owner = {p.passage_id: p.source_document_id for p in passages}
+    for conflict in conflicts or []:
+        if conflict.related_saved_ids:
+            continue  # the other side lives in the saved graph; the store adds this edge
+        a, b = (owner.get(u, u) for u in conflict.unit_ids[:2])
+        add_conflict_edge(edges, conflict_edge(a, b, conflict, [u for u in conflict.unit_ids if u in owner]))
 
     add_revision_structure(nodes, edges)
     return RelationshipGraph(nodes=list(nodes.values()), edges=list(edges.values()))
@@ -383,5 +454,5 @@ def build_graph(
 
 def graph_from_result(result: AnalysisResult) -> RelationshipGraph:
     """Graph object for an exported result: nodes rebuilt from its lists, edges taken as exported."""
-    nodes = build_graph(result.input_documents, result.requirements, result.referenced_documents, []).nodes
+    nodes = build_graph(result.input_documents, result.requirements, result.referenced_documents, [], result.document_passages).nodes
     return RelationshipGraph(nodes=nodes, edges=list(result.relationships))

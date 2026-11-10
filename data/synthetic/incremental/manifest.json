@@ -1,0 +1,27 @@
+{
+  "name": "synthetic_csr_incremental",
+  "version": "1.1.0",
+  "description": "Multi-document synthetic cases split into a saved graph (graph_input/) and a new CSR to analyse.",
+  "generator": "csr_lab.datasets.variants",
+  "graph_input": "graph_input",
+  "cases": [
+    {
+      "case_id": "dev_corvane_packaging",
+      "split": "dev",
+      "description": "Two provided documents: a logistics CSR and the packaging specification it references; exclusion, precedence, name aliases and cross-document conflicts. (new document CVM-CSR-200; the others are in the saved graph)",
+      "documents": [
+        "documents/dev_corvane_packaging/cvm_csr_200.txt"
+      ],
+      "ground_truth": "ground_truth/dev_corvane_packaging.json"
+    },
+    {
+      "case_id": "heldout_tessaly_battery",
+      "split": "heldout",
+      "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts. (new document TSA-CSR-400; the others are in the saved graph)",
+      "documents": [
+        "documents/heldout_tessaly_battery/tsa_csr_400.txt"
+      ],
+      "ground_truth": "ground_truth/heldout_tessaly_battery.json"
+    }
+  ]
+}

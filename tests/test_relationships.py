@@ -6,13 +6,13 @@ Relationship graph structure, queries, flagging rules and validation.
 import json
 
 import pytest
+from helpers import case_documents
 
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.relationships import queries
 from csr_lab.relationships.builder import RelationshipGraph, graph_from_result
 from csr_lab.relationships.validation import validate_graph
 from csr_lab.schemas import Relationship, RelationshipType
-from helpers import case_documents
 
 
 @pytest.fixture

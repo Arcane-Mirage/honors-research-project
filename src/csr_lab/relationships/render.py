@@ -58,7 +58,9 @@ def _doc_line(graph: RelationshipGraph, node: GraphNode, n_requirements: int) ->
     title = _one_line(a.get("title") or a.get("document_name") or fa.get("title") or fa.get("document_name"))
     if title:
         parts.append(f'"{title}"')
-    if a.get("analyzed"):
+    if a.get("analyzed") and a.get("has_chapters") is False:
+        parts.append(f"analysed, no chapters ({len(a.get('passages') or [])} passages, no requirements)")
+    elif a.get("analyzed"):
         parts.append(f"analysed, {n_requirements} requirements")
     elif a.get("content_available"):
         parts.append("content provided")
@@ -116,6 +118,8 @@ def to_llm_markdown(
         node = graph.node(node_id)
         if not node:
             return node_id
+        if node.node_type == "document":  # a document without chapters: the conflict is in its text
+            return f"{name(node_id)} (text){rid(node)}"
         chapter = node.attributes.get("chapter") or "?"
         return f"{name(graph.container_of(node_id) or '')} §{chapter}{rid(node)}"
 
@@ -124,12 +128,12 @@ def to_llm_markdown(
     lines = [
         f"# {title}",
         "",
-        f"{len(docs)} documents, {len(reqs)} requirements, {len(stated)} stated relationships, "
-        f"{len(conflicts)} potential conflicts.",
+        (f"{len(docs)} documents, {len(reqs)} requirements, {len(stated)} stated relationships, "
+        f"{len(conflicts)} potential conflicts."),
         "",
-        "How to read this: everything under *Documents* and *Requirements* is stated in the documents "
+        ("How to read this: everything under *Documents* and *Requirements* is stated in the documents "
         "(quotes are verbatim). *Potential conflicts* are hypotheses produced by a model; each needs "
-        "human review. A document marked 'content not provided' was referenced but never analysed.",
+        "human review. A document marked 'content not provided' was referenced but never analysed."),
         "",
         "## Documents",
         "",
@@ -170,6 +174,21 @@ def to_llm_markdown(
         lines += items
         if silent:
             lines.append(f"- ({silent} further requirements refer to no other document)")
+        lines.append("")
+
+    passage_docs = [n for n in docs if n.attributes.get("has_chapters") is False]
+    if passage_docs:
+        lines += ["## Documents without chapters and what their text states", ""]
+        for node in sorted(passage_docs, key=lambda n: n.label):
+            edges = [e for e in graph.out_edges(node.node_id) if e.relationship_type not in _SKIP and e.metadata.get("passage_ids")]
+            qualified = {e.target_node_id for e in edges if e.relationship_type != RelationshipType.REFERENCES}
+            phrases = [
+                _REQUIREMENT_PHRASES.get(e.relationship_type, e.relationship_type.value + " {t}").format(t=name(e.target_node_id))
+                .replace("its document ", "it ")
+                for e in edges
+                if not (e.relationship_type == RelationshipType.REFERENCES and e.target_node_id in qualified)
+            ]
+            lines.append(f"- **{node.label}**{rid(node)}: " + ("; ".join(dict.fromkeys(phrases)) if phrases else "refers to no other document"))
         lines.append("")
 
     lines += ["## Potential conflicts (model hypotheses, require human review)", ""]

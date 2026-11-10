@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Self
 
 from csr_lab.schemas import LLMCallSummary
 
@@ -119,7 +120,7 @@ class ExperimentStore:
     def close(self) -> None:
         self.conn.close()
 
-    def __enter__(self) -> ExperimentStore:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *exc: object) -> None:

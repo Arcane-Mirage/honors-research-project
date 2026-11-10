@@ -245,7 +245,7 @@ def load_pdf_file(
         page_texts = [_normalise_newlines(t) for t in _page_texts(path, backend)]
     except UnsupportedInputError:
         raise
-    except Exception as exc:  # PDF libraries raise many exception types for damaged files
+    except Exception as exc:  # noqa: BLE001 - PDF libraries raise many exception types for damaged files
         return InputDocument(
             document_id=document_node_id(_identifier_from_filename(path)),
             canonical_identifier=_identifier_from_filename(path),

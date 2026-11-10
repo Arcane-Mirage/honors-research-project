@@ -78,6 +78,17 @@ experiments:
     llm: {provider: mock}
     evaluation: {baseline_strategy: llm_chunked}
 
+  saved_graph:
+    description: >-
+      Does a saved graph help? The supporting documents of each case are built into a graph
+      first (build-graph on graph_input/, with the same model); then the CSR alone is analysed
+      with and without that graph and graded. Offline: --llm mock --repetitions 3.
+    dataset: data/synthetic/incremental/manifest.json
+    split: all
+    saved_graph: {build_from: data/synthetic/incremental/graph_input}
+    strategies: [graph_assisted, graph_assisted_no_saved]
+    evaluation: {baseline_strategy: graph_assisted_no_saved}
+
   merging_mock:
     description: Reference merging methods (deterministic, model-only, hybrid with guard rules) on top of Condition C, with D for reference.
     split: all
@@ -176,6 +187,11 @@ strategies:
     options: {reference_merging: {method: llm}}
 
   # --- ablations ---
+  graph_assisted_no_saved:
+    base: graph_assisted
+    description: Condition D without a saved graph (each case analysed alone); the control arm of saved_graph experiments.
+    options: {graph: {use_saved: false}}
+
   graph_assisted_no_alias:
     base: graph_assisted
     description: Condition D without graph alias resolution (isolates name-to-identifier resolution).
@@ -256,3 +272,14 @@ sweeps:
       dataset: [data/synthetic/text/manifest.json, data/synthetic/pdf/manifest.json]
       processing.pdf_strip_repeated_lines: [true]
     metrics: [requirements.recall, requirements.verbatim_exact_rate, references.f1, conflicts.f1]
+
+  saved_graph_pairs:
+    experiment: saved_graph
+    description: >-
+      How many pairs the saved-graph conflict check sends to the model, and how much topic
+      overlap a linked pair needs. The graph is built once and shared by every setting.
+    strategies: [graph_assisted]
+    grid:
+      options.graph.saved_min_score: [0.0, 0.08, 0.2]
+      options.graph.saved_max_pairs: [20, 200]
+    metrics: [conflicts.recall, conflicts.precision, conflicts.f1, conflicts.saved_graph_predicted, conflicts.saved_graph_hits, conflicts.candidate_pair_recall, ops.stage_tokens.check_saved_conflicts]

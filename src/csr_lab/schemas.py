@@ -26,7 +26,9 @@ from csr_lab.ids import document_family_id
 
 # 0.2.0: revision-specific document IDs, content-based requirement IDs
 # 0.3.0: input fidelity report, reference-merge decisions, per-stage cost (all additive)
-SCHEMA_VERSION = "0.3.0"
+# 0.4.0: one requirement per chapter; document_passages (documents without chapters);
+#        conflicts may involve passages and saved-graph units (additive)
+SCHEMA_VERSION = "0.4.0"
 GOLD_SCHEMA_VERSION = "0.2.0"
 
 
@@ -265,6 +267,28 @@ class Requirement(_Model):
         return self
 
 
+class DocumentPassage(_Model):
+    """A passage of a document without chapters (a contract, a form ...).
+
+    Analysed for references and conflicts like a chapter, but not a requirement: it has no
+    requirement node in the graph. Its references and conflicts attach to its document.
+    """
+
+    passage_id: str
+    source_document_id: str
+    text: str = Field(min_length=1)
+    source_location: SourceLocation
+    referenced_document_ids: list[str] = Field(default_factory=list)
+    reference_mentions: list[ReferenceMention] = Field(default_factory=list)
+    reference_analysis_status: Literal["verified", "unverified", "failed", "not_run"] = "not_run"
+
+    @model_validator(mode="after")
+    def _consistency(self) -> DocumentPassage:
+        if {m.document_id for m in self.reference_mentions} != set(self.referenced_document_ids):
+            raise ValueError("referenced_document_ids must match the documents in reference_mentions")
+        return self
+
+
 class ReferencedDocument(_Model):
     document_id: str
     raw_identifiers: list[str]
@@ -295,8 +319,15 @@ class Relationship(_Model):
 
 
 class PotentialConflict(_Model):
+    """Two units whose obligations may be incompatible. A unit is a requirement of this result,
+    a passage of this result, or a requirement/passage already in the saved graph."""
+
     conflict_id: str
-    related_requirement_ids: list[str] = Field(min_length=2)
+    related_requirement_ids: list[str] = Field(default_factory=list)
+    related_passage_ids: list[str] = Field(default_factory=list)
+    related_saved_ids: list[str] = Field(
+        default_factory=list, description="Units that live in the saved graph (from earlier analyses), by node or passage ID."
+    )
     related_document_ids: list[str] = Field(default_factory=list)
     related_relationship_ids: list[str] = Field(default_factory=list)
     conflict_type: ConflictType
@@ -311,10 +342,15 @@ class PotentialConflict(_Model):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _unique_requirements(self) -> PotentialConflict:
-        if len(set(self.related_requirement_ids)) != len(self.related_requirement_ids):
-            raise ValueError("related_requirement_ids must be distinct")
+    def _two_distinct_units(self) -> PotentialConflict:
+        units = self.unit_ids
+        if len(set(units)) != len(units) or len(units) < 2:
+            raise ValueError("a conflict needs at least two distinct units")
         return self
+
+    @property
+    def unit_ids(self) -> list[str]:
+        return [*self.related_requirement_ids, *self.related_passage_ids, *self.related_saved_ids]
 
 
 # ---------------------------------------------------------------------------
@@ -484,6 +520,7 @@ class GraphDecision(_Model):
         "conflict_candidate_added",
         "context_retrieved",
         "rule_flagged_conflict",
+        "saved_graph_conflict_check",
     ]
     detail: str
     node_ids: list[str] = Field(default_factory=list)
@@ -540,6 +577,7 @@ class AnalysisResult(_Model):
     status: Literal["completed", "completed_with_errors", "failed"]
     input_documents: list[InputDocument]
     requirements: list[Requirement] = Field(default_factory=list)
+    document_passages: list[DocumentPassage] = Field(default_factory=list)
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     relationships: list[Relationship] = Field(default_factory=list)
     potential_conflicts: list[PotentialConflict] = Field(default_factory=list)
@@ -555,15 +593,17 @@ class AnalysisResult(_Model):
         if len(set(doc_ids)) != len(doc_ids):
             raise ValueError("referenced document_id values must be unique")
         known_docs = set(doc_ids)
-        for req in self.requirements:
-            missing = set(req.referenced_document_ids) - known_docs
+        for unit in [*self.requirements, *self.document_passages]:
+            missing = set(unit.referenced_document_ids) - known_docs
             if missing:
-                raise ValueError(f"{req.requirement_id} references unknown documents: {sorted(missing)}")
+                unit_id = getattr(unit, "requirement_id", None) or unit.passage_id
+                raise ValueError(f"{unit_id} references unknown documents: {sorted(missing)}")
         known_reqs = set(req_ids)
+        known_passages = {p.passage_id for p in self.document_passages}
         for conflict in self.potential_conflicts:
-            missing = set(conflict.related_requirement_ids) - known_reqs
+            missing = (set(conflict.related_requirement_ids) - known_reqs) | (set(conflict.related_passage_ids) - known_passages)
             if missing:
-                raise ValueError(f"{conflict.conflict_id} names unknown requirements: {sorted(missing)}")
+                raise ValueError(f"{conflict.conflict_id} names unknown requirements or passages: {sorted(missing)}")
         node_ids = known_reqs | known_docs | {d.document_id for d in self.input_documents}
         # Document-level nodes of provided revisions ('DOC-X' for 'DOC-X-REV-D').
         node_ids |= {document_family_id(d.canonical_identifier) for d in self.input_documents if d.canonical_identifier}
@@ -640,6 +680,11 @@ class CaseGold(_Model):
     split: Literal["dev", "heldout"]
     description: str
     documents: list[GoldInputDocument]
+    graph_documents: list[GoldInputDocument] = Field(
+        default_factory=list,
+        description="Documents already in the saved graph, not in the case input. Their requirements stay in "
+        "`requirements` so conflicts with them can be scored; requirement and reference scores ignore them.",
+    )
     requirements: list[GoldRequirement]
     referenced_documents: list[GoldReferencedDocument]
     conflicts: list[GoldConflict] = Field(default_factory=list)

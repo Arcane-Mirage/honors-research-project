@@ -4,6 +4,7 @@ Reference identifiers: normalisation, distractors, verification, evidence repair
 """
 
 import pytest
+from helpers import ScriptedProvider
 
 from csr_lab.config import VerificationSettings
 from csr_lab.drafts import RequirementDraft
@@ -13,7 +14,6 @@ from csr_lab.extraction.references import MentionCounter, mentions_from_model
 from csr_lab.extraction.verification import scan_candidates, verify_pass
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import InputDocument, MentionStatus
-from helpers import ScriptedProvider
 
 
 @pytest.mark.parametrize(

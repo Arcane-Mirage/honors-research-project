@@ -2,10 +2,17 @@
 
 Build up a saved graph from a folder of documents (``csr-lab build-graph``).
 
-Drop PDFs (or .txt / chunk .json files) into a folder, choose a graph file, run.
+Drop PDFs into a folder, choose a graph file, run. Only the file types in
+``input_formats`` (default: PDF) form the data pool; other files are listed as skipped.
+A document that is not in the pool (a Word file, a web page, a document nobody has)
+still becomes a document node when an analysed document references it.
+
 Each *bundle* of files is analysed together (so references between them resolve)
 and merged into the graph. Files whose bytes were already merged are skipped, so
-the same folder can be re-run after adding new files.
+the same folder can be re-run after adding new files. With ``use``, every new bundle
+is also checked for conflicts against the requirements and passages already in the
+graph (``graph.saved_conflicts``); conflicts that involve superseded requirements are
+dropped after each update (``graph_store.prune_superseded_conflicts``).
 
 Bundles (``group``):
 
@@ -24,10 +31,11 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from csr_lab.config import AppConfig
 from csr_lab.ingestion.loader import SUPPORTED_SUFFIXES, load_bundle, processing_load_options
@@ -53,14 +61,20 @@ class BuildOutcome:
     view_paths: list[Path] = field(default_factory=list)
 
 
-def _documents_in(folder: Path) -> list[Path]:
-    return sorted(f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".") and f.suffix.lower() in SUPPORTED_SUFFIXES)
+def _files_in(folder: Path) -> list[Path]:
+    return sorted(f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".") and f.name != "README.md")
 
 
-def plan_bundles(folder: str | Path, group: GroupMode = "folder") -> list[Bundle]:
+def plan_bundles(folder: str | Path, group: GroupMode = "folder", formats: list[str] | None = None) -> list[Bundle]:
+    """Bundles of the files in ``folder`` whose type is in ``formats`` (default: every supported type)."""
     folder = Path(folder)
     if not folder.is_dir():
         raise FileNotFoundError(f"input folder not found: {folder}")
+    allowed = {f.lower() if f.startswith(".") else f".{f.lower()}" for f in (formats or SUPPORTED_SUFFIXES)} & SUPPORTED_SUFFIXES
+
+    def _documents_in(d: Path) -> list[Path]:
+        return [f for f in _files_in(d) if f.suffix.lower() in allowed]
+
     loose = _documents_in(folder)
     subfolders = sorted(d for d in folder.iterdir() if d.is_dir() and not d.name.startswith("."))
     if group == "all":
@@ -72,6 +86,14 @@ def plan_bundles(folder: str | Path, group: GroupMode = "folder") -> list[Bundle
     if loose:
         bundles.insert(0, Bundle(folder.name, loose))
     return [b for b in bundles if b.files]
+
+
+def files_outside_pool(folder: str | Path, formats: list[str] | None = None) -> list[Path]:
+    """Files in ``folder`` (and its subfolders) that ``plan_bundles`` leaves out."""
+    folder = Path(folder)
+    inside = {f for b in plan_bundles(folder, "all", formats) for f in b.files}
+    everything = _files_in(folder) + [f for d in sorted(folder.iterdir()) if d.is_dir() and not d.name.startswith(".") for f in _files_in(d)]
+    return [f for f in everything if f not in inside]
 
 
 def file_sha256(path: Path) -> str:
@@ -127,7 +149,10 @@ def build_graph(
     (out_dir / "results").mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
-    for bundle in plan_bundles(folder, group):
+    outside = [str(f.relative_to(folder)) for f in files_outside_pool(folder, config.input_formats)]
+    for name in outside:
+        say(f"{name}: skipped, not in the data pool (input_formats: {', '.join(config.input_formats)})")
+    for bundle in plan_bundles(folder, group, config.input_formats):
         files = [{"name": str(f.relative_to(folder)) if f.is_relative_to(folder) else f.name, "sha256": file_sha256(f)} for f in bundle.files]
         row: dict[str, Any] = {"bundle": bundle.name, "files": len(files), "file_names": [f["name"] for f in files]}
         if not force and all(f["sha256"] in known for f in files):
@@ -147,7 +172,7 @@ def build_graph(
                 saved_graph=store if use and store.nodes else None,
                 saved_graph_path=graph_path,
             )
-        except Exception as exc:  # one bad bundle must not stop the build
+        except Exception as exc:  # noqa: BLE001 - one bad bundle must not stop the build
             rows.append(row | {"status": "error", "error": f"{type(exc).__name__}: {exc}", "seconds": round(time.perf_counter() - started, 2)})
             say(f"{bundle.name}: error: {exc}")
             continue
@@ -159,6 +184,8 @@ def build_graph(
         row |= {
             "status": result.status,
             "requirements": len(result.requirements),
+            "passages": len(result.document_passages),
+            "saved_graph_conflicts": sum(1 for c in result.potential_conflicts if c.related_saved_ids),
             "referenced_documents": len(result.referenced_documents),
             "potential_conflicts": len(result.potential_conflicts),
             "used_saved_graph": result.metadata.saved_graph is not None,
@@ -171,10 +198,15 @@ def build_graph(
             "errors": result.metadata.errors[:3],
         }
         if update and result.status != "failed":
-            change = store.merge_result(result, input_files=files)
+            change = store.merge_result(result, input_files=files, prune_superseded_conflicts=config.graph_store.prune_superseded_conflicts)
             store.save(graph_path)  # after every bundle, so an interrupted build keeps its progress
             known.update(f["sha256"] for f in files)
-            row |= {"nodes_added": change.nodes_added, "edges_added": change.edges_added, "requirements_replaced": change.requirements_replaced}
+            row |= {
+                "nodes_added": change.nodes_added,
+                "edges_added": change.edges_added,
+                "requirements_replaced": change.requirements_replaced,
+                "conflicts_pruned": change.superseded_conflicts_pruned,
+            }
         rows.append(row)
         say(f"{bundle.name}: {result.status}, {len(result.requirements)} requirements, {len(result.potential_conflicts)} potential conflicts")
 
@@ -196,6 +228,8 @@ def build_graph(
         "graph_before": before,
         "graph_after": after,
         "bundles": rows,
+        "outside_pool": outside,
+        "input_formats": config.input_formats,
         "views": [str(p) for p in view_paths],
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
@@ -225,19 +259,28 @@ def _report(s: dict[str, Any]) -> str:
         "",
         "## Bundles",
         "",
-        "| Bundle | Files | Status | Requirements | References | Conflicts | Saved graph used | +Nodes | +Edges | Replaced | LLM calls (failed) | Tokens | Seconds |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Bundle | Files | Status | Requirements | Passages | References | Conflicts | with saved graph | Saved graph used | +Nodes | +Edges | Replaced | Conflicts pruned | LLM calls (failed) | Tokens | Seconds |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in s["bundles"]:
-        get = lambda k, d="": r.get(k, d)  # noqa: E731
+        get = lambda k, d="", r=r: r.get(k, d)
         calls = f"{get('llm_calls')} ({get('llm_failed_calls')})" if "llm_calls" in r else ""
         tokens = f"{get('tokens')}{'' if get('token_source') == 'reported' else ' est.'}" if "tokens" in r else ""
         used = {True: "yes", False: "no"}.get(get("used_saved_graph", None), "")
         lines.append(
-            f"| {r['bundle']} | {r['files']} | {r['status']} | {get('requirements')} | {get('referenced_documents')} | "
-            f"{get('potential_conflicts')} | {used} | {get('nodes_added')} | {get('edges_added')} | {get('requirements_replaced')} | "
-            f"{calls} | {tokens} | {get('seconds')} |"
+            f"| {r['bundle']} | {r['files']} | {r['status']} | {get('requirements')} | {get('passages')} | {get('referenced_documents')} | "
+            f"{get('potential_conflicts')} | {get('saved_graph_conflicts')} | {used} | {get('nodes_added')} | {get('edges_added')} | "
+            f"{get('requirements_replaced')} | {get('conflicts_pruned')} | {calls} | {tokens} | {get('seconds')} |"
         )
+    if s.get("outside_pool"):
+        lines += [
+            "",
+            f"## Not in the data pool (input_formats: {', '.join(s['input_formats'])})",
+            "",
+            "Not analysed. A document here still becomes a node when an analysed document references it.",
+            "",
+            *[f"- {name}" for name in s["outside_pool"]],
+        ]
     problems = [r for r in s["bundles"] if r.get("error") or r.get("errors")]
     if problems:
         lines += ["", "## Problems", ""]

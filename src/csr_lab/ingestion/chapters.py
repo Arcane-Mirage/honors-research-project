@@ -24,6 +24,11 @@ Where the chapter list comes from:
 ``chapter_max_depth`` (0 = no limit) keeps deeper labels inside their parent:
 with 2, '4.4.1' stays in chapter '4.4'. Text before the first chapter is front
 matter (a cover page), analysed only with ``chapter_include_front_matter``.
+
+**Documents without chapters** (fewer than ``chapter_min_count``: a contract, a form ...)
+are cut into passages of about ``passage_words`` words at blank lines, else at line ends
+(``split_passages``). Passages are analysed for references and conflicts but are not
+requirements (``Segment.kind == "passage"``, IDs ``PSG-<document>-P001``).
 """
 
 from __future__ import annotations
@@ -102,7 +107,7 @@ def _matches(content: str, label: str | None, title: str) -> bool:
     want = _norm(title)[:_TITLE_MATCH_CHARS]
     if label:
         lab = _norm(label)
-        if not (line.startswith(lab + " ") or line.startswith(lab + ". ")):
+        if not line.startswith((lab + " ", lab + ". ")):
             return False
         rest = line[len(lab) :].lstrip(". ")
         return rest.startswith(want) or (len(rest) >= 3 and want.startswith(rest))
@@ -163,6 +168,13 @@ def split_chapters(doc: InputDocument, settings: ChunkingSettings) -> tuple[list
 
     if settings.chapter_max_depth:
         starts = [s for s in starts if s.depth() <= settings.chapter_max_depth]
+    if len(starts) < settings.chapter_min_count:
+        passages = split_passages(doc, settings.passage_words)
+        return passages, [
+            (f"no chapters ({len(starts)} found, chapter_min_count={settings.chapter_min_count}): "
+            f"{len(passages)} passages of about {settings.passage_words} words, analysed for references and "
+            "conflicts only (no requirements)")
+        ]
 
     segments: list[Segment] = []
 
@@ -223,3 +235,68 @@ def split_chapters(doc: InputDocument, settings: ChunkingSettings) -> tuple[list
         if s.label:
             stack.append((s.depth(), f"{s.label} {s.title}" if s.title else s.label))
     return segments, notes
+
+
+_BLANK_RE = re.compile(r"\n[ \t]*\n")
+
+
+def split_passages(doc: InputDocument, words: int) -> list[Segment]:
+    """Cut a document without chapters into verbatim passages of about ``words`` words.
+
+    Paragraphs (blank-line separated) are packed up to the budget; a paragraph longer than
+    the budget is split at line ends. Every passage is an exact slice of the source.
+    """
+    text = doc.text or ""
+    pieces: list[tuple[int, int]] = []  # paragraph or line spans, in order
+    pos = 0
+    for m in [*_BLANK_RE.finditer(text), None]:
+        end = m.start() if m else len(text)
+        para = text[pos:end]
+        if para.strip():
+            if len(para.split()) <= words:
+                pieces.append((pos, end))
+            else:
+                for start, line_end, content in _lines(para):
+                    if content.strip():
+                        pieces.append((pos + start, pos + line_end))
+        pos = m.end() if m else len(text)
+
+    groups: list[list[tuple[int, int]]] = []
+    count = 0
+    for span in pieces:
+        n = len(text[span[0] : span[1]].split())
+        if groups and count + n > words and count >= words // 2:
+            groups.append([])
+            count = 0
+        if not groups:
+            groups.append([])
+        groups[-1].append(span)
+        count += n
+
+    segments: list[Segment] = []
+    for i, group in enumerate(groups, start=1):
+        raw_start, end = group[0][0], group[-1][1]
+        body = text[raw_start:end]
+        start = raw_start + len(body) - len(body.lstrip())
+        end = start + len(text[start:end].rstrip())
+        p_start, p_end = page_range(start, max(start, end), doc.pages)
+        segments.append(
+            Segment(
+                segment_id=f"SEG-{doc.document_id[4:]}-{i:04d}",
+                document_id=doc.document_id,
+                kind="passage",
+                chapter=None,
+                label=f"P{i:03d}",
+                title=f"Passage {i}",
+                text=text[start:end],
+                start_offset=start,
+                end_offset=end,
+                line_start_offset=start,
+                page_start=p_start,
+                page_end=p_end,
+                has_modal=bool(MODAL_RE.search(text[start:end])),
+                confidence="low",
+                notes=["document without chapters: passage, not a requirement"],
+            )
+        )
+    return segments

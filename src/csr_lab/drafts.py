@@ -42,6 +42,11 @@ class RequirementDraft(BaseModel):
     page_end: int | None = None
     reference_status: Literal["not_run", "unverified", "verified", "failed"] = "not_run"
     notes: list[str] = Field(default_factory=list)
+    unit_kind: Literal["chapter", "passage", "saved"] = Field(
+        default="chapter",
+        description="chapter: a requirement; passage: part of a document without chapters (no requirement); "
+        "saved: a unit from the saved graph, used only for conflict checks.",
+    )
 
     @property
     def span(self) -> tuple[int, int] | None:
@@ -108,6 +113,11 @@ class PipelineError(BaseModel):
     recoverable: bool = True
     chunk_id: str | None = None
     requirement_id: str | None = None
+
+
+def comparable(a: RequirementDraft, b: RequirementDraft) -> bool:
+    """Whether a pair may be checked for conflicts: never two passages of one document."""
+    return not (a.unit_kind == "passage" and b.unit_kind == "passage" and a.document_id == b.document_id)
 
 
 def ordered_pair(a: str, b: str) -> tuple[str, str]:

@@ -17,6 +17,8 @@ Runtime decisions use conditional edges:
       [-> merge_references]                                 (reference_merging.method != deterministic)
       [-> build_graph -> graph_reference_audit]             (graph.enabled)
       [-> (build_graph) -> select_conflict_candidates -> analyze_conflicts]  (conflicts.enabled)
+      [-> check_saved_conflicts]                            (graph.enabled and graph.saved_conflicts;
+                                                             a no-op without a saved graph)
       -> finalize
 """
 
@@ -89,7 +91,12 @@ def build_staged_workflow(options: PipelineOptions):
         g.add_node("select_conflict_candidates", nodes.select_conflict_candidates)
         g.add_node("analyze_conflicts", nodes.analyze_conflicts)
         g.add_edge("select_conflict_candidates", "analyze_conflicts")
-        g.add_edge("analyze_conflicts", "finalize")
+        if use_graph and options.graph.saved_conflicts:
+            g.add_node("check_saved_conflicts", nodes.check_saved_conflicts)
+            g.add_edge("analyze_conflicts", "check_saved_conflicts")
+            g.add_edge("check_saved_conflicts", "finalize")
+        else:
+            g.add_edge("analyze_conflicts", "finalize")
 
     g.add_edge("finalize", END)
     return g.compile(name="staged_workflow")

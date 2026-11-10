@@ -17,7 +17,10 @@ Matching rules (applied identically to every strategy):
    correct document attached to the wrong requirement is one false positive
    and one false negative. Repeated predictions of the same pair count once and
    are reported separately as duplicates.
-4. **Conflicts** are unordered pairs of aligned requirement IDs.
+4. **Conflicts** are unordered pairs of aligned requirement IDs. A unit from a saved graph
+   (``related_saved_ids``) is aligned by its stored text (``align_saved_units``).
+5. **Saved-graph cases** (``CaseGold.graph_documents``): requirements, references and units
+   are scored on the case's own documents only; conflicts with at least one side in them count.
 
 Before matching, ``reanchor_gold`` moves gold requirement offsets of PDF inputs onto
 the text the PDF parser actually produced (spacing differs, running headers can sit
@@ -92,6 +95,25 @@ def align_requirements(
             continue
         mapping[pid] = gid
         used.add(gid)
+    return mapping
+
+
+def align_saved_units(units: dict[str, tuple[str, str]], gold: list[GoldRequirement], threshold: float) -> dict[str, str]:
+    """Saved-graph unit ID -> gold_id, by text within the same document (``units``: ID -> (document, text))."""
+    scored = []
+    for uid, (doc_id, text) in units.items():
+        for g in gold:
+            if g.source_document_id == doc_id:
+                score = text_similarity(text, g.requirement_text)
+                if score >= threshold:
+                    scored.append((score, uid, g.gold_id))
+    scored.sort(key=lambda x: (-x[0], x[1], x[2]))
+    mapping: dict[str, str] = {}
+    used: set[str] = set()
+    for _, uid, gid in scored:
+        if uid not in mapping and gid not in used:
+            mapping[uid] = gid
+            used.add(gid)
     return mapping
 
 

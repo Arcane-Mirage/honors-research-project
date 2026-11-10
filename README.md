@@ -82,6 +82,13 @@ and treats each chapter as **one requirement**. Its ID is document + chapter, e.
 - Informational chapters (scope, terms) are units too, so requirement precision against the
   synthetic gold is below 1 by design; `units.*` metrics score references independently of that.
 
+**Documents without chapters** (fewer than `chunking.chapter_min_count` chapters: a contract,
+a form, a letter) get no requirements. They are cut into verbatim passages of about
+`chunking.passage_words` words, which are analysed for references and conflicts like chapters
+(`document_passages` in the result, IDs `PSG-<document>-P001`). In the graph the passages are
+stored on the document node, and what they state (references, exclusions, conflicts) is drawn
+from the document node, with the passage IDs and quotes as evidence.
+
 ## System prompt: who the documents are read for
 
 `system_prompt:` in [configs/default.yaml](configs/default.yaml) adds a few sentences to the
@@ -218,14 +225,16 @@ evaluator need no changes because every strategy returns an `AnalysisResult`.
 
 ## Output
 
-Each analysis produces one JSON document (schema version `0.3.0`), validated by Pydantic:
+Each analysis produces one JSON document (schema version `0.4.0`), validated by Pydantic:
 
+- `document_passages`: passages of documents without chapters, with their references (not requirements);
 - `requirements`: one per chapter: chapter, verbatim text, source offsets and pages, `referenced_document_ids`, per-mention
   evidence, and `department: null` (assignment is deliberately deferred);
 - `referenced_documents`: canonical identifier, raw spellings, revision, type, `content_available`;
 - `relationships`: graph edges (`contains`, `references`, `explicitly_excludes`,
   `explicitly_takes_precedence_over`, `potentially_conflicts_with`, ...) with evidence;
-- `potential_conflicts`: requirement pair, type, evidence from both sides,
+- `potential_conflicts`: two units (requirements, passages, or units already in the saved graph:
+  `related_saved_ids`), type, evidence from both sides,
   `review_status: requires_human_review` (the only allowed value);
 - `coverage`: what was not examined, e.g. referenced documents whose content was not provided;
 - `metadata`: strategy, options, model, prompt versions, seeds, initial vs verified references,
@@ -307,6 +316,22 @@ the new ones (`--force` redoes them). The graph is saved after each bundle. Each
 `outputs/graph_builds/<time>-<graph>/build_report.md` (graph size before/after, and per bundle:
 requirements, references, conflicts, nodes/edges added, model calls, tokens, seconds).
 
+**What goes in.** Only PDFs form the data pool (`input_formats: [.pdf]`); other files are
+listed as skipped in the build report. Any document an analysed document references becomes a
+node, also when it is not a PDF or nobody has it ("referenced only, content not provided").
+
+**Adding to a finished graph.** The graph is meant to be built once and then amended. When a
+new bundle is analysed with `--use-graph` (the default), graph-assisted strategies also check
+its chapters and passages for conflicts against the requirements and passages already in the
+graph (`check_saved_conflicts`). Only pairs whose documents are linked by references are
+checked (the new text references the stored document, the stored text references the new
+document, or both reference the same not-too-common document), with some topic overlap
+(`graph.saved_min_score`), at most `graph.saved_max_pairs` pairs. These conflicts carry
+`related_saved_ids` and become graph edges with `found_by: saved_graph_check`. After each
+update, conflicts that involve requirements of a superseded revision are dropped
+(`graph_store.prune_superseded_conflicts`); re-analysing a document replaces its requirements,
+passages and their edges. `--no-use-graph` analyses a bundle on its own.
+
 **Graph formats.** JSON is the graph itself. Next to `graphs/main.json`, every update writes:
 
 - `main.overview.mmd`: Mermaid, one box per document;
@@ -337,7 +362,20 @@ csr-lab graph-store prune graphs/main.json --superseded --mock     # clean up
   (identifiers, names, revisions) for alias resolution and the known-document audit. The
   exported result still contains only the run's own documents; `metadata.saved_graph` records
   which store (fingerprint) was used. Other strategies ignore it with a warning.
-- The experiment runner never reads or writes a store, so experiment runs stay independent.
+- Experiments read a saved graph only when they name one (`saved_graph:`) and never write to it.
+
+**Does the saved graph help?** `csr-lab experiment saved_graph --llm lmstudio` (offline:
+`--llm mock --repetitions 3`) measures it the way the graph is used for real documents. Each multi-document synthetic case is
+split (`data/synthetic/incremental/`): its supporting documents are built into a graph with
+`build-graph` (`graph_input/`, using the experiment's model), then the CSR alone is analysed by
+`graph_assisted` with that graph and by `graph_assisted_no_saved` without it, and both are graded
+against the same gold. Only the CSR's own requirements and references are scored; conflicts count
+when one side is in the CSR, and a conflict found against the graph is matched to gold by the
+stored text. The report shows the graph (size, build cost) and, per strategy, the conflicts found
+against it ("With saved graph (correct)"). To grade against your own graph instead, use
+`saved_graph: {path: graphs/main.json}`. Sweeps work on it too (`csr-lab sweep saved_graph_pairs`):
+the graph is built once and shared by every setting, unless the grid changes how it is built
+(`llm.*`, `processing.*`, `system_prompt.*`) or sweeps `saved_graph` itself.
 
 ## Architecture
 

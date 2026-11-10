@@ -7,6 +7,13 @@ pipeline context (``run_analysis``), so runs cannot share state. A failure in
 one case is recorded and the runner continues. Failed cases are kept in the
 results: the *strict* aggregate scores them as empty predictions, and the
 *valid-only* aggregate excludes them; both are reported with the failure list.
+
+**Saved graph** (``saved_graph:`` in an experiment). The graph is made the same way
+as for real documents: ``build-graph`` on a folder (``build_from``), with the
+experiment's model, into ``<output>/saved_graph.json``; or an existing file (``path``).
+It is loaded once and only read: every graph-assisted strategy with
+``graph.use_saved`` starts each case from it, the others analyse the case alone, and
+all are graded against the same gold.
 """
 
 from __future__ import annotations
@@ -16,11 +23,12 @@ import platform
 import subprocess
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from csr_lab.config import PROJECT_ROOT, AppConfig, ExperimentConfig
 from csr_lab.datasets.loader import Case, load_dataset
@@ -46,13 +54,13 @@ PAIRED_METRICS = [
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _git_state() -> dict[str, Any]:
     try:
-        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5)
-        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5)
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5, check=False)
+        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5, check=False)
         return {"git_commit": commit.stdout.strip() or None, "git_dirty": bool(dirty.stdout.strip())}
     except (OSError, subprocess.SubprocessError):
         return {"git_commit": None, "git_dirty": None}
@@ -139,7 +147,7 @@ def run_experiment(
         raise ValueError("dataset validation failed:\n  " + "\n  ".join(fatal))
 
     created = _now()
-    experiment_id = f"{experiment.name}-{datetime.now(timezone.utc):%Y%m%dT%H%M%S}-{stable_hash(created, experiment.name, length=4)}"
+    experiment_id = f"{experiment.name}-{datetime.now(UTC):%Y%m%dT%H%M%S}-{stable_hash(created, experiment.name, length=4)}"
     out_dir = (output_root or config.resolve_path(config.output_dir)) / experiment_id
     out_dir.mkdir(parents=True, exist_ok=True)
     store = ExperimentStore(database_path or config.resolve_path(config.database_path))
@@ -161,6 +169,9 @@ def run_experiment(
         config_json=json.dumps({"app": config.model_dump(mode="json", exclude={"llm"}), "llm": config.llm.public_dict(), "experiment": experiment.model_dump(mode="json")}),
         environment_json=json.dumps(env),
     )
+
+    saved, saved_info = _saved_graph(experiment, config, out_dir, say)
+    saved_texts = {u.unit_id: (u.document_id, u.text) for u in saved.saved_units().values()} if saved else None
 
     gold = {c.case_id: c.load_gold() for c in cases}
     case_runs: list[CaseRun] = []
@@ -191,14 +202,25 @@ def run_experiment(
                 result: AnalysisResult | None = None
                 error = None
                 try:
-                    result = run_analysis(documents[case.case_id], strategy=spec, config=config, case_id=case.case_id, run_seed=seed)
+                    use_saved = saved is not None and spec.options.graph.enabled and spec.options.graph.use_saved
+                    result = run_analysis(
+                        documents[case.case_id],
+                        strategy=spec,
+                        config=config,
+                        case_id=case.case_id,
+                        run_seed=seed,
+                        saved_graph=saved if use_saved else None,
+                        saved_graph_path=saved_info.get("path") if use_saved else None,
+                    )
                     status = result.status
                     if result.status == "failed":
                         error = "; ".join(result.metadata.errors)[:2000]
-                except Exception as exc:  # recoverable at experiment level: record and continue
+                except Exception as exc:  # noqa: BLE001 - recoverable at experiment level: record and continue
                     status = "error"
                     error = f"{type(exc).__name__}: {exc}\n{traceback.format_exc(limit=8)}"
-                evaluation = evaluate_case(result if status != "error" else None, gold[case.case_id], threshold=threshold, status=status)  # type: ignore[arg-type]
+                evaluation = evaluate_case(
+                    result if status != "error" else None, gold[case.case_id], threshold=threshold, status=status, saved_units=saved_texts  # type: ignore[arg-type]
+                )
                 output_path = None
                 if result is not None:
                     path = out_dir / "predictions" / spec.name / f"rep{rep}" / f"{case.case_id}.json"
@@ -271,10 +293,58 @@ def run_experiment(
         env=env,
         problems=problems,
     )
+    summary["saved_graph"] = saved_info or None
     write_reports(out_dir, summary, case_runs, llm_rows)
     store.finish_experiment(experiment_id, "completed", _now())
     store.close()
     return ExperimentOutcome(experiment_id=experiment_id, output_dir=out_dir, summary=summary, case_runs=case_runs)
+
+
+def build_saved_graph(folder: Path, config: AppConfig, path: Path, *, seed: int, output_root: Path, strategy: str = "graph_assisted") -> dict[str, Any]:
+    """``build-graph`` on ``folder`` into ``path``, as for real documents. Returns what to report."""
+    from csr_lab.pipelines.graph_build import build_graph
+
+    build_config = config.model_copy(update={"input_formats": [".pdf", ".txt", ".json"]})  # synthetic data is text
+    outcome = build_graph(folder, config=build_config, strategy=strategy, graph_path=path, run_seed=seed, output_root=output_root)
+    return {
+        "built_from": str(folder),
+        "path": str(path),
+        "build_report": str(outcome.out_dir / "build_report.md"),
+        "build_llm_calls": sum(r.get("llm_calls") or 0 for r in outcome.rows),
+        "build_tokens": sum(r.get("tokens") or 0 for r in outcome.rows),
+        "build_failures": [r["bundle"] for r in outcome.rows if r.get("status") in ("error", "failed")],
+    }
+
+
+def _saved_graph(experiment: ExperimentConfig, config: AppConfig, out_dir: Path, say: Callable[[str], None]):
+    """Build or load the experiment's saved graph. Returns (store or None, info for the report).
+
+    ``{build_from: FOLDER}`` builds into the output folder; ``{path: FILE}`` loads a graph (other
+    keys, such as those a sweep adds after building once, are reported as given).
+    """
+    from csr_lab.relationships.store import GraphStore
+
+    spec = experiment.saved_graph
+    if not spec:
+        return None, {}
+    if spec.get("path"):
+        path = config.resolve_path(spec["path"])
+        if not path.is_file():
+            raise ValueError(f"saved graph {path} not found; build it with: csr-lab build-graph FOLDER --graph {path}")
+        info = {**spec, "path": str(path)}
+    elif spec.get("build_from"):
+        folder = config.resolve_path(spec["build_from"])
+        say(f"building the saved graph from {folder}")
+        info = build_saved_graph(
+            folder, config, out_dir / "saved_graph.json", seed=experiment.base_seed, output_root=out_dir, strategy=spec.get("strategy", "graph_assisted")
+        )
+        path = Path(info["path"])
+    else:
+        raise ValueError("saved_graph needs build_from: FOLDER or path: FILE")
+    store = GraphStore.load(path)
+    summary = store.summary()
+    info |= {"fingerprint": summary["fingerprint"], "documents": summary["documents"], "requirements": summary["requirements"]}
+    return store, info
 
 
 def build_summary(*, experiment_id, experiment, config, dataset, cases, strategies, run_records, case_runs, created, env, problems) -> dict[str, Any]:

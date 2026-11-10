@@ -7,6 +7,8 @@ import json
 
 import httpx
 import pytest
+from conftest import SIMPLE_DOC
+from helpers import make_pdf
 
 from csr_lab.cli import main
 from csr_lab.config import (
@@ -19,14 +21,12 @@ from csr_lab.config import (
 )
 from csr_lab.llm.interface import LLMProviderError
 from csr_lab.llm.provider import OpenAICompatibleProvider, choose_model, list_models, resolve_model
-from csr_lab.pipelines.graph_build import build_graph, plan_bundles, view_paths_for
+from csr_lab.pipelines.graph_build import build_graph, files_outside_pool, plan_bundles, view_paths_for
 from csr_lab.pipelines.run import run_analysis
 from csr_lab.relationships.builder import graph_from_result
 from csr_lab.relationships.queries import to_mermaid
 from csr_lab.relationships.render import to_llm_markdown
 from csr_lab.relationships.store import GraphStore
-
-from conftest import SIMPLE_DOC
 
 SECOND_DOC = SIMPLE_DOC.replace("CVM-CSR-900", "CVM-CSR-901").replace("Test Requirements", "Other Requirements")
 
@@ -163,16 +163,19 @@ def test_unreachable_server_gives_a_clear_cli_error(capsys):
 def input_dir(tmp_path):
     folder = tmp_path / "input"
     (folder / "bundle_a").mkdir(parents=True)
-    (folder / "bundle_a" / "a.txt").write_text(SIMPLE_DOC, encoding="utf-8")
-    (folder / "loose.txt").write_text(SECOND_DOC, encoding="utf-8")
+    (folder / "bundle_a" / "a.pdf").write_bytes(make_pdf([SIMPLE_DOC.splitlines()]))
+    (folder / "loose.pdf").write_bytes(make_pdf([SECOND_DOC.splitlines()]))
+    (folder / "notes.txt").write_text(SECOND_DOC, encoding="utf-8")  # not a PDF: outside the data pool
     (folder / "README.md").write_text("ignored", encoding="utf-8")
     return folder
 
 
 def test_plan_bundles(input_dir):
-    assert [(b.name, len(b.files)) for b in plan_bundles(input_dir)] == [("input", 1), ("bundle_a", 1)]
-    assert len(plan_bundles(input_dir, "file")) == 2
-    assert [len(b.files) for b in plan_bundles(input_dir, "all")] == [2]
+    assert [(b.name, len(b.files)) for b in plan_bundles(input_dir)] == [("input", 2), ("bundle_a", 1)]  # every supported type
+    assert [(b.name, len(b.files)) for b in plan_bundles(input_dir, formats=[".pdf"])] == [("input", 1), ("bundle_a", 1)]
+    assert [f.name for f in files_outside_pool(input_dir, [".pdf"])] == ["notes.txt"]
+    assert len(plan_bundles(input_dir, "file", [".pdf"])) == 2
+    assert [len(b.files) for b in plan_bundles(input_dir, "all", [".pdf"])] == [2]
 
 
 def test_build_graph_builds_skips_and_reports(input_dir, tmp_path, config: AppConfig):
@@ -186,6 +189,7 @@ def test_build_graph_builds_skips_and_reports(input_dir, tmp_path, config: AppCo
     assert view_paths_for(graph)[-1].name == "g.llm.md"
     report = (first.out_dir / "build_report.md").read_text(encoding="utf-8")
     assert "| bundle_a | 1 | completed |" in report and "not evidence" in report
+    assert "## Not in the data pool" in report and "notes.txt" in report
 
     second = build_graph(input_dir, config=config, strategy="graph_assisted", graph_path=graph, output_root=tmp_path / "out")
     assert all(r["status"].startswith("skipped") for r in second.rows)
@@ -197,7 +201,7 @@ def test_build_graph_read_only_leaves_graph_untouched(input_dir, tmp_path, confi
     graph = tmp_path / "g.json"
     build_graph(input_dir, config=config, strategy="graph_assisted", graph_path=graph, group="all", output_root=tmp_path / "out")
     before = graph.read_bytes()
-    (input_dir / "new.txt").write_text(SIMPLE_DOC.replace("CVM-CSR-900", "CVM-CSR-902"), encoding="utf-8")
+    (input_dir / "new.pdf").write_bytes(make_pdf([SIMPLE_DOC.replace("CVM-CSR-900", "CVM-CSR-902").splitlines()]))
     outcome = build_graph(input_dir, config=config, strategy="graph_assisted", graph_path=graph, update=False, group="file", output_root=tmp_path / "out")
     assert graph.read_bytes() == before
     assert any(r["status"] == "completed" and "nodes_added" not in r for r in outcome.rows)

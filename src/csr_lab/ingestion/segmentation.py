@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 from csr_lab.schemas import InputDocument, PageSpan
 
-SegmentKind = Literal["front_matter", "heading", "numbered_paragraph", "paragraph"]
+SegmentKind = Literal["front_matter", "heading", "numbered_paragraph", "paragraph", "passage"]
 
 # "4.2.1 Text", "TSA 2.1 Text", "7. Text". The label must be followed by an
 # upper-case letter or "(" so wrapped lines such as "10 years after ..." are not
@@ -63,7 +63,7 @@ class Segment(BaseModel):
 
     @property
     def is_candidate(self) -> bool:
-        return self.kind in ("numbered_paragraph", "paragraph")
+        return self.kind in ("numbered_paragraph", "paragraph", "passage")
 
 
 def _label_depth(label: str) -> int:

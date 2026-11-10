@@ -9,9 +9,9 @@ import json
 from collections.abc import Callable
 from typing import Any
 
+from csr_lab.ingestion.loader import load_bundle
 from csr_lab.llm.interface import GenerationRequest, GenerationResponse, LLMProvider
 from csr_lab.prompts import parse_input_payload
-from csr_lab.ingestion.loader import load_bundle
 from csr_lab.schemas import CaseGold
 
 

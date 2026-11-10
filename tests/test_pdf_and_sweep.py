@@ -1,6 +1,6 @@
 """tests/test_pdf_and_sweep.py
 
-PDF variant (rendering, header/footer removal, readers, gold re-anchoring), sweeps, CLI.
+PDF and incremental variants, header/footer removal, readers, gold re-anchoring, sweeps, CLI.
 """
 
 import json
@@ -8,7 +8,7 @@ import json
 from csr_lab.cli import main
 from csr_lab.config import PROJECT_ROOT, ExperimentConfig, load_config
 from csr_lab.datasets.loader import load_dataset
-from csr_lab.datasets.variants import write_pdf_dataset
+from csr_lab.datasets.variants import write_incremental_dataset, write_pdf_dataset
 from csr_lab.evaluation.matching import reanchor_gold
 from csr_lab.evaluation.metrics import evaluate_case
 from csr_lab.evaluation.sweep import SweepConfig, run_sweep
@@ -53,13 +53,14 @@ def test_pdf_layout_backend(tmp_path):
     assert "Salt spray corrosion" in docs[0].text and "pypdf_layout" in docs[0].warnings[-1]
 
 
-def test_committed_pdf_dataset_matches_generator(tmp_path):
-    fresh = write_pdf_dataset(tmp_path / "pdf").parent
-    for path in fresh.rglob("*"):
-        if path.is_file():
-            rel = path.relative_to(fresh)
-            committed = PROJECT_ROOT / "data" / "synthetic" / "pdf" / rel
-            assert committed.read_bytes() == path.read_bytes(), f"data/synthetic/pdf/{rel} is out of date: regenerate it"
+def test_committed_variant_datasets_match_generator(tmp_path):
+    for name, writer in (("pdf", write_pdf_dataset), ("incremental", write_incremental_dataset)):
+        fresh = writer(tmp_path / name).parent
+        for path in fresh.rglob("*"):
+            if path.is_file():
+                rel = path.relative_to(fresh)
+                committed = PROJECT_ROOT / "data" / "synthetic" / name / rel
+                assert committed.read_bytes() == path.read_bytes(), f"data/synthetic/{name}/{rel} is out of date: regenerate it"
 
 
 def test_sweep_over_strategy_option_and_mock_rate(tmp_path):

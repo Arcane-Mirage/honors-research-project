@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from csr_lab.evaluation.matching import (
     align_requirements,
+    align_saved_units,
     contains_requirement,
     family_key,
     gold_key,
@@ -184,6 +185,8 @@ class ConflictMetrics(BaseModel):
     type_accuracy: float | None = None
     cross_document_gold: int = 0
     cross_document_found: int = 0
+    saved_graph_predicted: int = Field(0, description="Predicted conflicts with a unit from the saved graph.")
+    saved_graph_hits: int = Field(0, description="... of which match a gold conflict.")
     false_positive_pairs: list[str] = Field(default_factory=list)
     false_negative_pairs: list[str] = Field(default_factory=list)
 
@@ -200,16 +203,39 @@ class CaseEvaluation(BaseModel):
     operational: dict[str, Any] = Field(default_factory=dict)
 
 
-def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: float = 0.75, status: str | None = None) -> CaseEvaluation:
+def evaluate_case(
+    result: AnalysisResult | None,
+    gold: CaseGold,
+    *,
+    threshold: float = 0.75,
+    status: str | None = None,
+    saved_units: dict[str, tuple[str, str]] | None = None,
+) -> CaseEvaluation:
     """Score a result. ``None`` (a failed run) is scored as an empty prediction.
 
     Gold offsets of PDF inputs are re-anchored to the extracted text first (see
     ``matching.reanchor_gold``); gold text is never changed.
+
+    ``saved_units`` (ID -> (document, text)): the units of the saved graph the run used, so
+    conflicts found against the graph can be matched to gold. With ``gold.graph_documents``
+    only the case's own documents are scored, except for conflicts (see ``matching``).
     """
+    in_graph = {d.document_id for d in gold.graph_documents}
+    graph_gold = [g for g in gold.requirements if g.source_document_id in in_graph]
+    if in_graph:
+        own = {g.gold_id for g in gold.requirements if g.source_document_id not in in_graph}
+        gold = gold.model_copy(
+            update={
+                "requirements": [g for g in gold.requirements if g.gold_id in own],
+                "conflicts": [c for c in gold.conflicts if own & set(c.requirement_ids)],
+                "non_conflicting_pairs": [p for p in gold.non_conflicting_pairs if own & set(p.requirement_ids)],
+            }
+        )
     if result is not None:
         gold = reanchor_gold(gold, result.input_documents)
     preds = result.requirements if result else []
     alignment = align_requirements(preds, gold.requirements, threshold)
+    conflict_alignment = alignment | align_saved_units(saved_units or {}, graph_gold, threshold)
     gold_by_id = {g.gold_id: g for g in gold.requirements}
 
     # -- requirements ------------------------------------------------------
@@ -383,7 +409,8 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
     hard_neg = {unordered(*p.requirement_ids) for p in gold.non_conflicting_pairs}
     pred_conf = {}
     for c in result.potential_conflicts if result else []:
-        a, b = (mapped_id(x, alignment) for x in c.related_requirement_ids[:2])
+        units = c.unit_ids[:2]  # a passage, or a saved unit without gold, is a false positive
+        a, b = (mapped_id(x, conflict_alignment) for x in units)
         pred_conf[unordered(a, b)] = c
     cm.gold_pairs, cm.predicted = len(gold_conf), len(pred_conf)
     hits = set(pred_conf) & set(gold_conf)
@@ -401,9 +428,11 @@ def evaluate_case(result: AnalysisResult | None, gold: CaseGold, *, threshold: f
     cm.type_accuracy = ratio(cm.type_correct, len(hits))
     cm.cross_document_gold = sum(1 for c in gold_conf.values() if c.cross_document)
     cm.cross_document_found = sum(1 for p in hits if gold_conf[p].cross_document)
+    from_graph = {p for p, c in pred_conf.items() if c.related_saved_ids}
+    cm.saved_graph_predicted, cm.saved_graph_hits = len(from_graph), len(from_graph & hits)
     if result is not None:
         candidates = {
-            unordered(*(mapped_id(x, alignment) for x in c.requirement_ids)) for c in result.metadata.conflict_candidates
+            unordered(*(mapped_id(x, conflict_alignment) for x in c.requirement_ids)) for c in result.metadata.conflict_candidates
         }
         cm.candidate_pairs_considered = len(candidates)
         cm.candidate_hits = len(candidates & set(gold_conf))
@@ -578,6 +607,8 @@ def aggregate(evaluations: list[CaseEvaluation]) -> dict[str, float | None]:
     out["conflicts.cross_document_recall"] = ratio(
         total(lambda e: e.conflicts.cross_document_found), total(lambda e: e.conflicts.cross_document_gold)
     )
+    out["conflicts.saved_graph_predicted"] = total(lambda e: e.conflicts.saved_graph_predicted)
+    out["conflicts.saved_graph_hits"] = total(lambda e: e.conflicts.saved_graph_hits)
 
     for key in _SUMMED_OPS:
         out[f"ops.{key}"] = sum((e.operational.get(key) or 0) for e in evaluations)

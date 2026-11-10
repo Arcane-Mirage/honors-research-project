@@ -176,7 +176,7 @@ class ServedModel:
 
 def _root_url(base_url: str) -> str:
     base = base_url.rstrip("/")
-    return base[: -len("/v1")] if base.endswith("/v1") else base
+    return base.removesuffix("/v1")
 
 
 def _get(client: httpx.Client, url: str, headers: dict[str, str]) -> Any | None:
