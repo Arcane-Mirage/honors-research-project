@@ -48,15 +48,15 @@ python scripts/run_demo.py
 | `csr-lab llms` / `llms models lmstudio` / `llms use lmstudio` | List LLM profiles, show what a server has loaded, change the default |
 | `csr-lab build-graph [FOLDER] [--graph PATH] [--llm lmstudio]` | Analyse the PDFs in `input/` (or FOLDER) and build up a saved graph |
 | `csr-lab analyze FILES... --strategy graph_assisted --out result.json` | Analyse a document bundle (`.txt`, text `.pdf`, `.json`, or a folder) |
-| `csr-lab experiment dev --llm lmstudio` | Run a named experiment from `configs/experiments.yaml` with an LLM profile |
+| `csr-lab experiment main --llm lmstudio` | Run a named experiment from `configs/experiments.yaml` with an LLM profile |
 | `csr-lab evaluate result.json gold.json` | Score one result against one gold file |
 | `csr-lab graph result.json --shared --conflicts --mermaid g.mmd --llm-text g.md` | Query, validate or export the relationship graph |
 | `csr-lab analyze FILES... --graph PATH [--no-use-graph] [--no-update-graph]` | Also use and/or update a saved graph |
 | `csr-lab graph-store info\|merge\|revisions\|prune\|remove-source\|export ... PATH` | Inspect, add to, prune and export a saved graph |
 | `csr-lab strategies` | List strategies, including YAML-defined variants |
 | `csr-lab workflow --strategy staged_verified` | Print a strategy's LangGraph workflow as Mermaid |
-| `csr-lab generate-data [--scaled 60 --refs 3 --position end]` | Regenerate the dataset, or build scaled cases for ablations |
-| `csr-lab generate-data --pdf` | Regenerate the PDF variant of the dataset (same cases and gold) |
+| `csr-lab generate-data [--pdf \| --incremental \| --noisy]` | Regenerate the dataset, or its PDF / saved-graph / PDF-artifact variant (same case and gold) |
+| `csr-lab pdf-backends FILES_OR_FOLDER --out report.md` | Compare pypdf / pypdf_layout / pymupdf on real PDFs: artifacts, contents found, chapters, titles (no gold) |
 | `csr-lab sweep NAME` | Run an experiment over a grid of settings (`sweeps:` in `configs/experiments.yaml`) |
 | `csr-lab check-text SOURCE CHUNKS.json` | Check chunks/quotes against a source: verbatim, reworded (with the edits), missing text. No model |
 | `csr-lab chunk FILES --out-dir DIR` | Run only the model chunking stage and write the chunks as JSON (input for `check-text`) |
@@ -77,8 +77,11 @@ and treats each chapter as **one requirement**. Its ID is document + chapter, e.
   contents and numbered lists stay inside their chapter; the contents pages are not analysed.
 - Without a contents page, every numbered heading or numbered paragraph starts a chapter.
 - The chapter text is verbatim (an exact slice of the extracted text) without the heading line.
-- Knobs (`options.chunking.*`): `chapter_use_toc`, `chapter_max_depth` (0 = every level; 2 keeps
-  `4.4.1` inside `4.4`), `chapter_include_front_matter`.
+- A contents entry worded differently in the body ('0 General provisions' / '0 General
+  Regulations') is found by its number alone, or by its title under another number (a numbering
+  typo in the contents); each such match is noted in the result's warnings.
+- Knobs (`options.chunking.*`): `chapter_use_toc`, `chapter_toc_fallback`, `chapter_max_depth`
+  (0 = every level; 2 keeps `4.4.1` inside `4.4`), `chapter_include_front_matter`.
 - Informational chapters (scope, terms) are units too, so requirement precision against the
   synthetic gold is below 1 by design; `units.*` metrics score references independently of that.
 
@@ -99,8 +102,37 @@ Navistar only when it names the company. The wording lives in
 `{supplier}`, `{customer}`, `{aliases}` and `{ambiguous}` placeholders; edit the sentences there
 and the names in the config. `other_customers: skip|keep` picks how text for other customers is
 handled. The text's fingerprint is stored in `metadata.prompt_versions.system_prompt`. `analyze`
-and `build-graph` use it (`--no-system-prompt` to compare without); experiments switch it off
-because the synthetic cases have other customers.
+and `build-graph` use it (`--no-system-prompt` to compare without); experiments use the reader
+their dataset names in its `manifest.json` instead.
+
+## Running it on your documents
+
+1. Put the PDFs in `input/`, or in any folder you like, with one subfolder per group of related
+   documents (a CSR together with the documents it references), so references between them
+   can be resolved.
+2. Start your model server (for LM Studio: load a model and start its server), then run:
+
+   ```bash
+   csr-lab build-graph --llm lmstudio                     # every folder in input/ -> graphs/main.json
+   csr-lab build-graph ~/Documents/CSRs --llm lmstudio    # the same, for another folder
+   csr-lab analyze input/my_folder --llm lmstudio --out result.json   # one folder (or files), one result
+   ```
+
+   To change the default folder for good, set `input:` in [configs/default.yaml](configs/default.yaml)
+   (`~` and absolute paths work).
+
+3. Read the output. `result.json` lists every chapter with its verbatim text, the documents it
+   references and the potential conflicts, with quotes as evidence. `build-graph` writes one
+   result per folder plus `build_report.md` under `outputs/graph_builds/`, and updates the saved
+   graph (see [Saved graph](#saved-persistent-graph)). Files already in the graph are skipped
+   the next time, so you can keep adding documents.
+
+**Optional: `documents.yaml`.** If a document has no identifier in its text (it is known only by
+name), add a `documents.yaml` to its folder to give it an identifier, a title and other names.
+The format is in [input/README.md](input/README.md).
+
+**Settings.** Who the documents are read for (supplier, customer, other customers that share the
+standards) is set under `system_prompt:` in [configs/default.yaml](configs/default.yaml).
 
 ## Experimental conditions
 
@@ -149,12 +181,16 @@ with the mock model, or with a real model by overriding `llm:`.
 | `chunking_mock`, sweep `chunk_size` | Model chunks (as returned / repaired) vs whole chapters | per-requirement vs unit-level F1, verbatim rate, error causes |
 | `merging_mock`, sweep `merge_errors` | Model-only vs guarded (hybrid) reference merging | reference errors by cause, merges applied/rejected |
 | `pdf_mock`, sweeps `pdf_preprocessing`, `text_vs_pdf` | PDF reader and header/footer removal | requirement verbatim/location accuracy, spurious references |
+| sweep `registry` | What `documents.yaml` adds on name-only documents | refs to loaded docs, unresolved-alias errors, chapter-link F1 |
+| `customer_scoping_mock`, sweep `customer_scoping` | Hiding other customers' paragraphs from the model | other-customer errors, precision, extract_references tokens |
+| sweep `pdf_noise`, `noisy_mock` | PDF artifacts, with and without artifact-insensitive quote matching | artifact-matched quotes, conflict evidence validity |
+| sweep `structure` | Delta-document links and precedence labels | chapter-link F1, precedence accuracy |
 
 ```bash
 csr-lab experiment practice_vs_pipeline_mock
 csr-lab sweep merge_errors
-csr-lab chunk data/synthetic/text/documents/dev_corvane_packaging/cvm_csr_200.txt --out-dir chunks/
-csr-lab check-text data/synthetic/text/documents/dev_corvane_packaging/cvm_csr_200.txt chunks/cvm_csr_200.chunks.json
+csr-lab chunk data/synthetic/text/documents/heldout_halvard_delta/hvg_cvs_20.txt --out-dir chunks/
+csr-lab check-text data/synthetic/text/documents/heldout_halvard_delta/hvg_cvs_20.txt chunks/hvg_cvs_20.chunks.json
 ```
 
 **Knobs** (strategy options, set in a variant under `strategies:` or swept with `options.*`):
@@ -175,7 +211,7 @@ Any OpenAI-compatible chat-completions server works. Connections are named **pro
 csr-lab llms                          # list profiles; * marks the default
 csr-lab llms models lmstudio          # what LM Studio has downloaded / loaded (+ quantisation)
 csr-lab llm-check --llm lmstudio      # one test request
-csr-lab experiment dev --llm lmstudio
+csr-lab experiment main --llm lmstudio
 csr-lab build-graph --llm lmstudio
 csr-lab llms use lmstudio             # make it the default (or CSR_LAB_LLM=lmstudio in .env)
 ```
@@ -192,8 +228,8 @@ Which profile applies:
 2. otherwise the experiment's own `llm:` (a profile name like `llm: lmstudio`, or settings);
 3. otherwise `$CSR_LAB_LLM`, else `default:` in `configs/llms.yaml`.
 
-`--model` and `--base-url` adjust the chosen profile for one run. The experiments `dev` and
-`heldout` have no `llm:` of their own, so they run with whatever profile you select.
+`--model` and `--base-url` adjust the chosen profile for one run. The experiment `main` has no
+`llm:` of its own, so it runs with whatever profile you select.
 
 **llama.cpp**: `llama-server -m /path/to/model.gguf -c 16384 -ngl 99 --port 8080`, then
 `--llm llama_cpp`. **Commercial API**: key in `.env` as `OPENAI_API_KEY`, set `model:` in the
@@ -246,33 +282,17 @@ Field-level documentation: [docs/output_schema.md](docs/output_schema.md). JSON 
 
 ## Dataset
 
-`data/synthetic/` holds 5 cases (7 documents) generated by
-[src/csr_lab/datasets/synthetic.py](src/csr_lab/datasets/synthetic.py):
+`data/synthetic/` is a small fictional demo, so you can try the pipeline and the experiments
+without real documents: a customer standard built on a base agreement, plus an answer key
+(`ground_truth/`) that experiments score against. It also comes as PDFs (`pdf/`), with PDF text
+errors (`noisy/`), and split for the saved-graph experiment (`incremental/`).
+`csr-lab generate-data` rebuilds it; don't edit the files by hand.
 
-**I am currently working on getting real data and replacing the synthetic data.** Real documents
-(public CSRs) go into [input/](input/) for `build-graph`, or are analysed with `csr-lab analyze`;
-they have no gold and are never scored. A PDF without a `Document ID:` header takes its identifier
-and revision from the file name: `CVS10_2024-08.pdf` is CVS10, revision 2024-08.
-
-| Split | Cases | Requirements | References | Conflict pairs | Hard negatives |
-|---|---|---|---|---|---|
-| dev | 2 | 27 | 25 | 7 | 5 |
-| heldout | 3 | 45 | 42 | 10 (2 ambiguous) | 8 |
-
-Covered situations include multiple and repeated references, tables, revisions, spacing and
-naming aliases, section-like identifiers, distractor numbers, long requirements, unavailable
-external documents, nested references between provided documents, exclusions contradicted by a
-referenced document, mutual precedence claims, cross-document conflicts and non-conflicting
-overlaps. Ground truth is written by hand in the generator; offsets are computed while
-rendering, so they always match the files.
-
-A PDF variant of the same cases and gold, for parser experiments: `data/synthetic/pdf/` (PDFs
-with running headers, page footers, page breaks inside requirements and drawn tables).
-
-Use `dev` for debugging prompts and code. Do not edit `heldout` cases to suit a pipeline;
-change `DATASET_VERSION` whenever content changes. The test suite fails if `data/synthetic/`
-is out of date with the generator. See [data/public/README.md](data/public/README.md) for adding
-public datasets such as PURE.
+To analyse your own documents, put them in [input/](input/) (one subfolder per group of related
+documents) and run `csr-lab build-graph`, or `csr-lab analyze FILES`. A `documents.yaml` next to
+them can name documents that have no identifier (see [input/README.md](input/README.md)). Real
+documents have no answer key, so they are analysed, not scored. To score your own documents,
+add them as a dataset with a gold file ([data/README.md](data/README.md)).
 
 ## Results and storage
 
@@ -300,7 +320,7 @@ analysed as one bundle, so a CSR and the documents it references belong together
 ```bash
 csr-lab build-graph --dry-run                         # what would run, what is already in the graph
 csr-lab build-graph --llm lmstudio                    # input/ -> graphs/main.json
-csr-lab build-graph ~/csr_docs --graph graphs/tessaly.json --llm lmstudio
+csr-lab build-graph ~/csr_docs --graph graphs/traton.json --llm lmstudio
 csr-lab build-graph --graph graphs/main.json --no-update-graph   # use it, do not change it
 ```
 
@@ -346,7 +366,7 @@ passages and their edges. `--no-use-graph` analyses a bundle on its own.
 csr-lab analyze docs/rev_d/ --graph graphs/main.json              # use + merge one bundle
 csr-lab graph-store info graphs/main.json                          # size, validation
 csr-lab graph-store sources graphs/main.json                       # every analysis, with files and model
-csr-lab graph-store revisions graphs/main.json DOC-CVM-CSR-100     # what changed
+csr-lab graph-store revisions graphs/main.json DOC-CVS10           # what changed
 csr-lab graph-store remove-source graphs/main.json ANL-...         # undo one analysis
 csr-lab graph-store prune graphs/main.json --superseded --mock     # clean up
 ```

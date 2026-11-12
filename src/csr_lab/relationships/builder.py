@@ -4,12 +4,12 @@ Build the JSON relationship graph from requirements, documents and conflicts.
 
 Nodes: requirements and documents. Documents exist at two levels:
 
-* the **document** ``DOC-CVM-PKG-210`` (any revision), and
-* a **revision** ``DOC-CVM-PKG-210-REV-D``. Every input document is a revision
+* the **document** ``DOC-HVG-CVS-20`` (any revision), and
+* a **revision** ``DOC-HVG-CVS-20-REV-D``. Every input document is a revision
   when its header states one; requirements belong to that revision.
 
-A reference points at whatever the text names: "CVM-PKG-210" links to the
-document node, "CVM-PKG-210 Rev C" to that revision. Which revision an
+A reference points at whatever the text names: "HVG-CVS-20" links to the
+document node, "HVG-CVS-20 Rev C" to that revision. Which revision an
 unrevisioned reference means is answered at query time
 (``RelationshipGraph.current_revision``), never stored on the reference, so a
 newer revision does not leave old links stale.
@@ -29,15 +29,22 @@ drawn from the document node itself, with ``metadata.passage_ids`` naming the pa
 * ``potentially_conflicts_with``     requirement or document -> document       (analysis)
 * ``superseded_by``   older -> newer revision or requirement version (revision_tracking;
   added by the saved graph store, see ``csr_lab.relationships.store``)
+* ``amends`` / ``inherits_from``  delta-document chapter -> same-numbered base chapter (document_structure)
+* ``references_chapter``  requirement -> the chapter a reference names, with evidence (extraction)
+(the last three: see "Document structure" at the end of this module)
 """
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
+from csr_lab.drafts import MentionDraft, RequirementDraft
+from csr_lab.extraction.normalization import NameIndex, canonical_input_identifier, name_match_key
 from csr_lab.ids import document_family_id, relationship_id
 from csr_lab.schemas import (
     RELATION_EDGE_TYPES,
@@ -54,6 +61,12 @@ from csr_lab.schemas import (
 )
 
 MAX_AGGREGATED_EVIDENCE = 5
+
+
+def revision_family(nodes: dict, node_id: str) -> str:
+    """The document-level node of a revision node (``attributes.revision_of``); any other node maps to itself."""
+    node = nodes.get(node_id)
+    return (node.attributes.get("revision_of") if node else None) or node_id
 
 
 class GraphNode(BaseModel):
@@ -106,8 +119,7 @@ class RelationshipGraph(BaseModel):
 
     def family_of(self, node_id: str) -> str:
         """The document-level node of a revision node; any other node maps to itself."""
-        node = self.node(node_id)
-        return (node.attributes.get("revision_of") if node else None) or node_id
+        return revision_family(self._nodes, node_id)
 
     def revisions_of(self, document_id: str) -> list[str]:
         """Revision nodes of a document node, oldest first where the order is known."""
@@ -145,7 +157,7 @@ class RelationshipGraph(BaseModel):
         return [e.target_node_id for r in revisions for e in self.out_edges(r, RelationshipType.CONTAINS)]
 
 
-def _edge(source: str, edge_type: RelationshipType, target: str, evidence: list[Evidence], **metadata: Any) -> Relationship:
+def make_edge(source: str, edge_type: RelationshipType, target: str, evidence: list[Evidence], **metadata: Any) -> Relationship:
     return Relationship(
         relationship_id=relationship_id(source, edge_type.value, target),
         source_node_id=source,
@@ -156,13 +168,26 @@ def _edge(source: str, edge_type: RelationshipType, target: str, evidence: list[
     )
 
 
-make_edge = _edge  # public name for other modules (the saved graph store)
+
+
+def aggregated_reference_edge(source: str, target: str, items: list[tuple[str, Evidence]]) -> Relationship:
+    """Document -> document ``references``, derived from its requirements' references
+    (``items``: (requirement ID, evidence)); also rebuilt by the saved graph store."""
+    return make_edge(
+        source,
+        RelationshipType.REFERENCES,
+        target,
+        [ev for _, ev in items[:MAX_AGGREGATED_EVIDENCE]],
+        origin="aggregation",
+        derived=True,
+        via_requirement_ids=sorted({rid for rid, _ in items}),
+    )
 
 
 def conflict_edge(a: str, b: str, conflict: PotentialConflict, passage_ids: list[str] | tuple = (), **extra: Any) -> Relationship:
     """A ``potentially_conflicts_with`` hypothesis between two nodes (requirements or documents)."""
     a, b = sorted((a, b))
-    return _edge(
+    return make_edge(
         a,
         RelationshipType.POTENTIALLY_CONFLICTS_WITH,
         b,
@@ -254,7 +279,7 @@ def add_revision_structure(
         for rev in ordered:
             seq = sequence.get(rev.node_id)
             rev.attributes["revision_sequence"] = seq
-            edge = _edge(family, RelationshipType.HAS_REVISION, rev.node_id, [], origin="document_structure", sequence=seq)
+            edge = make_edge(family, RelationshipType.HAS_REVISION, rev.node_id, [], origin="document_structure", sequence=seq)
             edges[edge.relationship_id] = edge
         analysed_in_order = [n for n in ordered if n.attributes.get("analyzed")]
         current = analysed_in_order[-1].node_id if analysed_in_order and (known or len(analysed_in_order) == 1) else None
@@ -273,7 +298,7 @@ def build_graph(
     nodes: dict[str, GraphNode] = {}
     for doc in input_documents:
         available = doc.parse_status in ("ok", "partial")
-        names = [doc.title] if doc.title else []
+        names = [n for n in dict.fromkeys([doc.title, *doc.aliases]) if n]
         family = document_family_id(doc.canonical_identifier) if doc.canonical_identifier else None
         is_revision = bool(family and family != doc.document_id and doc.revision)
         nodes[doc.document_id] = GraphNode(
@@ -289,6 +314,8 @@ def build_graph(
                 "analyzed": available,
                 "is_input_document": True,
                 "names": names,
+                **({"follows_structure_of": doc.follows_structure_of, "structure_source": doc.structure_source} if doc.follows_structure_of else {}),
+                **({"takes_precedence_over": doc.takes_precedence_over} if doc.takes_precedence_over else {}),
                 **({"revision_of": family} if is_revision else {}),
             },
         )
@@ -360,8 +387,7 @@ def build_graph(
             )
 
     def family_of(node_id: str) -> str:
-        node = nodes.get(node_id)
-        return (node.attributes.get("revision_of") if node else None) or node_id
+        return revision_family(nodes, node_id)
 
     edges: dict[str, Relationship] = {}
 
@@ -370,13 +396,13 @@ def build_graph(
 
     doc_level: dict[tuple[str, str], list[tuple[str, Evidence]]] = {}
     for req in requirements:
-        add(_edge(req.source_document_id, RelationshipType.CONTAINS, req.requirement_id, [], origin="document_structure"))
+        add(make_edge(req.source_document_id, RelationshipType.CONTAINS, req.requirement_id, [], origin="document_structure"))
         by_doc: dict[str, list] = {}
         for m in req.reference_mentions:
             by_doc.setdefault(m.document_id, []).append(m)
         for doc_id, mentions in by_doc.items():
             add(
-                _edge(
+                make_edge(
                     req.requirement_id,
                     RelationshipType.REFERENCES,
                     doc_id,
@@ -390,7 +416,7 @@ def build_graph(
             for m in mentions:
                 if m.relation in RELATION_EDGE_TYPES:
                     add(
-                        _edge(
+                        make_edge(
                             req.requirement_id,
                             RELATION_EDGE_TYPES[m.relation],
                             doc_id,
@@ -405,17 +431,7 @@ def build_graph(
                 )
 
     for (src, tgt), items in sorted(doc_level.items()):
-        add(
-            _edge(
-                src,
-                RelationshipType.REFERENCES,
-                tgt,
-                [ev for _, ev in items[:MAX_AGGREGATED_EVIDENCE]],
-                origin="aggregation",
-                derived=True,
-                via_requirement_ids=sorted({rid for rid, _ in items}),
-            )
-        )
+        add(aggregated_reference_edge(src, tgt, items))
 
     # What passages state, drawn from their document: one edge per (document, target, type).
     stated: dict[tuple[str, RelationshipType, str], list[tuple[str, object]]] = {}
@@ -429,7 +445,7 @@ def build_graph(
     for (src, edge_type, tgt), items in sorted(stated.items(), key=lambda kv: (kv[0][0], kv[0][1].value, kv[0][2])):
         mentions = [m for _, m in items]
         add(
-            _edge(
+            make_edge(
                 src,
                 edge_type,
                 tgt,
@@ -440,6 +456,15 @@ def build_graph(
                 verified=all(m.verified for m in mentions),
             )
         )
+
+    # Delta documents and chapter references (see "Document structure" below).
+    mention_evidence = {m.mention_id: m.evidence for r in requirements for m in r.reference_mentions}
+    for se in structure_edges(input_documents, requirements):
+        kind = {"amends": RelationshipType.AMENDS, "inherits_from": RelationshipType.INHERITS_FROM, "references_chapter": RelationshipType.REFERENCES_CHAPTER}[se.kind]
+        if se.kind == "references_chapter":
+            add(make_edge(se.source, kind, se.target, [mention_evidence[i] for i in se.mention_ids], origin="extraction", chapter=se.chapter, mention_ids=se.mention_ids))
+        else:
+            add(make_edge(se.source, kind, se.target, [], origin="document_structure", chapter=se.chapter))
 
     owner = {p.passage_id: p.source_document_id for p in passages}
     for conflict in conflicts or []:
@@ -456,3 +481,202 @@ def graph_from_result(result: AnalysisResult) -> RelationshipGraph:
     """Graph object for an exported result: nodes rebuilt from its lists, edges taken as exported."""
     nodes = build_graph(result.input_documents, result.requirements, result.referenced_documents, [], result.document_passages).nodes
     return RelationshipGraph(nodes=nodes, edges=list(result.relationships))
+
+
+# ---------------------------------------------------------------------------
+# Document structure: delta documents and chapter references
+# ---------------------------------------------------------------------------
+# CVS10 "is following the Volkswagen Formel Q Konkret document structure": its chapter 4.4.2 is
+# about the same subject as Formel Q Konkret 4.4.2, and many of its chapters only say "See
+# Formel Q Konkret. No additional Q requirements". A document follows another's structure when
+# documents.yaml says so (``follows_structure_of``) or, with ``structure_links: detect``, when
+# its text says so ("follows the ... structure", "structure of ..."); the named document is
+# resolved through the unit's references, the registered names or the analysed documents'
+# titles (``annotate_structure``). When both are analysed together, every chapter of the delta
+# document gets an edge to the base chapter with the same number (``structure_edges``):
+#
+# * ``inherits_from`` when the chapter only points to the base document (short text with "no
+#   additional" or only "See <document>."): the base chapter applies unchanged;
+# * ``amends`` otherwise: the chapter adds to or changes the base chapter (a conflict candidate).
+#
+# A mention with a location ("CVS10, Chapter 4.6") gets a ``references_chapter`` edge to that
+# chapter (or the deepest analysed chapter containing it: 4.4.1 for '4.4.1.3') when the
+# referenced document is analysed in the same run.
+
+_FOLLOWS_RES = [
+    re.compile(r"\bstructure\s+of\s+(?:the\s+)?(?P<name>[^.;:]{3,90}?)(?=[.;:]|\s+(?:and|which|with|is|are)\b|$)", re.IGNORECASE),
+    re.compile(r"\bfollow(?:s|ing)?\s+(?:the\s+)?(?P<name>[^.;:]{3,90}?)\s+(?:document\s+|chapter\s+)?structure\b", re.IGNORECASE),
+]
+_POINTER_MAX_WORDS = 40
+_NO_ADDITIONAL_RE = re.compile(r"\bno\s+additional\b", re.IGNORECASE)
+_SEE_ONLY_RE = re.compile(r"\s*see\s+[^.]{2,80}\.?\s*", re.IGNORECASE)
+
+
+def is_pointer(text: str) -> bool:
+    """A chapter that only points to the base document ('See Formel Q Konkret. No additional Q requirements')."""
+    if len(text.split()) > _POINTER_MAX_WORDS:
+        return False
+    return bool(_NO_ADDITIONAL_RE.search(text) or _SEE_ONLY_RE.fullmatch(text))
+
+
+class DocumentIndex:
+    """The analysed documents by document-level node ('DOC-CVS10' for 'DOC-CVS10-REV-2024-08'),
+    by identifier, and by title/alias (``NameIndex``: the same name rules as documents.yaml)."""
+
+    def __init__(self, documents: list[InputDocument]):
+        self.family = {d.document_id: document_family_id(d.canonical_identifier) if d.canonical_identifier else d.document_id for d in documents}
+        self.by_family: dict[str, InputDocument] = {}
+        self.names = NameIndex()
+        for d in documents:
+            fam = self.family[d.document_id]
+            self.by_family.setdefault(fam, d)
+            for name in [d.title, *d.aliases]:
+                if name:
+                    self.names.add(name, fam)
+
+    def family_of(self, node_id: str) -> str:
+        """A document node's document-level node; any other node (a referenced document) maps to itself."""
+        return self.family.get(node_id, node_id)
+
+    def by_node(self, node_id: str) -> InputDocument | None:
+        return self.by_family.get(self.family_of(node_id))
+
+    def by_identifier(self, identifier: str | None) -> InputDocument | None:
+        if not identifier:
+            return None
+        return self.by_family.get(document_family_id(canonical_input_identifier(identifier)))
+
+
+def saved_documents(graph: RelationshipGraph | None) -> dict[str, tuple[str, list[str]]]:
+    """Documents of a saved graph that a new document may follow: family node -> (identifier, names)."""
+    out: dict[str, tuple[str, list[str]]] = {}
+    for n in graph.nodes_of_type("document") if graph else []:
+        ident = n.attributes.get("canonical_identifier")
+        if ident and not n.attributes.get("revision_of"):
+            out[n.node_id] = (ident, [x for x in [*n.attributes.get("names", []), n.attributes.get("title")] if x])
+    return out
+
+
+def annotate_structure(
+    documents: list[InputDocument],
+    units: list[RequirementDraft],
+    mentions: list[MentionDraft],
+    *,
+    mode: str = "detect",
+    names: NameIndex | None = None,
+    known: dict[str, tuple[str, list[str]]] | None = None,
+) -> list[InputDocument]:
+    """Copies of ``documents`` with ``follows_structure_of`` resolved (registry or text).
+
+    The base document is one of this run's documents or, with ``known`` (``saved_documents``),
+    a document of the saved graph: a delta document can be added after its base agreement.
+    """
+    if mode == "off":
+        return [d.model_copy(update={"follows_structure_of": None, "structure_source": None, "structure_evidence": None}) for d in documents]
+    docs = DocumentIndex(documents)
+    targets = {fam: ident for fam, (ident, _) in (known or {}).items()} | {fam: d.canonical_identifier for fam, d in docs.by_family.items()}
+    titles = docs.names  # this run's titles and aliases, plus the saved graph's document names
+    for fam, (_ident, doc_names) in (known or {}).items():
+        for n in doc_names:
+            titles.add(n, fam)
+    by_unit: dict[str, list[MentionDraft]] = {}
+    for m in mentions:
+        if m.active:
+            by_unit.setdefault(m.requirement_id, []).append(m)
+    out = []
+    for d in documents:
+        own = docs.family_of(d.document_id)
+        if d.follows_structure_of:  # declared in documents.yaml
+            fam = document_family_id(canonical_input_identifier(d.follows_structure_of))
+            update = {"structure_source": d.structure_source or "registry"}
+            if fam in targets:
+                update["follows_structure_of"] = targets[fam]
+            out.append(d.model_copy(update=update))
+            continue
+        found = None
+        if mode == "detect":
+            for u in (u for u in units if u.document_id == d.document_id and u.unit_kind != "saved"):
+                for rx in _FOLLOWS_RES:
+                    if not (match := rx.search(u.text)):
+                        continue
+                    fam = _resolve_named(" ".join(match.group("name").split()), match, u, by_unit.get(u.requirement_id, []), names, titles, set(targets) - {own})
+                    if fam is not None:
+                        found = (targets[fam], " ".join(match.group(0).split()))
+                        break
+                if found:
+                    break
+        if found:
+            out.append(d.model_copy(update={"follows_structure_of": found[0], "structure_source": "text", "structure_evidence": found[1]}))
+        else:
+            out.append(d)
+    return out
+
+
+def _resolve_named(name: str, match: re.Match, unit: RequirementDraft, mentions: list[MentionDraft], names: NameIndex | None, titles: NameIndex, allowed: set[str]) -> str | None:
+    """The document (family node) a structure sentence names: a reference the model found in the
+    named span, else a registered name, else a document title; only one of ``allowed``."""
+    lo, hi = match.start("name"), match.end("name")
+    candidates = []
+    for m in mentions:
+        start = m.evidence.start_offset - (unit.start_offset or 0) if m.evidence.start_offset is not None else None
+        raw = name_match_key(m.raw_identifier)
+        if (start is not None and lo <= start < hi) or (raw and raw in name_match_key(name)):
+            candidates.append(document_family_id(m.canonical) if m.canonical else m.document_id)
+    if names and (ident := names.resolve(name)):
+        candidates.append(document_family_id(canonical_input_identifier(ident)))
+    candidates.append(titles.resolve(name))
+    return next((c for c in candidates if c in allowed), None)
+
+
+def _chapter_target(chapter: str, chapters: dict[str, str]) -> str | None:
+    """The unit for a chapter label, or the deepest analysed chapter containing it ('4.4.1.3' -> '4.4.1')."""
+    parts = chapter.split(".")
+    for n in range(len(parts), 0, -1):
+        label = ".".join(parts[:n])
+        if label in chapters:
+            return chapters[label]
+    return None
+
+
+@dataclass
+class StructureEdge:
+    source: str  # requirement ID
+    target: str  # requirement ID
+    kind: str  # inherits_from | amends | references_chapter
+    chapter: str
+    mention_ids: list[str]
+
+
+def structure_edges(documents: list[InputDocument], requirements: list) -> list[StructureEdge]:
+    """Chapter-alignment edges (delta documents) and chapter-reference edges.
+
+    ``requirements``: exported ``Requirement`` records (with their reference mentions).
+    """
+    docs = DocumentIndex(documents)
+    chapters: dict[str, dict[str, str]] = {}  # family -> chapter -> requirement ID
+    for r in requirements:
+        if r.chapter:
+            chapters.setdefault(docs.family_of(r.source_document_id), {}).setdefault(r.chapter, r.requirement_id)
+    edges: list[StructureEdge] = []
+    for d in documents:
+        base = docs.by_identifier(d.follows_structure_of)
+        if base is None:
+            continue
+        base_chapters = chapters.get(docs.family_of(base.document_id), {})
+        for r in requirements:
+            if r.source_document_id != d.document_id or not r.chapter or r.chapter not in base_chapters:
+                continue
+            kind = "inherits_from" if is_pointer(r.requirement_text) else "amends"
+            edges.append(StructureEdge(r.requirement_id, base_chapters[r.chapter], kind, r.chapter, []))
+    for r in requirements:
+        for m in r.reference_mentions:
+            if not m.location:
+                continue
+            target_doc = docs.by_node(m.document_id)
+            if target_doc is None:
+                continue
+            target = _chapter_target(m.location, chapters.get(docs.family_of(target_doc.document_id), {}))
+            if target is None or target == r.requirement_id:
+                continue
+            edges.append(StructureEdge(r.requirement_id, target, "references_chapter", m.location, [m.mention_id]))
+    return edges

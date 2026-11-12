@@ -78,13 +78,19 @@ class MockProvider(LLMProvider):
 
     # -- reference behaviour shared by several tasks ------------------------
 
+    def _clean(self, quote: str, *key: object) -> str:
+        """Repair PDF artifacts in a quote, as a real model tends to (``quote_cleanup_rate``)."""
+        if self.settings.quote_cleanup_rate and self._chance(self.settings.quote_cleanup_rate, "cleanup", quote, *key):
+            return rules.clean_artifacts(quote)
+        return quote
+
     def _mock_references(self, text: str) -> list[dict[str, Any]]:
         out = []
         text_key = hash_text(text)
         for mention in rules.find_references(text):
             if self._chance(self.settings.reference_miss_rate, "reference", text_key, mention.identifier, mention.start):
                 continue
-            quote = mention.quote
+            quote = self._clean(mention.quote, text_key)
             if self._chance(self.settings.quote_paraphrase_rate, "paraphrase", text_key, mention.identifier):
                 quote = f"refers to {mention.identifier} as required"
             out.append(
@@ -94,6 +100,7 @@ class MockProvider(LLMProvider):
                     "document_name": mention.name if mention.name != mention.identifier else None,
                     "document_type": mention.doc_type,
                     "relation": mention.relation,
+                    "location": mention.location,
                     "quoted_text": quote,
                 }
             )
@@ -142,8 +149,8 @@ class MockProvider(LLMProvider):
                             "description": judgement.description,
                             "ambiguous": judgement.ambiguous,
                             "evidence": [
-                                {"requirement_key": ka, "quoted_text": judgement.quote_a},
-                                {"requirement_key": kb, "quoted_text": judgement.quote_b},
+                                {"requirement_key": ka, "quoted_text": self._clean(judgement.quote_a, ka)},
+                                {"requirement_key": kb, "quoted_text": self._clean(judgement.quote_b, kb)},
                             ],
                         }
                     )
@@ -298,7 +305,7 @@ class MockProvider(LLMProvider):
                     "revision": match.revision,
                     "document_name": match.name if match.name != match.identifier else None,
                     "relation": match.relation,
-                    "quoted_text": match.quote,
+                    "quoted_text": self._clean(match.quote, text_key),
                     "reason": "explicit document mention",
                 }
             )
@@ -344,8 +351,8 @@ class MockProvider(LLMProvider):
                     "ambiguous": judgement.ambiguous,
                     "description": judgement.description,
                     "evidence": [
-                        {"requirement_id": ra["requirement_id"], "quoted_text": judgement.quote_a},
-                        {"requirement_id": rb["requirement_id"], "quoted_text": judgement.quote_b},
+                        {"requirement_id": ra["requirement_id"], "quoted_text": self._clean(judgement.quote_a, ra["requirement_id"])},
+                        {"requirement_id": rb["requirement_id"], "quoted_text": self._clean(judgement.quote_b, rb["requirement_id"])},
                     ],
                 }
             )
@@ -353,7 +360,7 @@ class MockProvider(LLMProvider):
 
 
 def _look_alike(a: str, b: str) -> bool:
-    """Identifiers a careless reader would take for one document ('TSA-QP-031' / 'TSA-QP-032')."""
+    """Identifiers a careless reader would take for one document ('OST-PR-410' / 'OST-PR-411')."""
     if squash(a) == squash(b):
         return True
     pa, pb = a.split("-"), b.split("-")

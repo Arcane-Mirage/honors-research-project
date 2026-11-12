@@ -1,0 +1,8 @@
+# Fictional document metadata, as a user would write it (see ingestion/loader.py).
+documents:
+  - file: halvard_q_agreement.pdf
+    title: Halvard Q Agreement
+    aliases: [Q Agreement]
+  - identifier: HALVARD-NEW-PARTS-PROGRAM
+    title: Halvard New Parts Program
+    aliases: [Halvard Neuteil Program]

@@ -218,6 +218,47 @@ def markdown_report(summary: dict[str, Any]) -> str:
         "",
         "Structural validity only means the JSON graph is internally consistent; correctness is in the tables above.",
         "",
+        "## Real-document features",
+        "",
+        markdown_table(
+            [
+                "Strategy",
+                "Refs to loaded docs",
+                "Artifact-matched quotes",
+                "Refs from other-customer blocks",
+                "Other-customer errors",
+                "Location accuracy",
+                "Chapter-link F1",
+                "Resolved by precedence",
+                "Precedence accuracy",
+            ],
+            [
+                [
+                    f"`{n}`",
+                    _fmt(agg[n].get("references.input_resolution_rate")),
+                    _fmt_int(agg[n].get("references.artifact_evidence")),
+                    _fmt_int(agg[n].get("references.other_customer_mentions")),
+                    _fmt_int(agg[n].get("references.errors.other_customer")),
+                    _fmt(agg[n].get("references.location_accuracy")),
+                    _fmt(agg[n].get("graph.chapter_link_f1")),
+                    _fmt_int(agg[n].get("conflicts.resolved_by_precedence")),
+                    _fmt(agg[n].get("conflicts.precedence_accuracy")),
+                ]
+                for n in names
+            ],
+        ),
+        "",
+        ("**Refs to loaded docs**: share of reference mentions that resolve to a document of the analysis "
+        "(needs no gold; the same number is in every result's `coverage.references`). **Artifact-matched "
+        "quotes**: quotes found only when spaces and dashes are ignored (PDF artifacts). **Refs from "
+        "other-customer blocks**: references the model took from blocks labelled only for other "
+        "customers (`customer_scoping` tag/filter; `–` when off). **Other-customer errors**: such "
+        "references scored as errors from `evaluation.customer`'s point of view. **Location accuracy**: "
+        "correct references whose gold names a chapter ('CVS10, Chapter 4.6') with the right chapter. "
+        "**Chapter-link F1**: inherits_from / amends / references_chapter edges against gold. "
+        "**Precedence accuracy**: correct conflicts whose precedence status (and prevailing document) "
+        "matches gold. Columns are `–` when the dataset has no such gold."),
+        "",
         "## Cost",
         "",
         markdown_table(

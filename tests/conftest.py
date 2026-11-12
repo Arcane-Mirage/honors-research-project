@@ -20,20 +20,20 @@ from csr_lab.datasets.synthetic import write_dataset
 from csr_lab.ingestion.loader import load_bundle
 
 SIMPLE_DOC = """\
-CORVANE MOTORS
+HALVARD MOTORS
 Test Requirements
-Document ID: CVM-CSR-900
+Document ID: HVG-CSR-900
 Revision: A
 
 1 Scope
 1.1 This document applies to test suppliers.
 
 2 Requirements
-2.1 The supplier shall comply with Specification CVM-QS-110 and Drawing DRW-045.
-2.2 Packaging Standard CVM-PKG-050 does not apply and shall not be used.
+2.1 The supplier shall comply with Specification HVG-QS-110 and Drawing DRW-045.
+2.2 Packaging Standard HVG-PKG-050 does not apply and shall not be used.
 2.3 Parts shall be validated at a maximum test temperature of 85 °C according to
-CVM-TM-320.
-2.4 Thermal validation according to CVM-TM-320 shall be performed at a minimum test
+HVG-TM-320.
+2.4 Thermal validation according to HVG-TM-320 shall be performed at a minimum test
 temperature of 105 °C.
 2.5 The supplier shall keep records for five years.
 """
@@ -91,3 +91,11 @@ def simple_doc_path(tmp_path) -> Path:
 @pytest.fixture
 def simple_docs(simple_doc_path):
     return load_bundle([simple_doc_path])
+
+
+@pytest.fixture
+def rules_docs(tmp_path):
+    """The two-document bundle of helpers.RULES_CSR / RULES_SPEC (exclusion, mutual precedence)."""
+    from helpers import write_rules_bundle
+
+    return load_bundle(write_rules_bundle(tmp_path / "rules"))

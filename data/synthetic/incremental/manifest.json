@@ -1,27 +1,44 @@
 {
   "name": "synthetic_csr_incremental",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Multi-document synthetic cases split into a saved graph (graph_input/) and a new CSR to analyse.",
   "generator": "csr_lab.datasets.variants",
+  "reader": {
+    "system_prompt": {
+      "enabled": true,
+      "supplier": "the supplier",
+      "customer": "Global Motors",
+      "customer_aliases": [
+        "Global",
+        "Global Motors LLC"
+      ],
+      "ambiguous_aliases": [
+        "Global"
+      ],
+      "other_customers": "skip",
+      "other_customers_names": {
+        "Brennic": [
+          "Brennic Trucks"
+        ],
+        "Ostra": [
+          "Ostra AB"
+        ]
+      }
+    },
+    "evaluation": {
+      "customer": "Global Motors"
+    }
+  },
   "graph_input": "graph_input",
   "cases": [
     {
-      "case_id": "dev_corvane_packaging",
-      "split": "dev",
-      "description": "Two provided documents: a logistics CSR and the packaging specification it references; exclusion, precedence, name aliases and cross-document conflicts. (new document CVM-CSR-200; the others are in the saved graph)",
-      "documents": [
-        "documents/dev_corvane_packaging/cvm_csr_200.txt"
-      ],
-      "ground_truth": "ground_truth/dev_corvane_packaging.json"
-    },
-    {
-      "case_id": "heldout_tessaly_battery",
+      "case_id": "heldout_halvard_delta",
       "split": "heldout",
-      "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts. (new document TSA-CSR-400; the others are in the saved graph)",
+      "description": "Real-CSR-shaped: a name-only base agreement and a delta standard that follows its chapter structure (pointer chapters), stated precedence, customer-labelled paragraphs, chapter-qualified references, contents pages. (new document HVG-CVS-20; the others are in the saved graph)",
       "documents": [
-        "documents/heldout_tessaly_battery/tsa_csr_400.txt"
+        "documents/heldout_halvard_delta/hvg_cvs_20.txt"
       ],
-      "ground_truth": "ground_truth/heldout_tessaly_battery.json"
+      "ground_truth": "ground_truth/heldout_halvard_delta.json"
     }
   ]
 }

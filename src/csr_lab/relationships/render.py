@@ -25,6 +25,9 @@ _REQUIREMENT_PHRASES = {
     RelationshipType.EXPLICITLY_SUPERSEDES: "states that its document supersedes {t}",
     RelationshipType.EXPLICITLY_DEPENDS_ON: "is to be used together with {t}",
     RelationshipType.EXPLICITLY_TAKES_PRECEDENCE_OVER: "states that its document takes precedence over {t}",
+    RelationshipType.AMENDS: "adds to or changes {t} (its document follows that chapter structure)",
+    RelationshipType.INHERITS_FROM: "only points to {t}, which applies unchanged",
+    RelationshipType.REFERENCES_CHAPTER: "refers to {t}",
 }
 _SKIP = {RelationshipType.CONTAINS, RelationshipType.HAS_REVISION, RelationshipType.SUPERSEDED_BY, RelationshipType.POTENTIALLY_CONFLICTS_WITH}
 
@@ -114,6 +117,10 @@ def to_llm_markdown(
     def rid(node: GraphNode) -> str:
         return f" `{node.node_id}`" if include_ids else ""
 
+    def target(node_id: str) -> str:
+        node = graph.node(node_id)
+        return req_ref(node_id) if node is not None and node.node_type == "requirement" else name(node_id)
+
     def req_ref(node_id: str) -> str:
         node = graph.node(node_id)
         if not node:
@@ -158,7 +165,7 @@ def to_llm_markdown(
             # A qualified statement about X says more than a plain "refers to X".
             qualified = {e.target_node_id for e in edges if e.relationship_type != RelationshipType.REFERENCES}
             phrases = [
-                _REQUIREMENT_PHRASES.get(e.relationship_type, e.relationship_type.value + " {t}").format(t=name(e.target_node_id))
+                _REQUIREMENT_PHRASES.get(e.relationship_type, e.relationship_type.value + " {t}").format(t=target(e.target_node_id))
                 for e in edges
                 if not (e.relationship_type == RelationshipType.REFERENCES and e.target_node_id in qualified)
             ]

@@ -97,6 +97,17 @@ class ReferenceMetrics(BaseModel):
     errors: dict[str, int] = Field(default_factory=dict)
     merges_applied: int = Field(0, description="Reference-merging decisions that renamed at least one mention.")
     merges_rejected: int = Field(0, description="Merging decisions not applied (model said no, or a guard rule vetoed).")
+    # Chapter locations ('CVS10, Chapter 4.6'), scored on correct pairs whose gold names a location.
+    location_gold: int = 0
+    location_correct: int = 0
+    location_accuracy: float | None = None
+    out_of_scope_gold: int = Field(0, description="Gold references for other customers only, not expected (evaluation.customer).")
+    # From coverage.references: need no gold, so the same numbers exist for real documents.
+    mentions: int = 0
+    mentions_to_input: int = 0
+    input_resolution_rate: float | None = None
+    artifact_evidence: int = Field(0, description="Mention quotes found only when spaces/dashes are ignored (artifact_normalized).")
+    other_customer_mentions: int | None = Field(None, description="Mentions inside blocks for other customers only (None: scoping off).")
 
 
 REFERENCE_ERROR_KINDS = {
@@ -105,6 +116,7 @@ REFERENCE_ERROR_KINDS = {
     "unresolved_alias": "document named by title but not linked to its identifier",
     "confused_identifier": "a look-alike identifier (one character different) instead of the right one",
     "wrong_requirement": "a referenced document of the case, attached to the wrong requirement/unit",
+    "other_customer": "a reference that applies only to other customers (scored from evaluation.customer's point of view)",
     "spurious": "not a referenced document of the case (hallucinated or a non-document number)",
     "missed": "gold reference not predicted",
 }
@@ -161,6 +173,10 @@ class GraphMetrics(BaseModel):
     qualified_edge_fp: int = 0
     qualified_edge_fn: int = 0
     qualified_edge_f1: float | None = None
+    chapter_link_tp: int = 0
+    chapter_link_fp: int = 0
+    chapter_link_fn: int = 0
+    chapter_link_f1: float | None = Field(None, description="inherits_from / amends / references_chapter edges against gold chapter_links.")
 
 
 class ConflictMetrics(BaseModel):
@@ -187,6 +203,10 @@ class ConflictMetrics(BaseModel):
     cross_document_found: int = 0
     saved_graph_predicted: int = Field(0, description="Predicted conflicts with a unit from the saved graph.")
     saved_graph_hits: int = Field(0, description="... of which match a gold conflict.")
+    resolved_by_precedence: int = Field(0, description="Predicted conflicts labelled resolved_by_precedence.")
+    precedence_gold: int = Field(0, description="Correct conflicts whose gold states a precedence status.")
+    precedence_correct: int = Field(0, description="... of which status (and prevailing document) match.")
+    precedence_accuracy: float | None = None
     false_positive_pairs: list[str] = Field(default_factory=list)
     false_negative_pairs: list[str] = Field(default_factory=list)
 
@@ -210,6 +230,7 @@ def evaluate_case(
     threshold: float = 0.75,
     status: str | None = None,
     saved_units: dict[str, tuple[str, str]] | None = None,
+    customer: str | None = None,
 ) -> CaseEvaluation:
     """Score a result. ``None`` (a failed run) is scored as an empty prediction.
 
@@ -219,6 +240,9 @@ def evaluate_case(
     ``saved_units`` (ID -> (document, text)): the units of the saved graph the run used, so
     conflicts found against the graph can be matched to gold. With ``gold.graph_documents``
     only the case's own documents are scored, except for conflicts (see ``matching``).
+
+    ``customer``: score from this customer's point of view (``evaluation.customer``): gold
+    references that apply only to other customers are not expected.
     """
     in_graph = {d.document_id for d in gold.graph_documents}
     graph_gold = [g for g in gold.requirements if g.source_document_id in in_graph]
@@ -259,12 +283,18 @@ def evaluate_case(
 
     # -- references --------------------------------------------------------
     docs = {d.document_id: d for d in (result.referenced_documents if result else [])}
-    gold_pairs = {(g.gold_id, gold_key(ref)) for g in gold.requirements for ref in g.references}
-    gold_relation = {(g.gold_id, gold_key(ref)): ref.relation for g in gold.requirements for ref in g.references}
+    def in_scope(ref) -> bool:
+        return customer is None or not ref.applies_to or customer in ref.applies_to
+
+    gold_pairs = {(g.gold_id, gold_key(ref)) for g in gold.requirements for ref in g.references if in_scope(ref)}
+    out_of_scope = {(g.gold_id, gold_key(ref)) for g in gold.requirements for ref in g.references if not in_scope(ref)} - gold_pairs
+    gold_location = {(g.gold_id, gold_key(ref)): ref.location for g in gold.requirements for ref in g.references if ref.location and in_scope(ref)}
+    gold_relation = {(g.gold_id, gold_key(ref)): ref.relation for g in gold.requirements for ref in g.references if in_scope(ref)}
     gold_available = {reference_key(d.canonical_identifier, d.revision): d.content_available for d in gold.referenced_documents}
     pred_pairs: set[tuple[str, str]] = set()
     pred_relation: dict[tuple[str, str], set[ReferenceRelation]] = {}
     pred_doc_for_pair: dict[tuple[str, str], str] = {}
+    pred_locations: dict[tuple[str, str], set[str]] = {}
     keys_by_unit: dict[str, set[str]] = {}
     duplicates = 0
     for p in preds:
@@ -283,7 +313,9 @@ def evaluate_case(
             pred_pairs.add(pair)
             pred_relation.setdefault(pair, set()).add(m.relation)
             pred_doc_for_pair[pair] = m.document_id
-    ref = ReferenceMetrics(duplicate_predictions=duplicates, gold_requirements=len(gold.requirements))
+            if m.location:
+                pred_locations.setdefault(pair, set()).add(m.location)
+    ref = ReferenceMetrics(duplicate_predictions=duplicates, gold_requirements=len(gold.requirements), out_of_scope_gold=len(out_of_scope))
     tp_pairs = pred_pairs & gold_pairs
     ref.tp, ref.fp, ref.fn = len(tp_pairs), len(pred_pairs - gold_pairs), len(gold_pairs - pred_pairs)
     ref.precision, ref.recall, ref.f1 = prf(ref.tp, ref.fp, ref.fn)
@@ -292,7 +324,7 @@ def evaluate_case(
 
     inverse = {v: k for k, v in alignment.items()}
     for g in gold.requirements:
-        expected = {gold_key(r) for r in g.references}
+        expected = {gold_key(r) for r in g.references if in_scope(r)}
         if g.gold_id in inverse:
             ref.matched_requirements += 1
             got = {k for (rid, k) in pred_pairs if rid == g.gold_id}
@@ -311,20 +343,29 @@ def evaluate_case(
         if pair[1] in gold_available:
             ref.availability_correct += int(doc.content_available == gold_available[pair[1]])
     ref.relation_accuracy = ratio(ref.relation_correct, len(tp_pairs))
+    for pair in tp_pairs:
+        if pair in gold_location:
+            ref.location_gold += 1
+            ref.location_correct += int(gold_location[pair] in pred_locations.get(pair, set()))
+    ref.location_accuracy = ratio(ref.location_correct, ref.location_gold)
     ref.availability_accuracy = ratio(ref.availability_correct, len(tp_pairs))
     gold_docs = {k for _, k in gold_pairs}
     pred_docs = {k for _, k in pred_pairs}
     ref.document_level_precision = ratio(len(gold_docs & pred_docs), len(pred_docs))
     ref.document_level_recall = ratio(len(gold_docs & pred_docs), len(gold_docs))
     gold_resolution = {(g.gold_id, gold_key(r)): r.resolution for g in gold.requirements for r in g.references}
-    ref.errors = reference_errors(pred_pairs, gold_pairs, gold_resolution)
+    ref.errors = reference_errors(pred_pairs, gold_pairs, gold_resolution, out_of_scope)
     if result is not None:
         ref.merges_applied = sum(1 for d in result.metadata.reference_merges if d.applied)
         ref.merges_rejected = sum(1 for d in result.metadata.reference_merges if not d.applied)
+        rc = result.coverage.references
+        ref.mentions, ref.mentions_to_input, ref.input_resolution_rate = rc.mentions, rc.to_input_documents, rc.input_resolution_rate
+        ref.artifact_evidence = rc.evidence_matches.get("artifact_normalized", 0)
+        ref.other_customer_mentions = rc.from_other_customer_blocks
 
     # -- units (granularity-independent) -----------------------------------
     um = UnitMetrics(units=len(preds), gold_requirements=len(gold.requirements))
-    refs_of = {g.gold_id: {gold_key(r) for r in g.references} for g in gold.requirements}
+    refs_of = {g.gold_id: {gold_key(r) for r in g.references if in_scope(r)} for g in gold.requirements}
     contained = {p.requirement_id: [g.gold_id for g in gold.requirements if contains_requirement(p, g)] for p in preds}
     holders: dict[str, list[str]] = {}
     for pid, gids in contained.items():
@@ -402,6 +443,19 @@ def evaluate_case(
         gm.qualified_edge_fp = len(qualified_pred - qualified_gold)
     gm.qualified_edge_fn = len(qualified_gold) - gm.qualified_edge_tp
     gm.qualified_edge_f1 = prf(gm.qualified_edge_tp, gm.qualified_edge_fp, gm.qualified_edge_fn)[2]
+    structure_types = {RelationshipType.INHERITS_FROM, RelationshipType.AMENDS, RelationshipType.REFERENCES_CHAPTER}
+    gold_links = {(link.source, link.target, link.kind) for link in gold.chapter_links}
+    pred_links = set()
+    if result is not None:
+        pred_links = {
+            (mapped_id(e.source_node_id, alignment), mapped_id(e.target_node_id, alignment), e.relationship_type.value)
+            for e in result.relationships
+            if e.relationship_type in structure_types
+        }
+    gm.chapter_link_tp = len(pred_links & gold_links)
+    gm.chapter_link_fp = len(pred_links - gold_links)
+    gm.chapter_link_fn = len(gold_links - pred_links)
+    gm.chapter_link_f1 = prf(gm.chapter_link_tp, gm.chapter_link_fp, gm.chapter_link_fn)[2]
 
     # -- conflicts ---------------------------------------------------------
     cm = ConflictMetrics()
@@ -430,6 +484,17 @@ def evaluate_case(
     cm.cross_document_found = sum(1 for p in hits if gold_conf[p].cross_document)
     from_graph = {p for p, c in pred_conf.items() if c.related_saved_ids}
     cm.saved_graph_predicted, cm.saved_graph_hits = len(from_graph), len(from_graph & hits)
+    cm.resolved_by_precedence = sum(1 for c in pred_conf.values() if c.precedence_status == "resolved_by_precedence")
+    for p in hits:
+        g = gold_conf[p]
+        if g.precedence is None:
+            continue
+        cm.precedence_gold += 1
+        c = pred_conf[p]
+        cm.precedence_correct += int(
+            c.precedence_status == g.precedence and (g.precedence != "resolved_by_precedence" or c.prevailing_document_id == g.prevailing_document_id)
+        )
+    cm.precedence_accuracy = ratio(cm.precedence_correct, cm.precedence_gold)
     if result is not None:
         candidates = {
             unordered(*(mapped_id(x, conflict_alignment) for x in c.requirement_ids)) for c in result.metadata.conflict_candidates
@@ -484,9 +549,14 @@ def _one_char_apart(a: str, b: str) -> bool:
 
 
 def reference_errors(
-    pred_pairs: set[tuple[str, str]], gold_pairs: set[tuple[str, str]], gold_resolution: dict[tuple[str, str], str]
+    pred_pairs: set[tuple[str, str]],
+    gold_pairs: set[tuple[str, str]],
+    gold_resolution: dict[tuple[str, str], str],
+    out_of_scope: set[tuple[str, str]] | None = None,
 ) -> dict[str, int]:
-    """Classify reference errors (see ``REFERENCE_ERROR_KINDS``)."""
+    """Classify reference errors (see ``REFERENCE_ERROR_KINDS``). ``out_of_scope``: gold pairs
+    that apply only to other customers (predicting one is an ``other_customer`` error)."""
+    out_of_scope = out_of_scope or set()
     errors = dict.fromkeys(REFERENCE_ERROR_KINDS, 0)
     gold_keys = {k for _, k in gold_pairs}
     fps: dict[str, set[str]] = {}
@@ -498,6 +568,9 @@ def reference_errors(
     for rid in sorted(set(fps) | set(fns)):
         missing = set(fns.get(rid, set()))
         for fp in sorted(fps.get(rid, set())):
+            if (rid, fp) in out_of_scope:
+                errors["other_customer"] += 1
+                continue
             kind = None
             for fn in sorted(missing):
                 if not fp.startswith("NAME:") and family_key(fp) == family_key(fn):
@@ -571,6 +644,18 @@ def aggregate(evaluations: list[CaseEvaluation]) -> dict[str, float | None]:
         total(lambda e: e.graph.qualified_edge_tp), total(lambda e: e.graph.qualified_edge_fp), total(lambda e: e.graph.qualified_edge_fn)
     )[2]
 
+    out["references.location_accuracy"] = ratio(total(lambda e: e.references.location_correct), total(lambda e: e.references.location_gold))
+    out["references.input_resolution_rate"] = ratio(total(lambda e: e.references.mentions_to_input), total(lambda e: e.references.mentions))
+    out["references.artifact_evidence"] = total(lambda e: e.references.artifact_evidence)
+    other = [e.references.other_customer_mentions for e in evaluations if e.references.other_customer_mentions is not None]
+    out["references.other_customer_mentions"] = sum(other) if other else None
+    out["references.out_of_scope_gold"] = total(lambda e: e.references.out_of_scope_gold)
+    out["graph.chapter_link_f1"] = prf(
+        total(lambda e: e.graph.chapter_link_tp), total(lambda e: e.graph.chapter_link_fp), total(lambda e: e.graph.chapter_link_fn)
+    )[2]
+    out["graph.chapter_link_tp"] = total(lambda e: e.graph.chapter_link_tp)
+    out["graph.chapter_link_fp"] = total(lambda e: e.graph.chapter_link_fp)
+    out["graph.chapter_link_fn"] = total(lambda e: e.graph.chapter_link_fn)
     out["references.merges_applied"] = total(lambda e: e.references.merges_applied)
     out["references.merges_rejected"] = total(lambda e: e.references.merges_rejected)
     for kind in REFERENCE_ERROR_KINDS:
@@ -609,6 +694,8 @@ def aggregate(evaluations: list[CaseEvaluation]) -> dict[str, float | None]:
     )
     out["conflicts.saved_graph_predicted"] = total(lambda e: e.conflicts.saved_graph_predicted)
     out["conflicts.saved_graph_hits"] = total(lambda e: e.conflicts.saved_graph_hits)
+    out["conflicts.resolved_by_precedence"] = total(lambda e: e.conflicts.resolved_by_precedence)
+    out["conflicts.precedence_accuracy"] = ratio(total(lambda e: e.conflicts.precedence_correct), total(lambda e: e.conflicts.precedence_gold))
 
     for key in _SUMMED_OPS:
         out[f"ops.{key}"] = sum((e.operational.get(key) or 0) for e in evaluations)

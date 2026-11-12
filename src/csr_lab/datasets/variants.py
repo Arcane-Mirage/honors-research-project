@@ -3,37 +3,40 @@
 Input variants of the synthetic dataset: the same cases and gold, different input form.
 
 * ``write_pdf_dataset``: every document rendered as a PDF with running headers, page
-  footers, page breaks inside requirements and drawn tables.
+  footers and page breaks inside requirements.
 * ``write_incremental_dataset``: the cases with several documents, split for the
   saved-graph experiment. The supporting documents go to ``graph_input/`` (built into a
   graph first, with ``build-graph``); the CSR is the new document of the case. The gold
   lists the supporting documents as ``graph_documents``.
+* ``write_noisy_dataset``: a copy of any text dataset with PDF extraction artifacts: letters
+  split off words ('s upplier') and words hyphenated at a line end ('require-\\nments'). Only
+  words of six letters or more inside requirements change; never identifiers, gold mention
+  texts or customer labels. Gold texts and offsets are mapped through the same edits, and every
+  mapped span is checked to hold the same letters as the clean one.
 
-Gold annotations are the same as for the text dataset (table rows as cell text).
-Because the cases are unchanged, results on the PDF variant are directly comparable with
-results on the text dataset.
+Gold annotations are the same as for the text dataset, so results on a variant are directly
+comparable with results on the text dataset.
 
 **PDF rendering.** No PDF library is needed: the writer emits Helvetica text with
 absolute positions. What makes the PDFs realistic for parser testing:
 
 * a running header and a "Page n of N" footer on every page (they end up *inside*
   requirements that cross a page break when the text is extracted);
-* fixed lines per page, so page breaks fall wherever the text happens to be;
-* tables drawn as positioned cells without the ``|`` characters of the text version.
+* fixed lines per page, so page breaks fall wherever the text happens to be.
 
-``pdf_gold`` adapts a case's gold annotations to the PDF: table rows become their cell
-text (what a reader sees), and offsets point into the "ideal" extraction (the drawn
-lines in order). The evaluator then re-anchors them to the text the parser actually extracted.
+``pdf_gold`` points a case's gold offsets into the "ideal" extraction (the drawn lines in
+order); the evaluator then re-anchors them to the text the parser actually extracted.
 """
 
 from __future__ import annotations
 
-import json
+import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from csr_lab.datasets.synthetic import DATASET_VERSION, all_cases, build_case
+from csr_lab.datasets.synthetic import all_cases, build_case, write_manifest
+from csr_lab.extraction.grounding import phrase_pattern
 from csr_lab.ids import document_node_id
 from csr_lab.schemas import CaseGold
 
@@ -44,16 +47,12 @@ from csr_lab.schemas import CaseGold
 PAGE_WIDTH, PAGE_HEIGHT = 612, 792
 LEFT, TOP, LINE_HEIGHT, FONT_SIZE = 50, 742, 14, 10
 LINES_PER_PAGE = 44
-_TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
 
 
 @dataclass
 class Line:
-    cells: list[tuple[float, str]]  # (x offset, text)
-
-    @property
-    def text(self) -> str:
-        return " ".join(t for _, t in self.cells)
+    text: str = ""
+    x: float = 0  # offset from the left margin (the page footer is right-aligned)
 
 
 def _escape(text: str) -> str:
@@ -62,17 +61,7 @@ def _escape(text: str) -> str:
 
 
 def text_to_lines(text: str) -> list[Line]:
-    """Document text -> drawable lines; table rows become positioned cells."""
-    lines: list[Line] = []
-    for raw in text.rstrip("\n").split("\n"):
-        m = _TABLE_ROW.match(raw)
-        if m:
-            cells = [c.strip() for c in m.group(1).split("|")]
-            width = 500 / max(len(cells), 1)
-            lines.append(Line([(i * width, c) for i, c in enumerate(cells) if c]))
-        else:
-            lines.append(Line([(0, raw)] if raw else []))
-    return lines
+    return [Line(raw) for raw in text.rstrip("\n").split("\n")]
 
 
 def paginate(lines: list[Line], header: str | None, lines_per_page: int = LINES_PER_PAGE) -> list[list[Line]]:
@@ -82,7 +71,7 @@ def paginate(lines: list[Line], header: str | None, lines_per_page: int = LINES_
     for n, page in enumerate(pages, start=1):
         framed = list(page)
         if header:
-            framed = [Line([(0, header)]), Line([]), *framed, Line([]), Line([(380, f"Page {n} of {len(pages)}")])]
+            framed = [Line(header), Line(), *framed, Line(), Line(f"Page {n} of {len(pages)}", x=380)]
         out.append(framed)
     return out
 
@@ -102,8 +91,8 @@ def render_pdf(pages: list[list[Line]]) -> bytes:
         ops = []
         for row, line in enumerate(lines):
             y = TOP - row * LINE_HEIGHT
-            for x, text in line.cells:
-                ops.append(f"BT /F1 {FONT_SIZE} Tf {LEFT + x:.1f} {y} Td ({_escape(text)}) Tj ET")
+            if line.text:
+                ops.append(f"BT /F1 {FONT_SIZE} Tf {LEFT + line.x:.1f} {y} Td ({_escape(line.text)}) Tj ET")
         stream = "\n".join(ops).encode("latin-1")
         objects.append(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
     out = bytearray(b"%PDF-1.4\n")
@@ -124,18 +113,11 @@ def ideal_text(pages: list[list[Line]]) -> str:
     return "\n".join("\n".join(line.text for line in page) for page in pages)
 
 
-def flatten_tables(text: str) -> str:
-    return "\n".join(
-        " ".join(c.strip() for c in m.group(1).split("|") if c.strip()) if (m := _TABLE_ROW.match(line)) else line
-        for line in text.split("\n")
-    )
-
-
 def pdf_gold(gold: CaseGold, ideal: dict[str, str], filenames: dict[str, str]) -> CaseGold:
     """Gold for the PDF version of a case (``ideal``/``filenames`` keyed by document ID)."""
     requirements = []
     for g in gold.requirements:
-        text = flatten_tables(g.requirement_text)
+        text = g.requirement_text
         src = ideal.get(g.source_document_id, "")
         start = src.find(text)
         if start == -1:  # interrupted by a page break: anchor at the first line
@@ -146,7 +128,7 @@ def pdf_gold(gold: CaseGold, ideal: dict[str, str], filenames: dict[str, str]) -
         update={
             "requirements": requirements,
             "documents": documents,
-            "notes": [*gold.notes, "PDF rendering: table rows are cell text; offsets are re-anchored to the extracted text when scoring"],
+            "notes": [*gold.notes, "PDF rendering: offsets are re-anchored to the extracted text when scoring"],
         }
     )
 
@@ -156,10 +138,7 @@ def pdf_gold(gold: CaseGold, ideal: dict[str, str], filenames: dict[str, str]) -
 # ---------------------------------------------------------------------------
 
 def _manifest(out: Path, name: str, description: str, cases: list[dict], extra: dict | None = None) -> Path:
-    manifest = {"name": name, "version": DATASET_VERSION, "description": description, "generator": "csr_lab.datasets.variants", **(extra or {}), "cases": cases}
-    path = out / "manifest.json"
-    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
-    return path
+    return write_manifest(out, name=name, description=description, generator="csr_lab.datasets.variants", cases=cases, extra=extra)
 
 
 def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
@@ -170,10 +149,14 @@ def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
         ideal: dict[str, str] = {}
         filenames: dict[str, str] = {}
         doc_paths = []
+        registry = case.registry
         for spec in case.documents:
-            header = f"{spec.company} | {spec.identifier} Rev {spec.revision} | Confidential"
+            # A running header like a real one ('Formel Q – konkret'): the title, plus the code and
+            # revision only for documents that state them (a name-only document has none).
+            header = f"{spec.title} | {spec.identifier} {spec.revision}" if spec.revision else spec.title
             pages = paginate(text_to_lines(files[spec.filename]), header, lines_per_page)
             pdf_name = Path(spec.filename).with_suffix(".pdf").name
+            registry = registry.replace(spec.filename, pdf_name) if registry else registry
             path = out / "documents" / case.case_id / pdf_name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(render_pdf(pages))
@@ -181,6 +164,8 @@ def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
             ideal[doc_id] = ideal_text(pages)
             filenames[doc_id] = pdf_name
             doc_paths.append(path.relative_to(out).as_posix())
+        if registry:
+            (out / "documents" / case.case_id / "documents.yaml").write_text(registry, encoding="utf-8", newline="\n")
         gold_path = out / "ground_truth" / f"{case.case_id}.json"
         gold_path.parent.mkdir(parents=True, exist_ok=True)
         gold_path.write_text(pdf_gold(gold, ideal, filenames).model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
@@ -190,7 +175,7 @@ def write_pdf_dataset(out_dir: str | Path, *, lines_per_page: int = 44) -> Path:
     return _manifest(
         out,
         "synthetic_csr_pdf",
-        "The synthetic CSR cases rendered as PDFs with running headers, page footers and drawn tables.",
+        "The synthetic CSR cases rendered as PDFs with running headers, page footers and page breaks inside chapters.",
         manifest_cases,
         {"lines_per_page": lines_per_page},
     )
@@ -216,6 +201,9 @@ def write_incremental_dataset(out_dir: str | Path) -> Path:
             path = out / "graph_input" / case.case_id / spec.filename
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(files[spec.filename], encoding="utf-8", newline="\n")
+        if case.registry:  # both runs need the names: the graph build and the new document's analysis
+            for folder in (out / "graph_input" / case.case_id, new_path.parent):
+                (folder / "documents.yaml").write_text(case.registry, encoding="utf-8", newline="\n")
         new_id = document_node_id(new.identifier, new.revision)
         split_gold = gold.model_copy(
             update={
@@ -242,3 +230,136 @@ def write_incremental_dataset(out_dir: str | Path) -> Path:
         manifest_cases,
         {"graph_input": "graph_input"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Dataset writers: PDF-noise variant
+# ---------------------------------------------------------------------------
+
+_WORD_RE = re.compile(r"(?<![\w\-./])[A-Za-z]{6,}(?![\w\-./])")
+_BARE = re.compile(r"[\s\-]+")
+
+
+def _protected_spans(gold: CaseGold, doc_id: str, text: str) -> list[tuple[int, int]]:
+    """Gold mention texts and customer labels ('Global:') of one document: never changed."""
+    spans = []
+    for g in gold.requirements:
+        if g.source_document_id != doc_id:
+            continue
+        for ref in g.references:
+            pattern = phrase_pattern(ref.mention_text)
+            spans += [(g.start_offset + m.start(), g.start_offset + m.end()) for m in re.finditer(pattern, g.requirement_text)]
+        for m in re.finditer(r"(?m)^[A-Z][\w/ ]{0,40}:", g.requirement_text):
+            spans.append((g.start_offset + m.start(), g.start_offset + m.end()))
+    return spans
+
+
+def add_noise(
+    text: str, requirement_spans: list[tuple[int, int]], protected: list[tuple[int, int]], rate: float, seed: int, hyphen_rate: float = 0.25
+) -> tuple[str, list[int]]:
+    """(noisy text, map old offset -> new offset for 0..len(text)). ``rate``: share of long words
+    with a letter split off; ``hyphen_rate``: share of long words at a line end hyphenated."""
+    rng = random.Random(seed)
+    inserts: dict[int, str] = {}  # old position -> text inserted before it
+    replace: dict[int, str] = {}  # old position -> replacement character (same length)
+    for s_lo, s_hi in requirement_spans:
+        for m in _WORD_RE.finditer(text, s_lo, s_hi):
+            s, e = m.start(), m.end()
+            if any(s < pe and ps < e for ps, pe in protected):
+                continue
+            r = rng.random()
+            line_end = text.find("\n", e)
+            at_line_end = line_end == e or (line_end != -1 and not text[e:line_end].strip())
+            next_line = text[line_end + 1 : text.find("\n", line_end + 1) if text.find("\n", line_end + 1) != -1 else len(text)] if line_end != -1 else ""
+            joins_safely = not re.match(r"\s*(?:[A-Z][\w/ ]{0,40}:|\|)", next_line)  # never pull a label or a table row up
+            if at_line_end and joins_safely and line_end < s_hi - 1 and line_end not in replace and rng.random() < hyphen_rate:
+                k = rng.randint(3, len(m.group()) - 3)
+                inserts[s + k] = "-\n"  # 'require-\nments'
+                replace[line_end] = " "
+            elif r < rate:
+                inserts[s + rng.randint(1, len(m.group()) - 2)] = " "  # 's upplier'
+    out: list[str] = []
+    mapping: list[int] = []
+    pos = 0
+    for i, ch in enumerate(text):
+        if i in inserts:
+            out.append(inserts[i])
+            pos += len(inserts[i])
+        mapping.append(pos)
+        out.append(replace.get(i, ch))
+        pos += 1
+    mapping.append(pos)
+    return "".join(out), mapping
+
+
+def _mapped(old: str, new: str, mapping: list[int], start: int, end: int) -> tuple[int, int]:
+    ns, ne = mapping[start], mapping[end - 1] + 1
+    if _BARE.sub("", old[start:end]) != _BARE.sub("", new[ns:ne]):
+        raise AssertionError(f"noise changed the letters of a gold span: {old[start:end]!r} -> {new[ns:ne]!r}")
+    return ns, ne
+
+
+def noisy_gold(gold: CaseGold, texts: dict[str, tuple[str, str, list[int]]]) -> CaseGold:
+    """Gold for the noisy texts (document ID -> (old text, new text, offset map))."""
+    reqs = []
+    for g in gold.requirements:
+        old, new, mapping = texts[g.source_document_id]
+        ns, ne = _mapped(old, new, mapping, g.start_offset, g.end_offset)
+        refs = []
+        for ref in g.references:
+            m = re.search(phrase_pattern(ref.mention_text), g.requirement_text)
+            if m is None:
+                raise AssertionError(f"{g.gold_id}: mention {ref.mention_text!r} not in requirement")
+            ms, me = _mapped(old, new, mapping, g.start_offset + m.start(), g.start_offset + m.end())
+            refs.append(ref.model_copy(update={"mention_text": new[ms:me]}))
+        reqs.append(g.model_copy(update={"requirement_text": new[ns:ne], "start_offset": ns, "end_offset": ne, "references": refs}))
+    by_id = {g.gold_id: g for g in gold.requirements}
+    conflicts = []
+    for c in gold.conflicts:
+        evidence = []
+        for ev in c.evidence:
+            g = by_id[ev.requirement_id]
+            old, new, mapping = texts[g.source_document_id]
+            m = re.search(phrase_pattern(ev.quoted_text), g.requirement_text)
+            if m is None:
+                raise AssertionError(f"{c.gold_conflict_id}: quote {ev.quoted_text!r} not in {g.gold_id}")
+            qs, qe = _mapped(old, new, mapping, g.start_offset + m.start(), g.start_offset + m.end())
+            evidence.append(ev.model_copy(update={"quoted_text": new[qs:qe]}))
+        conflicts.append(c.model_copy(update={"evidence": evidence}))
+    out = gold.model_copy(update={"requirements": reqs, "conflicts": conflicts, "notes": [*gold.notes, "noise variant: PDF extraction artifacts added; texts and offsets mapped"]})
+    return CaseGold.model_validate(out.model_dump())
+
+
+def write_noisy_dataset(source_manifest: str | Path, out_dir: str | Path, *, rate: float = 0.08, seed: int = 0) -> Path:
+    """A copy of a text dataset with PDF extraction artifacts in its requirement texts."""
+    from csr_lab.datasets.loader import load_dataset
+
+    source = load_dataset(source_manifest)
+    out = Path(out_dir)
+    (out / "ground_truth").mkdir(parents=True, exist_ok=True)
+    entries = []
+    for case in source.cases:
+        gold = case.load_gold()
+        assert gold is not None, f"{case.case_id}: noise needs gold"
+        by_file = {d.filename: d.document_id for d in gold.documents}
+        texts: dict[str, tuple[str, str, list[int]]] = {}
+        paths = []
+        folder = out / "documents" / case.case_id
+        folder.mkdir(parents=True, exist_ok=True)
+        for i, path in enumerate(case.document_paths):
+            old = path.read_text(encoding="utf-8")
+            doc_id = by_file[path.name]
+            spans = [(g.start_offset, g.end_offset) for g in gold.requirements if g.source_document_id == doc_id]
+            new, mapping = add_noise(old, spans, _protected_spans(gold, doc_id, old), rate, seed * 1000 + i + sum(map(ord, case.case_id)))
+            texts[doc_id] = (old, new, mapping)
+            (folder / path.name).write_text(new, encoding="utf-8", newline="\n")
+            paths.append((folder / path.name).relative_to(out).as_posix())
+        for extra in ("documents.yaml", "documents.yml"):
+            if (case.document_paths[0].parent / extra).is_file():
+                (folder / extra).write_text((case.document_paths[0].parent / extra).read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+        gold_path = out / "ground_truth" / f"{case.case_id}.json"
+        gold_path.write_text(noisy_gold(gold, texts).model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
+        entries.append({"case_id": case.case_id, "split": case.split, "description": case.description + " (PDF noise)", "documents": paths,
+                        "ground_truth": gold_path.relative_to(out).as_posix()})
+    return _manifest(out, f"{source.name}_noisy", f"{source.name} with PDF extraction artifacts (rate {rate}, seed {seed}).", entries,
+                           {"source": source.name, "source_version": source.version, "noise": {"rate": rate, "seed": seed}})

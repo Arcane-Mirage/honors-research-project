@@ -10,8 +10,9 @@ from pathlib import Path
 
 from csr_lab.config import AppConfig
 from csr_lab.extraction.grounding import SourceIndex
+from csr_lab.extraction.normalization import NameIndex
 from csr_lab.ids import document_family_id
-from csr_lab.ingestion.loader import load_bundle, processing_load_options
+from csr_lab.ingestion.loader import DocumentRegistry, expand_inputs, load_bundle, load_registry, processing_load_options
 from csr_lab.llm.interface import CallRecorder, LLMProvider, StructuredLLM
 from csr_lab.llm.provider import create_provider
 from csr_lab.pipelines.base import PipelineContext, StrategySpec
@@ -34,8 +35,12 @@ def run_analysis(
     provider: LLMProvider | None = None,
     saved_graph: GraphStore | None = None,
     saved_graph_path: str | Path | None = None,
+    registry: DocumentRegistry | None = None,
 ) -> AnalysisResult:
     """Execute a strategy. A fresh provider, recorder and context are used for every call.
+
+    ``registry``: the bundle's ``documents.yaml`` (``load_inputs``); its names resolve
+    name-only references in every strategy.
 
     ``saved_graph``: a persistent graph whose *documents* (identifiers, names,
     revisions) a graph-assisted strategy may use for alias resolution and the
@@ -62,7 +67,7 @@ def run_analysis(
         ),
         provider=provider,
         recorder=recorder,
-        sources=SourceIndex(documents),
+        sources=SourceIndex(documents, artifact_match=config.processing.grounding_artifact_match, names=registry_names(registry, documents)),
         run_seed=seed,
         case_id=case_id,
     )
@@ -98,6 +103,26 @@ def run_analysis(
     return result
 
 
+def load_inputs(paths: list[str | Path], config: AppConfig) -> tuple[list[InputDocument], DocumentRegistry | None]:
+    """Load a bundle as ``run_analysis`` expects it: the documents, with the ``documents.yaml``
+    next to them applied when ``processing.document_registry`` is on, and that registry."""
+    registry = (load_registry(expand_inputs(paths)) or None) if config.processing.document_registry else None
+    return load_bundle(paths, registry=registry, **processing_load_options(config.processing)), registry
+
+
+def registry_names(registry: DocumentRegistry | None, documents: list[InputDocument]) -> NameIndex | None:
+    """Registered names -> identifiers. A file entry without an identifier takes the loaded document's."""
+    if not registry:
+        return None
+    by_file = {d.filename: d.canonical_identifier for d in documents}
+    index = NameIndex()
+    for e in registry.entries:
+        if ident := e.identifier or by_file.get(e.file or ""):
+            for name in e.names:
+                index.add(name, ident)
+    return index
+
+
 def analyze_files(
     paths: list[str | Path],
     *,
@@ -107,9 +132,10 @@ def analyze_files(
     saved_graph: GraphStore | None = None,
     saved_graph_path: str | Path | None = None,
 ) -> AnalysisResult:
-    documents = load_bundle(paths, **processing_load_options(config.processing))
+    documents, registry = load_inputs(paths, config)
     if not documents:
         raise ValueError("no supported input files found")
     return run_analysis(
-        documents, strategy=strategy, config=config, run_seed=run_seed, saved_graph=saved_graph, saved_graph_path=saved_graph_path
+        documents, strategy=strategy, config=config, run_seed=run_seed, saved_graph=saved_graph, saved_graph_path=saved_graph_path,
+        registry=registry,
     )

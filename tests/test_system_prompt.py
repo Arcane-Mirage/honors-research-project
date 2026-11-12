@@ -53,6 +53,8 @@ def test_recorded_in_results_and_off_in_experiments(simple_docs, config):
     assert a.metadata.prompt_versions["system_prompt"].startswith(system_prompt.VERSION)
     assert b.metadata.prompt_versions["system_prompt"] == "off"
     assert a.analysis_id != b.analysis_id
-    # default.yaml reads for Bendix; experiments on the synthetic cases switch it off
-    assert load_config().system_prompt.enabled
-    assert not apply_experiment(load_config(), load_experiment("dev_mock")).system_prompt.enabled
+    # default.yaml reads for Bendix; experiments read for the dataset's reader (its manifest)
+    assert load_config().system_prompt.customer == "Navistar"
+    experiment = apply_experiment(load_config(), load_experiment("demo_mock"))
+    assert experiment.system_prompt.enabled and experiment.system_prompt.customer == "Global Motors"
+    assert experiment.evaluation.customer == "Global Motors"

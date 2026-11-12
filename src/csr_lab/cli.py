@@ -94,41 +94,29 @@ def _print_llm(config: AppConfig) -> None:
 
 def _graph_choice(args: argparse.Namespace, config: AppConfig) -> tuple[str | None, bool, bool]:
     """(graph path, use it, update it) from --graph/--use-graph/--update-graph, falling back to
-    `graph_store:` in the config. The older --graph-store/--use-saved-graph flags still work."""
+    `graph_store:` in the config."""
     if getattr(args, "graph", None):
         use = config.graph_store.use if args.use_graph is None else args.use_graph
         update = config.graph_store.update if args.update_graph is None else args.update_graph
         return args.graph, use, update
-    if getattr(args, "graph_store", None):
-        return args.graph_store, bool(args.use_saved_graph or args.use_graph), args.update_graph is not False
-    if getattr(args, "use_saved_graph", False) or getattr(args, "use_graph", None):
+    if getattr(args, "use_graph", None):
         raise ValueError("using a saved graph needs --graph PATH")
     return None, False, False
 
 
 def cmd_generate_data(args: argparse.Namespace) -> int:
-    from csr_lab.datasets.synthetic import generate_scaled_case, write_dataset
-    from csr_lab.datasets.variants import write_incremental_dataset, write_pdf_dataset
+    from csr_lab.datasets.synthetic import write_dataset
+    from csr_lab.datasets.variants import write_incremental_dataset, write_noisy_dataset, write_pdf_dataset
 
+    data = PROJECT_ROOT / "data" / "synthetic"
     if args.pdf:
-        manifest = write_pdf_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "pdf", lines_per_page=args.lines_per_page)
+        manifest = write_pdf_dataset(args.out or data / "pdf", lines_per_page=args.lines_per_page)
     elif args.incremental:
-        manifest = write_incremental_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "incremental")
-    elif args.scaled:
-        cases = [
-            generate_scaled_case(
-                f"scaled_n{args.scaled}_r{args.refs}_f{args.filler}_{args.position}_s{seed}",
-                n_requirements=args.scaled,
-                refs_per_requirement=args.refs,
-                filler_sentences=args.filler,
-                position=args.position,
-                seed=seed,
-            )
-            for seed in range(args.cases)
-        ]
-        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "scaled", cases, name="synthetic_scaled")
+        manifest = write_incremental_dataset(args.out or data / "incremental")
+    elif args.noisy:
+        manifest = write_noisy_dataset(data / "text" / "manifest.json", args.out or data / "noisy", rate=args.noise_rate, seed=args.noise_seed)
     else:
-        manifest = write_dataset(args.out or PROJECT_ROOT / "data" / "synthetic" / "text")
+        manifest = write_dataset(args.out or data / "text")
     print(f"wrote {manifest}")
     return 0
 
@@ -180,6 +168,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.llm_text:
         Path(args.llm_text).write_text(to_llm_markdown(graph), encoding="utf-8")
         print(f"wrote {args.llm_text}")
+    from csr_lab.pipelines.graph_build import format_real_document_summary, real_document_summary
+
+    print(format_real_document_summary(real_document_summary(result)), file=sys.stderr)
     if store is not None and update_graph and result.status != "failed":
         report = store.merge_result(result, prune_superseded_conflicts=config.graph_store.prune_superseded_conflicts)
         store.save(graph_path)
@@ -240,7 +231,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
 
     result = AnalysisResult.model_validate_json(Path(args.prediction).read_text(encoding="utf-8"))
     gold = CaseGold.model_validate_json(Path(args.gold).read_text(encoding="utf-8"))
-    evaluation = evaluate_case(result, gold, threshold=args.threshold)
+    evaluation = evaluate_case(result, gold, threshold=args.threshold, customer=args.customer)
     print(evaluation.model_dump_json(indent=2))
     return 0
 
@@ -388,6 +379,28 @@ def cmd_sweep(args: argparse.Namespace) -> int:
     )
     print(f"sweep report: {out_dir / 'sweep_report.md'}")
     print(f"sweep table:  {out_dir / 'sweep.csv'}")
+    return 0
+
+
+def cmd_pdf_backends(args: argparse.Namespace) -> int:
+    from csr_lab.ingestion.loader import backends_markdown, compare_backends, expand_inputs
+
+    files = [f for f in expand_inputs(args.inputs) if f.suffix.lower() == ".pdf"]
+    if not files:
+        print("no PDF files given", file=sys.stderr)
+        return 1
+    rows = compare_backends(files, args.backends.split(",") if args.backends else None, strip=not args.keep_headers)
+    text = backends_markdown(rows)
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
+        if args.csv:
+            from csr_lab.evaluation.reporting import write_csv
+
+            write_csv(Path(args.csv), rows)
+        print(f"wrote {args.out}")
+    else:
+        print(text)
     return 0
 
 
@@ -687,16 +700,14 @@ def build_parser() -> argparse.ArgumentParser:
         g.add_argument("--update-graph", action=argparse.BooleanOptionalAction, default=None,
                        help="merge the results into the saved graph; --no-update-graph leaves it untouched (default: graph_store.update)")
 
-    p = sub.add_parser("generate-data", help="write the synthetic dataset (or a scaled one)")
+    p = sub.add_parser("generate-data", help="write the synthetic dataset (or its PDF, incremental or noisy variant)")
     p.add_argument("--out", help="output directory")
-    p.add_argument("--scaled", type=int, metavar="N", help="generate scaled cases with N requirements each")
-    p.add_argument("--refs", type=int, default=2, help="references per requirement (scaled)")
-    p.add_argument("--filler", type=int, default=2, help="filler sentences per requirement (scaled)")
-    p.add_argument("--position", default="mixed", choices=["start", "middle", "end", "mixed"])
-    p.add_argument("--cases", type=int, default=3, help="number of scaled cases")
-    p.add_argument("--pdf", action="store_true", help="write the PDF variant (headers, footers, page breaks, drawn tables)")
+    p.add_argument("--pdf", action="store_true", help="write the PDF variant (running headers, footers, page breaks)")
     p.add_argument("--lines-per-page", type=int, default=44, help="PDF variant: lines per page")
-    p.add_argument("--incremental", action="store_true", help="write the saved-graph variant (graph_input/ + new documents)")
+    p.add_argument("--incremental", action="store_true", help="write the saved-graph variant (graph_input/ + the new CSR)")
+    p.add_argument("--noisy", action="store_true", help="write the noisy variant (PDF extraction artifacts in the text) of data/synthetic/text")
+    p.add_argument("--noise-rate", type=float, default=0.08, help="--noisy: share of long words with a letter split off")
+    p.add_argument("--noise-seed", type=int, default=0)
     p.set_defaults(func=cmd_generate_data)
 
     p = sub.add_parser("strategies", help="list available strategies")
@@ -715,8 +726,6 @@ def build_parser() -> argparse.ArgumentParser:
     llm_args(p)
     system_prompt_arg(p)
     graph_args(p, "no saved graph unless given")
-    p.add_argument("--graph-store", metavar="PATH", help=argparse.SUPPRESS)  # older name: --graph PATH --no-use-graph
-    p.add_argument("--use-saved-graph", action="store_true", help=argparse.SUPPRESS)
     common(p)
     p.set_defaults(func=cmd_analyze)
 
@@ -736,6 +745,15 @@ def build_parser() -> argparse.ArgumentParser:
     llm_args(p)
     common(p)
     p.set_defaults(func=cmd_build_graph)
+
+    p = sub.add_parser("pdf-backends", help="compare PDF text backends on real files: artifacts, contents found, chapters (no gold)")
+    p.add_argument("inputs", nargs="+", help="PDF files or folders")
+    p.add_argument("--backends", help="comma-separated (default: pypdf,pypdf_layout,pymupdf)")
+    p.add_argument("--keep-headers", action="store_true", help="do not strip running headers/footers")
+    p.add_argument("--out", help="write the Markdown report here")
+    p.add_argument("--csv", help="with --out: also write the rows as CSV")
+    p.add_argument("--config", help=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_pdf_backends)
 
     p = sub.add_parser("llms", help="list LLM profiles, show a server's models, or set the default profile")
     p.add_argument("action", nargs="?", choices=["list", "models", "use"], default="list")
@@ -760,6 +778,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("prediction")
     p.add_argument("gold")
     p.add_argument("--threshold", type=float, default=0.75)
+    p.add_argument("--customer", help="score from this customer's point of view (references for other customers only are not expected)")
     p.set_defaults(func=cmd_evaluate)
 
     p = sub.add_parser("graph", help="query or export the relationship graph of a result JSON")

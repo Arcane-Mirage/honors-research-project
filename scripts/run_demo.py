@@ -3,7 +3,8 @@
 Offline end-to-end demonstration (no API key needed).
 
 1. Generates the synthetic dataset if it is missing.
-2. Analyses one two-document bundle with every built-in strategy.
+2. Analyses its case (a delta standard on a name-only base agreement, with documents.yaml)
+   with every built-in strategy, read for the dataset's reader (its manifest's ``reader``).
 3. Runs the `demo_mock` experiment and prints where the report is.
 
 With --write-examples it also refreshes the committed examples in docs/examples/.
@@ -22,13 +23,12 @@ from csr_lab.datasets.loader import load_dataset
 from csr_lab.datasets.synthetic import write_dataset
 from csr_lab.evaluation.metrics import evaluate_case
 from csr_lab.evaluation.runner import run_experiment
-from csr_lab.ingestion.loader import load_bundle
 from csr_lab.pipelines.registry import build_workflow, get_strategy, register_variants
-from csr_lab.pipelines.run import run_analysis
+from csr_lab.pipelines.run import load_inputs, run_analysis
 from csr_lab.relationships.builder import graph_from_result
 from csr_lab.relationships.queries import export_graph, to_mermaid
 
-EXAMPLE_CASE = "dev_corvane_packaging"
+EXAMPLE_CASE = "heldout_halvard_delta"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -42,20 +42,21 @@ def main(argv: list[str] | None = None) -> int:
         write_dataset(manifest.parent)
         print(f"generated {manifest}")
     register_variants(load_experiments_file().get("strategies"))
-    config = load_config()
+    experiment = load_experiment("demo_mock").model_copy(update={"repetitions": args.repetitions})
+    config = apply_experiment(load_config(), experiment)  # the dataset's reader: system prompt, scoring customer
     dataset = load_dataset(manifest)
     case = next(c for c in dataset.cases if c.case_id == EXAMPLE_CASE)
-    documents = load_bundle(list(case.document_paths))
+    documents, registry = load_inputs(list(case.document_paths), config)
     gold = case.load_gold()
 
     print(f"\nOne bundle ({EXAMPLE_CASE}, {len(documents)} documents), mock model:")
     print(f"  {'strategy':18} {'reqs':>4} {'ref F1':>7} {'conflict F1':>11} {'LLM calls':>9}")
     results = {}
     for name in ("single_pass", "staged", "staged_verified", "graph_assisted"):
-        result = run_analysis(documents, strategy=name, config=config, case_id=EXAMPLE_CASE, run_seed=1000)
+        result = run_analysis(documents, strategy=name, config=config, case_id=EXAMPLE_CASE, run_seed=1000, registry=registry)
         results[name] = result
-        ev = evaluate_case(result, gold)
-        f1 = lambda v: "-" if v is None else f"{v:.3f}"  # noqa: E731
+        ev = evaluate_case(result, gold, customer=config.evaluation.customer)
+        f1 = lambda v: "-" if v is None else f"{v:.3f}"
         print(f"  {name:18} {len(result.requirements):>4} {f1(ev.references.f1):>7} {f1(ev.conflicts.f1):>11} {result.metadata.operational.llm_calls:>9}")
 
     if args.write_examples:
@@ -71,9 +72,8 @@ def main(argv: list[str] | None = None) -> int:
             (out / f"workflow_{name}.mmd").write_text(mermaid, encoding="utf-8")
         print(f"\nwrote examples to {out}")
 
-    experiment = load_experiment("demo_mock").model_copy(update={"repetitions": args.repetitions})
-    outcome = run_experiment(apply_experiment(config, experiment), experiment)
-    print(f"\nExperiment {outcome.experiment_id} ({args.repetitions} repetitions, held-out split)")
+    outcome = run_experiment(config, experiment)
+    print(f"\nExperiment {outcome.experiment_id} ({args.repetitions} repetitions)")
     agg = outcome.summary["aggregates"]
     print(f"  {'strategy':18} {'ref P':>6} {'ref R':>6} {'ref F1':>7} {'conf F1':>8} {'calls':>6}")
     for name, metrics in agg.items():

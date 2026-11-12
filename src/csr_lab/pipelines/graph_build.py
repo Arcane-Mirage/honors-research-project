@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from csr_lab.config import AppConfig
-from csr_lab.ingestion.loader import SUPPORTED_SUFFIXES, load_bundle, processing_load_options
+from csr_lab.ingestion.loader import SUPPORTED_SUFFIXES
 from csr_lab.relationships.builder import RelationshipGraph, graph_from_result
 from csr_lab.relationships.queries import to_mermaid
 from csr_lab.relationships.render import to_llm_markdown
@@ -61,8 +61,11 @@ class BuildOutcome:
     view_paths: list[Path] = field(default_factory=list)
 
 
+_NOT_DOCUMENTS = {"README.md", "documents.yaml", "documents.yml"}  # the registry describes documents; it is not one
+
+
 def _files_in(folder: Path) -> list[Path]:
-    return sorted(f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".") and f.name != "README.md")
+    return sorted(f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".") and f.name not in _NOT_DOCUMENTS)
 
 
 def plan_bundles(folder: str | Path, group: GroupMode = "folder", formats: list[str] | None = None) -> list[Bundle]:
@@ -118,6 +121,45 @@ def write_views(graph: RelationshipGraph, path: Path, title: str) -> list[Path]:
     return paths
 
 
+def real_document_summary(result) -> dict[str, Any]:
+    """No-gold checks of one result: how references resolve, customer scope, structure, precedence."""
+    rc, cs = result.coverage.references, result.coverage.customer_scope
+    kinds = [e.relationship_type.value for e in result.relationships]
+    return {
+        "mentions": rc.mentions,
+        "refs_to_loaded": rc.to_input_documents,
+        "refs_to_loaded_rate": rc.input_resolution_rate,
+        "name_only_refs": rc.name_only,
+        "registry_resolved": rc.by_resolution.get("registry", 0),
+        "artifact_quotes": rc.evidence_matches.get("artifact_normalized", 0),
+        "quotes_not_found": rc.evidence_matches.get("not_found", 0),
+        "other_customer_refs": rc.from_other_customer_blocks,
+        "scope_mode": cs.mode,
+        "other_customer_blocks": cs.other_customer_blocks,
+        "chars_hidden": cs.chars_hidden,
+        "follows": [f"{d.canonical_identifier} follows {d.follows_structure_of} ({d.structure_source})" for d in result.input_documents if d.follows_structure_of],
+        "inherits_from": kinds.count("inherits_from"),
+        "amends": kinds.count("amends"),
+        "chapter_refs": kinds.count("references_chapter"),
+        "resolved_by_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "resolved_by_precedence"),
+        "mutual_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "mutual_precedence_claims"),
+    }
+
+
+def format_real_document_summary(s: dict[str, Any]) -> str:
+    rate = "–" if s["refs_to_loaded_rate"] is None else f"{s['refs_to_loaded_rate']:.0%}"
+    other = "scoping off" if s["other_customer_refs"] is None else f"{s['other_customer_refs']} from other-customer blocks"
+    parts = [
+        f"references: {s['mentions']} ({rate} to loaded documents, {s['registry_resolved']} via documents.yaml, {s['name_only_refs']} name-only)",
+        f"quotes: {s['artifact_quotes']} artifact-matched, {s['quotes_not_found']} not found",
+        f"customer scope ({s['scope_mode']}): {s['other_customer_blocks']} other-customer blocks, {other}"
+        + (f", {s['chars_hidden']} chars hidden" if s["chars_hidden"] else ""),
+        f"structure: {'; '.join(s['follows']) or 'no delta document'}; {s['inherits_from']} inherits_from, {s['amends']} amends, {s['chapter_refs']} chapter references",
+        f"precedence: {s['resolved_by_precedence']} conflicts resolved by precedence, {s['mutual_precedence']} with mutual claims",
+    ]
+    return "\n".join(parts)
+
+
 def _safe(name: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "_" for c in name) or "bundle"
 
@@ -137,7 +179,7 @@ def build_graph(
     output_root: str | Path | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> BuildOutcome:
-    from csr_lab.pipelines.run import run_analysis
+    from csr_lab.pipelines.run import load_inputs, run_analysis
 
     say = progress or (lambda _m: None)
     graph_path = Path(graph_path)
@@ -162,7 +204,7 @@ def build_graph(
         say(f"{bundle.name}: analysing {len(files)} file(s)")
         started = time.perf_counter()
         try:
-            documents = load_bundle(bundle.files, **processing_load_options(config.processing))
+            documents, registry = load_inputs(bundle.files, config)
             result = run_analysis(
                 documents,
                 strategy=strategy,
@@ -171,6 +213,7 @@ def build_graph(
                 run_seed=run_seed,
                 saved_graph=store if use and store.nodes else None,
                 saved_graph_path=graph_path,
+                registry=registry,
             )
         except Exception as exc:  # noqa: BLE001 - one bad bundle must not stop the build
             rows.append(row | {"status": "error", "error": f"{type(exc).__name__}: {exc}", "seconds": round(time.perf_counter() - started, 2)})
@@ -196,6 +239,7 @@ def build_graph(
             "seconds": op.total_seconds,
             "warnings": len(result.metadata.warnings),
             "errors": result.metadata.errors[:3],
+            "real_document": real_document_summary(result),
         }
         if update and result.status != "failed":
             change = store.merge_result(result, input_files=files, prune_superseded_conflicts=config.graph_store.prune_superseded_conflicts)
@@ -272,6 +316,26 @@ def _report(s: dict[str, Any]) -> str:
             f"{get('potential_conflicts')} | {get('saved_graph_conflicts')} | {used} | {get('nodes_added')} | {get('edges_added')} | "
             f"{get('requirements_replaced')} | {get('conflicts_pruned')} | {calls} | {tokens} | {get('seconds')} |"
         )
+    checked = [r for r in s["bundles"] if r.get("real_document")]
+    if checked:
+        lines += [
+            "",
+            "## Real-document checks (no gold needed)",
+            "",
+            "| Bundle | References | To loaded docs | Via documents.yaml | Name-only | Artifact-matched quotes | Quotes not found | Other-customer refs | Hidden chars | inherits / amends / chapter refs | Resolved by precedence |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for r in checked:
+            x = r["real_document"]
+            rate = "–" if x["refs_to_loaded_rate"] is None else f"{x['refs_to_loaded']} ({x['refs_to_loaded_rate']:.0%})"
+            other = "–" if x["other_customer_refs"] is None else x["other_customer_refs"]
+            lines.append(
+                f"| {r['bundle']} | {x['mentions']} | {rate} | {x['registry_resolved']} | {x['name_only_refs']} | {x['artifact_quotes']} | "
+                f"{x['quotes_not_found']} | {other} | {x['chars_hidden']} | {x['inherits_from']} / {x['amends']} / {x['chapter_refs']} | {x['resolved_by_precedence']} |"
+            )
+        follows = [f for r in checked for f in r["real_document"]["follows"]]
+        if follows:
+            lines += ["", "Delta documents: " + "; ".join(follows)]
     if s.get("outside_pool"):
         lines += [
             "",

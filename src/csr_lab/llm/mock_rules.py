@@ -15,23 +15,27 @@ from dataclasses import dataclass
 
 from csr_lab.ingestion.segmentation import MODAL_RE
 
-_TYPE = r"(?:Specification|Standard|Procedure|Drawing|Method|Manual|Policy)"
+_TYPE = r"(?:Specification|Standard|Procedure|Drawing|Method|Manual|Policy|Agreement|Program)"
 HYPHEN_ID_RE = re.compile(r"(?<![A-Za-z0-9-])(?P<id>(?:[A-Z]{2,6}-){1,3}[A-Z]{0,4}\d{1,5}[A-Z]?(?:\.\d{1,3})?)(?![A-Za-z0-9-])")
 SPACED_ID_RE = re.compile(r"(?P<type>Specification|Standard|Procedure|Drawing|Method)\s+(?P<id>(?:[A-Z]{2,6}\s){1,2}\d{1,4}(?:\.\d{1,3})?)(?![\d.]*\d)")
 REV_AFTER_RE = re.compile(r"^,?\s*(?:Rev(?:ision)?\.?|rev\.?)\s*(?P<rev>[A-Z0-9]{1,3})\b")
-NAME_BEFORE_RE = re.compile(r"(?P<name>[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|and|of|for))*\s+" + _TYPE + r")\s+$")
+NAME_BEFORE_RE = re.compile(r"(?P<name>[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]*|and|of|for))*\s+" + _TYPE + r")\s+$")
 NAME_ONLY_RE = re.compile(
-    r"\bthe\s+(?P<name>[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|and|of|for))*\s+" + _TYPE + r")\b(?!\s*\(?\s*[A-Z]{2,6}[-\s])"
+    r"\bthe\s+(?P<name>[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]*|and|of|for))*\s+" + _TYPE + r")\b(?!\s*\(?\s*[A-Z]{2,6}[-\s])"
 )
+# 'HVG-CVS-31, chapter 4.2' (after the reference) and 'chapter 3.3 of the Halvard Q Agreement' (before it)
+LOCATION_AFTER_RE = re.compile(r"^,?\s*(?:chapter|section|clause)\s+(?P<loc>\d{1,3}(?:\.\d{1,3}){0,5})\b", re.IGNORECASE)
+LOCATION_BEFORE_RE = re.compile(r"\b(?:chapter|section|clause)\s+(?P<loc>\d{1,3}(?:\.\d{1,3}){0,5})\s+of\s+(?:the\s+)?$", re.IGNORECASE)
 PAREN_NAME_AFTER_RE = re.compile(r"^\s*\((?P<name>[A-Z][A-Za-z ]{3,60})\)")
 TYPE_BEFORE_RE = re.compile(r"\b(specification|standard|procedure|drawing|method|manual|form|policy)\s+$", re.IGNORECASE)
 
+# Phrases may be wrapped over two lines ('takes\nprecedence'), so words are joined by \s+.
 EXCLUDE_RE = re.compile(
-    r"does not apply|do not apply|is not applicable|are not applicable|shall not be used|shall not be applied|must not be used",
+    r"does\s+not\s+apply|do\s+not\s+apply|is\s+not\s+applicable|are\s+not\s+applicable|shall\s+not\s+be\s+used|shall\s+not\s+be\s+applied|must\s+not\s+be\s+used",
     re.IGNORECASE,
 )
-SUPERSEDE_RE = re.compile(r"\bsupersed(?:es|e|ed)\b|\breplaces\b|\bin place of\b", re.IGNORECASE)
-PRECEDENCE_RE = re.compile(r"take[s]? precedence|shall govern|shall prevail|\bgoverns\b", re.IGNORECASE)
+SUPERSEDE_RE = re.compile(r"\bsupersed(?:es|e|ed)\b|\breplaces\b|\bin\s+place\s+of\b", re.IGNORECASE)
+PRECEDENCE_RE = re.compile(r"take[s]?\s+precedence|shall\s+govern|shall\s+prevail|\bgoverns\b", re.IGNORECASE)
 _ABBREVIATIONS = {"rev", "no", "fig", "e.g", "i.e", "approx", "min", "max"}
 
 STOPWORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "by", "be", "is", "are", "shall", "must", "not", "no", "any", "all", "each", "this", "that", "these", "those", "as", "at", "from", "per", "its", "it", "which", "when", "where", "than", "then", "into", "under", "over", "such", "other", "only", "also", "may", "can", "will", "been", "being", "has", "have", "had", "their", "there", "was", "were", "within", "before", "after", "least", "more", "most", "less", "according", "accordance", "document", "supplier", "suppliers"}
@@ -47,6 +51,7 @@ class MockMention:
     start: int
     end: int
     doc_type: str | None
+    location: str | None = None
 
 
 def has_modal(text: str) -> bool:
@@ -170,8 +175,24 @@ def find_references(text: str) -> list[MockMention]:
                 doc_type=_doc_type(m.group("name").split()[-1]),
             )
         )
+    for m in mentions:
+        tail = text[m.end :]
+        if rm := REV_AFTER_RE.match(tail):
+            tail = tail[rm.end() :]
+        if lm := LOCATION_AFTER_RE.match(tail) or LOCATION_BEFORE_RE.search(text[max(0, m.start - 40) : m.start]):
+            m.location = lm.group("loc")
     mentions.sort(key=lambda x: x.start)
     return mentions
+
+
+_LINE_HYPHEN_RE = re.compile(r"(?<=[a-z])-\s*\n\s*(?=[a-z])")
+_SPLIT_LETTER_RE = re.compile(r"(?<![\w-])([b-hj-z]) (?=[a-z]{3,})")
+
+
+def clean_artifacts(text: str) -> str:
+    """What a model writes when it quotes text with PDF artifacts: 'require-\\nments' ->
+    'requirements', 's upplier' -> 'supplier'. (It cannot repair 're tain' without a dictionary.)"""
+    return _SPLIT_LETTER_RE.sub(r"\1", _LINE_HYPHEN_RE.sub("", text))
 
 
 def distractor_tokens(text: str) -> list[str]:

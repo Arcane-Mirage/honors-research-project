@@ -5,7 +5,7 @@ Graph-informed reference audit (used only by graph-assisted strategies).
 Two uses of the relationship graph:
 
 1. **Alias resolution.** A mention that names a document without an identifier
-   ("the Corvane Supplier Quality Manual") is resolved to a document node when
+   ("the Halvard Q Agreement") is resolved to a document node when
    that exact name is attached to an identifier elsewhere in the graph (another
    requirement's evidence, or the title of a provided document).
 2. **Known-document sweep.** Each requirement is searched for identifiers and
@@ -24,7 +24,8 @@ from __future__ import annotations
 import re
 
 from csr_lab.drafts import MentionDraft, RequirementDraft
-from csr_lab.extraction.normalization import normalize_name
+from csr_lab.extraction.grounding import phrase_pattern
+from csr_lab.extraction.normalization import is_word_suffix, normalize_name
 from csr_lab.extraction.references import identifier_pattern
 from csr_lab.extraction.verification import AuditCandidate
 from csr_lab.relationships.builder import RelationshipGraph
@@ -69,12 +70,11 @@ def _lookup(name: str, index: dict[str, list[tuple[str, str | None, str]]]) -> l
     key = normalize_name(name)
     if key in index:
         return index[key]
-    # Allow one name to be a word-suffix of the other ("Supplier Quality Manual" vs
-    # "Corvane Supplier Quality Manual") when the shorter has enough words.
+    # Allow one name to be a word-suffix of the other ("Supplier Warranty Requirements" vs
+    # "Global Motors Supplier Warranty Requirements") when the shorter has enough words.
     hits = []
     for other, entries in index.items():
-        short, long_ = (key, other) if len(key) <= len(other) else (other, key)
-        if len(short.split()) >= _MIN_NAME_WORDS and long_.endswith(" " + short):
+        if is_word_suffix(key, other, _MIN_NAME_WORDS):
             hits.extend(entries)
     return list(dict.fromkeys(hits))
 
@@ -173,13 +173,13 @@ def known_document_candidates(
                 continue
             if canonical in linked_identifiers.get(req.requirement_id, set()):
                 continue  # already linked to this identifier (possibly another revision)
-            hit = identifier_pattern(canonical).search(req.text)
+            hit = identifier_pattern(canonical).search(req.prompt_text)
             names = [n for n in {*node.attributes.get("names", []), node.attributes.get("document_name")} if n]
             if hit is None:
                 for name in names:
                     if len(name.split()) < _MIN_NAME_WORDS:
                         continue
-                    hit = re.search(r"\s+".join(map(re.escape, name.split())), req.text, re.IGNORECASE)
+                    hit = re.search(phrase_pattern(name), req.prompt_text, re.IGNORECASE)
                     if hit:
                         break
             if hit is None:

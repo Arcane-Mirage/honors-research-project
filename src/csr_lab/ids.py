@@ -15,7 +15,7 @@ _NON_ALNUM = re.compile(r"[^A-Z0-9]+")
 
 
 def slug(value: str) -> str:
-    """Upper-case slug: 'cvm qs/110' -> 'CVM-QS-110'."""
+    """Upper-case slug: 'hvg cvs/20' -> 'HVG-CVS-20'."""
     return _NON_ALNUM.sub("-", value.upper()).strip("-")
 
 
@@ -27,8 +27,8 @@ def stable_hash(*parts: object, length: int = 10) -> str:
 def document_node_id(canonical: str | None, revision: str | None = None, name: str | None = None) -> str:
     """Node ID for a document or one revision of it.
 
-    'CVM-PKG-210' -> 'DOC-CVM-PKG-210' (the document, any revision);
-    'CVM-PKG-210', 'D' -> 'DOC-CVM-PKG-210-REV-D' (that revision only).
+    'HVG-CVS-20' -> 'DOC-HVG-CVS-20' (the document, any revision);
+    'HVG-CVS-20', 'D' -> 'DOC-HVG-CVS-20-REV-D' (that revision only).
     """
     if canonical:
         base = f"DOC-{slug(canonical)}"
@@ -40,7 +40,7 @@ def document_node_id(canonical: str | None, revision: str | None = None, name: s
 
 
 def document_family_id(canonical: str) -> str:
-    """ID of the revision-independent document node: 'CVM-PKG-210' -> 'DOC-CVM-PKG-210'."""
+    """ID of the revision-independent document node: 'HVG-CVS-20' -> 'DOC-HVG-CVS-20'."""
     return document_node_id(canonical)
 
 
@@ -48,7 +48,7 @@ _CHAPTER_CHARS = re.compile(r"[^A-Z0-9.]+")
 
 
 def chapter_slug(chapter: str | None) -> str:
-    """'TSA 2.1' -> 'TSA-2.1'; a missing chapter -> 'NOCHAPTER'."""
+    """'HVG 2.1' -> 'HVG-2.1'; a missing chapter -> 'NOCHAPTER'."""
     value = _CHAPTER_CHARS.sub("-", (chapter or "").upper()).strip("-.")
     return value or "NOCHAPTER"
 

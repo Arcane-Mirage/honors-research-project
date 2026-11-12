@@ -107,4 +107,55 @@ def test_simple_doc_chapters(simple_docs):
     segs, _ = split_chapters(simple_docs[0], ChunkingSettings())
     assert [s.chapter for s in segs if s.is_candidate] == ["1.1", "2.1", "2.2", "2.3", "2.4", "2.5"]
     two_three = next(s for s in segs if s.chapter == "2.3")
-    assert two_three.text.startswith("Parts shall be validated") and two_three.text.endswith("CVM-TM-320.")
+    assert two_three.text.startswith("Parts shall be validated") and two_three.text.endswith("HVG-TM-320.")
+
+
+# Contents and body worded differently, as in Formel Q Capability (Edition 9) and Formel Q Konkret.
+REWORDED = """\
+Contents
+0 General provisions .................................. 6
+1 Introduction ........................................ 8
+1.1 Purpose ........................................... 8
+3.1 Components requiring certification ................ 9
+4.4 Reporting Requirement, Self Declaration ........... 18
+0  General Regulations
+The supplier shall observe VDA 6.3.
+1 Introduction
+1.1 Purpose
+The purpose is described here.
+3.3.1 Components requiring certification
+Certified components shall be listed.
+4.4  Reporting Requirement, Self-Declaration
+The supplier shall report each year.
+"""
+
+
+def _text_doc(text: str):
+    from csr_lab.schemas import InputDocument
+
+    return InputDocument(document_id="DOC-RW", canonical_identifier="RW", identifier_source="filename", filename="rw.txt",
+                         format="txt", sha256="0", char_count=len(text), parse_status="ok", text=text)
+
+
+def test_contents_fallback_finds_reworded_and_renumbered_headings():
+    segs, notes = split_chapters(_text_doc(REWORDED), ChunkingSettings())
+    chapters = {s.chapter: s.text for s in segs if s.is_candidate}
+    assert chapters["0"] == "The supplier shall observe VDA 6.3."
+    assert chapters["3.3.1"] == "Certified components shall be listed."  # the body number wins
+    assert chapters["4.4"] == "The supplier shall report each year."  # 'Self-Declaration' == 'Self Declaration'
+    assert any("'0 General provisions' matched by its number only" in n for n in notes)
+    assert any("matched by its title under number 3.3.1" in n for n in notes)
+
+
+def test_contents_fallback_can_be_switched_off():
+    segs, notes = split_chapters(_text_doc(REWORDED), ChunkingSettings(chapter_toc_fallback=False))
+    chapters = {s.chapter for s in segs if s.is_candidate}
+    assert "0" not in chapters and "3.3.1" not in chapters
+    assert any("'0 General provisions' not found" in n for n in notes)
+
+
+def test_heading_split_over_two_lines_is_matched():
+    text = "Contents\nForeword .... 1\n1 \nScope .... 3\n2 \nPurpose .... 3\n3 Terms .... 4\nForeword\nWritten jointly.\n1 \nScope \nThis standard applies.\n2\nPurpose\nThe purpose is X.\n3 Terms\nTerms are listed.\n"
+    segs, _notes = split_chapters(_text_doc(text), ChunkingSettings())
+    chapters = {s.chapter: s.text for s in segs if s.is_candidate}
+    assert chapters["1"] == "This standard applies." and chapters["2"] == "The purpose is X." and chapters["3"] == "Terms are listed."

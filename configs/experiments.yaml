@@ -9,29 +9,60 @@
 #
 # LLM choice: `llm:` names a profile from configs/llms.yaml (or gives settings). An
 # experiment without `llm:` uses the default profile. `--llm NAME` on the command line
-# replaces the experiment's choice, e.g.  csr-lab experiment dev --llm lmstudio
+# replaces the experiment's choice, e.g.  csr-lab experiment main --llm lmstudio
+#
+# Who the documents are read for (system prompt, `evaluation.customer`) comes from the
+# dataset's manifest (`reader`); an experiment's `system_prompt:` / `evaluation:` override it.
 
 experiments:
+  # --- The four conditions --------------------------------------------------------------
   demo_mock:
-    description: Offline demonstration of the four conditions on held-out cases with the mock model.
+    description: Offline demonstration of the four conditions with the mock model.
     dataset: data/synthetic/text/manifest.json
-    split: heldout
+    split: all
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
     base_seed: 1000
     llm: {provider: mock}
 
-  dev_mock:
-    description: Mock run on the development cases (use these for debugging prompts and code).
-    split: dev
+  main:
+    description: The four conditions with the selected LLM profile (--llm NAME, or the default).
+    split: all
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+
+  local_lmstudio:
+    description: >-
+      Local model through LM Studio's server (OpenAI-compatible, port 1234). The loaded model is
+      detected (`model: auto` in the lmstudio profile) and recorded with every result;
+      `csr-lab llms models lmstudio` shows it with its quantisation.
+    split: all
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 1
-    llm: {provider: mock}
+    llm: lmstudio
 
-  ablation_mock:
-    description: Graph-assisted ablations (offline). Isolates alias resolution, graph rules and verification.
+  api_model:
+    description: Commercial OpenAI-compatible API. Set the model ID before running.
     split: all
-    strategies: [staged_verified, graph_assisted, graph_assisted_no_alias, graph_assisted_no_rules, graph_assisted_no_verification]
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    llm: openai                     # set model: and pricing: in the openai profile (configs/llms.yaml)
+
+  azure_openai_example:
+    description: >-
+      Azure OpenAI deployment with Microsoft Entra ID (keyless) authentication. Fill in the
+      resource and deployment, `pip install azure-identity`, sign in (`az login`), then check the
+      connection with `csr-lab llm-check --experiment azure_openai_example`.
+    split: all
+    strategies: [llm_chunked_merge_llm, staged_verified, staged_verified_merge_hybrid, graph_assisted]
+    repetitions: 3
+    llm: azure                      # fill in the azure profile in configs/llms.yaml
+
+  # --- Ablations and transfer experiments (offline) -------------------------------------
+  ablation_mock:
+    description: Graph-assisted ablations. Isolates alias resolution, graph rules, delta-document links and verification.
+    split: all
+    strategies: [staged_verified, graph_assisted, graph_assisted_no_alias, graph_assisted_no_rules, graph_assisted_no_structure, graph_assisted_no_verification]
     repetitions: 3
     llm: {provider: mock}
 
@@ -41,22 +72,6 @@ experiments:
     strategies: [staged_verified_topic_candidates, graph_assisted_topic_candidates]
     repetitions: 3
     llm: {provider: mock}
-
-  # --- The four conditions with whichever LLM you select (--llm NAME, or the default) ---
-
-  dev:
-    description: The four conditions on the dev split, with the selected LLM profile.
-    split: dev
-    strategies: [single_pass, staged, staged_verified, graph_assisted]
-    repetitions: 1
-
-  heldout:
-    description: The four conditions on the held-out split, with the selected LLM profile.
-    split: heldout
-    strategies: [single_pass, staged, staged_verified, graph_assisted]
-    repetitions: 3
-
-  # --- Transfer experiments: the pieces meant to work behind another evaluator --------
 
   practice_vs_pipeline_mock:
     description: >-
@@ -78,17 +93,6 @@ experiments:
     llm: {provider: mock}
     evaluation: {baseline_strategy: llm_chunked}
 
-  saved_graph:
-    description: >-
-      Does a saved graph help? The supporting documents of each case are built into a graph
-      first (build-graph on graph_input/, with the same model); then the CSR alone is analysed
-      with and without that graph and graded. Offline: --llm mock --repetitions 3.
-    dataset: data/synthetic/incremental/manifest.json
-    split: all
-    saved_graph: {build_from: data/synthetic/incremental/graph_input}
-    strategies: [graph_assisted, graph_assisted_no_saved]
-    evaluation: {baseline_strategy: graph_assisted_no_saved}
-
   merging_mock:
     description: Reference merging methods (deterministic, model-only, hybrid with guard rules) on top of Condition C, with D for reference.
     split: all
@@ -97,18 +101,47 @@ experiments:
     llm: {provider: mock}
     evaluation: {baseline_strategy: staged_verified}
 
+  customer_scoping_mock:
+    description: Hiding paragraphs labelled only for other customers from the model (filter) against tagging them (tag).
+    split: all
+    strategies: [staged, staged_scope_filter, graph_assisted, graph_assisted_scope_filter]
+    repetitions: 3
+    llm: {provider: mock}
+    evaluation: {baseline_strategy: staged}
+
+  saved_graph:
+    description: >-
+      Does a saved graph help? The base agreement is built into a graph first (build-graph on
+      graph_input/, with the same model); then the delta standard alone is analysed with and
+      without that graph and graded. Offline: --llm mock --repetitions 3.
+    dataset: data/synthetic/incremental/manifest.json
+    split: all
+    saved_graph: {build_from: data/synthetic/incremental/graph_input}
+    strategies: [graph_assisted, graph_assisted_no_saved]
+    evaluation: {baseline_strategy: graph_assisted_no_saved}
+
+  # --- Input form: PDF rendering and PDF extraction artifacts ---------------------------
   pdf_mock:
-    description: The four conditions on the PDF rendering (running headers, page footers, page breaks inside requirements, drawn tables).
+    description: The four conditions on the PDF rendering (running headers, page footers, page breaks inside requirements).
     dataset: data/synthetic/pdf/manifest.json
     split: all
     strategies: [single_pass, staged, staged_verified, graph_assisted]
     repetitions: 3
     llm: {provider: mock}
 
+  noisy_mock:
+    description: The four conditions with PDF extraction artifacts in the text ('s upplier', 'require-\nments').
+    dataset: data/synthetic/noisy/manifest.json
+    split: all
+    strategies: [single_pass, staged, staged_verified, graph_assisted]
+    repetitions: 3
+    llm: {provider: mock}
+
+  # --- Graph context given to the conflict model ----------------------------------------
   graph_context_mock:
     description: >-
       Formats of the graph context given to the conflict model (graph_assisted). The mock model
-      ignores graph context, so this only checks the machinery: all four rows should score the
+      ignores graph context, so this only checks the machinery: all rows should score the
       same and differ in input size. Use graph_context_local for evidence.
     split: all
     strategies: [graph_assisted, graph_assisted_ctx_triples, graph_assisted_ctx_json, graph_assisted_ctx_ids, staged_verified]
@@ -126,34 +159,23 @@ experiments:
     evaluation: {baseline_strategy: graph_assisted_ctx_ids}
     llm: lmstudio                   # a profile from configs/llms.yaml; `--llm NAME` picks another
 
-  local_lmstudio_dev:
-    description: >-
-      Local model through LM Studio's server (OpenAI-compatible, port 1234) on the dev split.
-      The loaded model is detected (`model: auto` in the lmstudio profile) and recorded with
-      every result; `csr-lab llms models lmstudio` shows it with its quantisation.
-    split: dev
-    strategies: [single_pass, staged, staged_verified, graph_assisted]
-    repetitions: 1
-    llm: lmstudio
-
-  api_model_heldout:
-    description: Commercial OpenAI-compatible API on the held-out split. Set the model ID before running.
-    split: heldout
-    strategies: [single_pass, staged, staged_verified, graph_assisted]
-    repetitions: 3
-    llm: openai                     # set model: and pricing: in the openai profile (configs/llms.yaml)
-
-  azure_openai_example:
-    description: >-
-      Azure OpenAI deployment with Microsoft Entra ID (keyless) authentication. Fill in the
-      resource and deployment, `pip install azure-identity`, sign in (`az login`), then check the
-      connection with `csr-lab llm-check --experiment azure_openai_example`.
-    split: heldout
-    strategies: [llm_chunked_merge_llm, staged_verified, staged_verified_merge_hybrid, graph_assisted]
-    repetitions: 3
-    llm: azure                      # fill in the azure profile in configs/llms.yaml
-
 strategies:
+  # --- real-document features (each one off, to isolate it) ---
+  staged_scope_filter:
+    base: staged
+    description: Condition B, hiding paragraphs labelled only for other customers from the model.
+    options: {customer_scoping: filter}
+
+  graph_assisted_scope_filter:
+    base: graph_assisted
+    description: Condition D, hiding paragraphs labelled only for other customers from the model.
+    options: {customer_scoping: filter}
+
+  graph_assisted_no_structure:
+    base: graph_assisted
+    description: Condition D without delta-document chapter links (no inherits_from/amends edges, no aligned-chapter candidates).
+    options: {structure_links: off}
+
   # --- graph context format (graph.context_format; graph_assisted uses "sentences") ---
   graph_assisted_ctx_triples:
     base: graph_assisted
@@ -225,6 +247,47 @@ strategies:
     options: {conflicts: {all_pairs_max: 0}}
 
 sweeps:
+  # --- real-document features ------------------------------------------------------------
+  registry:
+    experiment: demo_mock
+    description: >-
+      What documents.yaml adds: names of documents known only by name resolve to identifiers
+      (deterministically, in every strategy), titles let structure statements be resolved.
+    grid:
+      processing.document_registry: [false, true]
+    metrics: [references.f1, references.errors.unresolved_alias, references.input_resolution_rate, graph.chapter_link_f1, conflicts.precedence_accuracy, graph.node_resolution_rate]
+
+  customer_scoping:
+    experiment: demo_mock
+    description: >-
+      Customer-labelled paragraphs: off / tag (find blocks, tag references) / filter (hide other
+      customers' blocks from the model). Tokens of extract_references show what filtering saves.
+    strategies: [staged, graph_assisted]
+    grid:
+      options.customer_scoping: ["off", tag, filter]   # quoted: YAML reads a bare off as false
+    metrics: [references.precision, references.recall, references.errors.other_customer, references.other_customer_mentions, ops.stage_tokens.extract_references, ops.estimated_tokens]
+
+  pdf_noise:
+    experiment: demo_mock
+    description: >-
+      PDF extraction artifacts ('s upplier', 'require-\nments') with and without the
+      artifact-insensitive quote matching, on the clean and the noisy texts.
+    grid:
+      dataset: [data/synthetic/text/manifest.json, data/synthetic/noisy/manifest.json]
+      processing.grounding_artifact_match: [false, true]
+    metrics: [references.f1, references.artifact_evidence, conflicts.evidence_validity_rate, conflicts.f1, requirements.verbatim_exact_rate, graph.chapter_link_f1]
+
+  structure:
+    experiment: demo_mock
+    description: >-
+      Delta-document links and precedence classification: chapter links off/registry/detect,
+      precedence labels on/off (graph_assisted).
+    strategies: [graph_assisted]
+    grid:
+      options.structure_links: ["off", detect]
+      options.conflicts.precedence_classification: [false, true]
+    metrics: [graph.chapter_link_f1, conflicts.precedence_accuracy, conflicts.resolved_by_precedence, conflicts.f1, conflicts.candidate_pair_recall]
+
   graph_context:
     experiment: graph_context_local
     description: >-
@@ -260,16 +323,16 @@ sweeps:
     description: PDF reader and header/footer removal on the PDF rendering.
     strategies: [staged_verified]
     grid:
-      processing.pdf_backend: [pypdf, pypdf_layout]
+      processing.pdf_backend: [pypdf, pypdf_layout, pymupdf]   # pymupdf: pip install pymupdf (AGPL)
       processing.pdf_strip_repeated_lines: [false, true]
     metrics: [requirements.recall, requirements.verbatim_exact_rate, requirements.location_accuracy, references.precision, references.f1, references.errors.spurious]
 
   text_vs_pdf:
     experiment: pdf_mock
-    description: The same cases as text and as PDF (with header/footer removal), same strategies.
+    description: The same case as text, as PDF (with header/footer removal) and with PDF extraction artifacts.
     strategies: [staged, staged_verified, graph_assisted]
     grid:
-      dataset: [data/synthetic/text/manifest.json, data/synthetic/pdf/manifest.json]
+      dataset: [data/synthetic/text/manifest.json, data/synthetic/pdf/manifest.json, data/synthetic/noisy/manifest.json]
       processing.pdf_strip_repeated_lines: [true]
     metrics: [requirements.recall, requirements.verbatim_exact_rate, references.f1, conflicts.f1]
 

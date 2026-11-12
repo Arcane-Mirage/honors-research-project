@@ -11,10 +11,10 @@ SOURCE = """\
 1.1 This document applies to suppliers.
 
 2 Requirements
-2.1 The supplier shall package all parts in accordance with Specification CVM-PKG-210.
+2.1 The supplier shall package all parts in accordance with Specification HVG-PKG-210.
 2.2 The supplier shall keep records
 for ten years after the end of production.
-2.3 Labels shall conform to CVM-LBL-220.
+2.3 Labels shall conform to HVG-LBL-220.
 """
 
 
@@ -22,9 +22,9 @@ def test_match_kinds_and_differences():
     report = check_fragments(
         SOURCE,
         [
-            "2.1 The supplier shall package all parts in accordance with Specification CVM-PKG-210.",
+            "2.1 The supplier shall package all parts in accordance with Specification HVG-PKG-210.",
             "2.2 The supplier shall keep records for ten years after the end of production.",  # line break removed
-            "2.1 The supplier must package all parts per Specification CVM-PKG-210.",  # reworded
+            "2.1 The supplier must package all parts per Specification HVG-PKG-210.",  # reworded
             "Completely unrelated text about something else entirely here.",
         ],
     )
@@ -42,7 +42,7 @@ def test_match_kinds_and_differences():
 
 
 def test_gaps_flag_uncovered_requirement_text():
-    report = check_fragments(SOURCE, ["2.1 The supplier shall package all parts in accordance with Specification CVM-PKG-210."])
+    report = check_fragments(SOURCE, ["2.1 The supplier shall package all parts in accordance with Specification HVG-PKG-210."])
     assert report.summary.source_coverage < 0.5
     assert any(g.looks_like_requirement and "2.3 Labels shall" in g.preview for g in report.gaps)
     assert "REQUIREMENT?" in format_report(report)
@@ -53,7 +53,7 @@ def test_reported_pages_are_compared_with_located_pages():
     pages = [PageSpan(page_number=1, start_offset=0, end_offset=half - 1), PageSpan(page_number=2, start_offset=half, end_offset=len(SOURCE))]
     report = check_fragments(
         SOURCE,
-        [{"id": "a", "text": "2.3 Labels shall conform to CVM-LBL-220.", "source_pages": [2]}, {"id": "b", "text": "1.1 This document applies to suppliers.", "source_pages": [2]}],
+        [{"id": "a", "text": "2.3 Labels shall conform to HVG-LBL-220.", "source_pages": [2]}, {"id": "b", "text": "1.1 This document applies to suppliers.", "source_pages": [2]}],
         pages=pages,
     )
     a, b = report.fragments

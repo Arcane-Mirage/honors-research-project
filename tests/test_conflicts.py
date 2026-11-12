@@ -3,7 +3,7 @@
 Conflict candidate selection, evidence validation and the graph flagging rules.
 """
 
-from helpers import case_documents
+from helpers import CASE, case_documents
 
 from csr_lab.config import ConflictSettings, GraphSettings
 from csr_lab.conflicts.candidate_selection import attribute_score, select_candidates
@@ -41,8 +41,8 @@ def test_topic_selection_when_large():
     assert attribute_score(TEXTS[0], TEXTS[1]) > attribute_score(TEXTS[0], TEXTS[2])
 
 
-def test_graph_candidates_are_added_with_provenance(dataset, config):
-    _, docs, _ = case_documents(dataset, "dev_corvane_packaging")
+def test_graph_candidates_are_added_with_provenance(rules_docs, config):
+    docs = rules_docs
     result = run_analysis(docs, strategy="graph_assisted", config=config.model_copy(deep=True))
     from csr_lab.relationships.builder import graph_from_result
 
@@ -76,8 +76,8 @@ def test_evidence_validation_repairs_unlocatable_quotes():
     assert all(e.repaired and e.verified for e in conflict.evidence)
 
 
-def test_graph_rules_and_merge(dataset, config):
-    _, docs, _ = case_documents(dataset, "heldout_tessaly_battery")
+def test_graph_rules_and_merge(rules_docs, config):
+    docs = rules_docs
     result = run_analysis(docs, strategy="graph_assisted", config=config)
     applicability = [c for c in result.potential_conflicts if c.conflict_type == ConflictType.APPLICABILITY_CONFLICT]
     assert applicability and "graph_applicability_rule" in applicability[0].detection_methods
@@ -94,8 +94,8 @@ def test_graph_rules_and_merge(dataset, config):
     assert all("llm_pairwise" in c.detection_methods and any(m.startswith("graph_") for m in c.detection_methods) for c in merged)
 
 
-def test_non_graph_strategies_have_no_graph_decisions(dataset, config):
-    _, docs, _ = case_documents(dataset, "heldout_tessaly_battery")
+def test_non_graph_strategies_have_no_graph_decisions(rules_docs, config):
+    docs = rules_docs
     for strategy in ("single_pass", "staged", "staged_verified"):
         result = run_analysis(docs, strategy=strategy, config=config)
         assert result.metadata.graph_decisions == []
@@ -104,7 +104,7 @@ def test_non_graph_strategies_have_no_graph_decisions(dataset, config):
 
 
 def test_provisional_graph_matches_final_export(dataset, config):
-    _, docs, _ = case_documents(dataset, "dev_corvane_production")
+    _, docs, _ = case_documents(dataset, CASE)
     result = run_analysis(docs, strategy="staged", config=config)
     assert {e.relationship_type.value for e in result.relationships} >= {"contains", "references"}
     # graph building on drafts works without a full result

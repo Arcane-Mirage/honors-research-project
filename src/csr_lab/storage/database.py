@@ -191,11 +191,3 @@ class ExperimentStore:
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
 
-    def run_metrics(self, experiment_id: str, metric: str, scope: str = "strict") -> list[dict[str, Any]]:
-        cur = self.conn.execute(
-            """SELECT r.strategy, r.repetition, m.value FROM metrics m JOIN runs r ON r.run_id = m.run_id
-               WHERE r.experiment_id = ? AND m.case_id = '*' AND m.scope = ? AND m.metric = ?
-               ORDER BY r.strategy, r.repetition""",
-            (experiment_id, scope, metric),
-        )
-        return [{"strategy": s, "repetition": rep, "value": v} for s, rep, v in cur.fetchall()]

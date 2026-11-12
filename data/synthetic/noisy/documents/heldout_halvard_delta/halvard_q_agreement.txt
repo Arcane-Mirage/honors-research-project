@@ -1,0 +1,52 @@
+HALVARD GROUP
+Halvard Q Agreement
+Quality management agreement between the Halvard Group companies and their suppliers
+6th edition, March 2025
+All names, companies and document identifiers in this document are fictional.
+
+Contents
+0 General provisions ........................................ 1
+1 Request and offer ......................................... 1
+1.1 Offer prerequisites ..................................... 1
+1.2 Records ................................................. 1
+2 Approval .................................................. 2
+2.1 Part approval ........................................... 2
+2.2 Initial samples ......................................... 2
+2.3 Part labels ............................................. 2
+3 Change management ......................................... 3
+3.1 Change notification ..................................... 3
+3.2 Field observation ....................................... 3
+
+0 General provisions
+The supplier shall comply with ISO 9001 and shall apply the Halvard New Parts Program to
+every new part.
+
+1 Request and offer
+1.1 Offer prerequisites
+The supp lier shall submit a comple te offer that covers all documents listed in the request.
+
+1.2 Records
+The supplier shall retain quality records for a minimum of 15 years after the end of series
+production.
+
+2 Approval
+2.1 Part approval
+Part approval shall be requested according to the Part Approval Manual HVG-PA-100 before the
+first delivery.
+
+2.2 Initial samples
+Initial samples shall be delivered no earlier than 10 wo rking days before the planned start
+of production.
+
+2.3 Part labels
+Part l abels shall show the part number and the date of manufacture.
+
+3 Change management
+3.1 Change notification
+The supplier shall notify the customer in writing at least 30 days befo re any change to a
+manufacturing process.
+
+3.2 Field observation
+The supplier shall observe the field performance of its products and report field failures
+to the customer.
+

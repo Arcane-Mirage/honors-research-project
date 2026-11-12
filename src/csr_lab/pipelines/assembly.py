@@ -15,14 +15,17 @@ from collections import Counter
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 
+from csr_lab.conflicts.detector import classify_conflicts, precedence_facts
 from csr_lab.drafts import ConflictDraft, MentionDraft, RequirementDraft
 from csr_lab.extraction.fidelity import FidelityReport, source_gaps, summarize
+from csr_lab.extraction.merging import merge_spacing_variants
 from csr_lab.extraction.normalization import reference_key
+from csr_lab.extraction.references import find_mention_span
 from csr_lab.ids import conflict_id, document_family_id, stable_hash
 from csr_lab.ingestion.chunking import ChunkPlan
-from csr_lab.ingestion.segmentation import Segment
+from csr_lab.ingestion.segmentation import Segment, block_at
 from csr_lab.prompts import prompt_versions, system_prompt
-from csr_lab.relationships.builder import RelationshipGraph, build_graph
+from csr_lab.relationships.builder import DocumentIndex, RelationshipGraph, annotate_structure, build_graph, saved_documents
 from csr_lab.relationships.validation import validate_graph
 from csr_lab.schemas import (
     AnalysisMetadata,
@@ -31,11 +34,13 @@ from csr_lab.schemas import (
     ConflictCoverage,
     Coverage,
     CoverageLimitation,
+    CustomerScopeCoverage,
     DocumentCoverage,
     DocumentPassage,
     DocumentType,
     InputDocument,
     PotentialConflict,
+    ReferenceCoverage,
     ReferencedDocument,
     ReferencedDocumentCoverage,
     ReferenceMention,
@@ -53,12 +58,14 @@ def package_version() -> str:
         return "0.0.0+local"
 
 
-def to_reference_mention(m: MentionDraft) -> ReferenceMention:
+def to_reference_mention(m: MentionDraft, applies_to: dict[str, list[str]] | None = None) -> ReferenceMention:
     return ReferenceMention(
         mention_id=m.mention_id,
         document_id=m.document_id,
         raw_identifier=m.raw_identifier,
         relation=m.relation,
+        location=m.location,
+        applies_to=(applies_to or {}).get(m.mention_id, []),
         evidence=m.evidence,
         status=m.status,
         resolution=m.resolution,
@@ -66,8 +73,41 @@ def to_reference_mention(m: MentionDraft) -> ReferenceMention:
     )
 
 
+def mention_scope(units: list[RequirementDraft], mentions: list[MentionDraft]) -> tuple[dict[str, list[str]], int]:
+    """Customers each mention applies to (from the labelled block it sits in), and how many
+    active mentions sit in blocks that apply only to other customers."""
+    by_id = {u.requirement_id: u for u in units}
+    applies: dict[str, list[str]] = {}
+    others = 0
+    for m in mentions:
+        unit = by_id.get(m.requirement_id)
+        if not m.active or unit is None or not unit.scope_blocks:
+            continue
+        pos = m.evidence.start_offset if m.evidence.verified else None
+        if pos is None and unit.start_offset is not None and (span := find_mention_span(m, unit.text)):
+            pos = unit.start_offset + span[0]
+        block = block_at(unit.scope_blocks, pos)
+        if block is not None:
+            applies[m.mention_id] = block.customers
+            others += int(not block.applies_to_target)
+    return applies, others
+
+
+def scope_coverage(units: list[RequirementDraft], ctx) -> CustomerScopeCoverage:
+    mode = ctx.options.customer_scoping
+    cov = CustomerScopeCoverage(mode=mode, target=ctx.config.system_prompt.customer if mode != "off" else None)
+    for u in units:
+        if u.scope_blocks:
+            cov.units_with_blocks += 1
+            cov.blocks += len(u.scope_blocks)
+            cov.other_customer_blocks += sum(1 for b in u.scope_blocks if not b.applies_to_target)
+        if u.model_text is not None:
+            cov.chars_hidden += sum(b.end_offset - b.start_offset for b in u.scope_blocks if not b.applies_to_target)
+    return cov
+
+
 def requirement_records(
-    requirements: list[RequirementDraft], mentions: list[MentionDraft], strategy: str
+    requirements: list[RequirementDraft], mentions: list[MentionDraft], strategy: str, applies_to: dict[str, list[str]] | None = None
 ) -> list[Requirement]:
     by_req: dict[str, list[MentionDraft]] = {}
     for m in mentions:
@@ -93,7 +133,8 @@ def requirement_records(
                     match=r.match,
                 ),
                 referenced_document_ids=list(dict.fromkeys(m.document_id for m in req_mentions)),
-                reference_mentions=[to_reference_mention(m) for m in req_mentions],
+                reference_mentions=[to_reference_mention(m, applies_to) for m in req_mentions],
+                customer_scope=r.scope_blocks,
                 extraction_metadata=RequirementExtractionMetadata(
                     strategy=strategy,
                     chunk_ids=r.chunk_ids,
@@ -108,7 +149,7 @@ def requirement_records(
     return out
 
 
-def passage_records(passages: list[RequirementDraft], mentions: list[MentionDraft]) -> list[DocumentPassage]:
+def passage_records(passages: list[RequirementDraft], mentions: list[MentionDraft], applies_to: dict[str, list[str]] | None = None) -> list[DocumentPassage]:
     """Passages of documents without chapters: analysed like chapters, exported apart from requirements."""
     by_unit: dict[str, list[MentionDraft]] = {}
     for m in mentions:
@@ -131,7 +172,7 @@ def passage_records(passages: list[RequirementDraft], mentions: list[MentionDraf
                     match=p.match,
                 ),
                 referenced_document_ids=list(dict.fromkeys(m.document_id for m in ms)),
-                reference_mentions=[to_reference_mention(m) for m in ms],
+                reference_mentions=[to_reference_mention(m, applies_to) for m in ms],
                 reference_analysis_status=p.reference_status,
             )
         )
@@ -142,7 +183,7 @@ def referenced_document_records(mentions: list[MentionDraft], documents: list[In
     """One record per referenced document node.
 
     Content is available when the exact node was provided, or when an unrevisioned
-    reference ("CVM-PKG-210") names a document of which one revision was provided.
+    reference ("HVG-CVS-20") names a document of which one revision was provided.
     A reference to a *different* revision than the one provided is not available.
     """
     inputs = {d.document_id: d for d in documents}
@@ -216,11 +257,53 @@ def conflict_records(
 
 
 def provisional_graph(
-    documents: list[InputDocument], requirements: list[RequirementDraft], mentions: list[MentionDraft]
+    documents: list[InputDocument],
+    requirements: list[RequirementDraft],
+    mentions: list[MentionDraft],
+    *,
+    structure_mode: str = "detect",
+    names=None,
 ) -> RelationshipGraph:
     """Graph of the current predictions, used mid-pipeline by graph-assisted strategies."""
     reqs = requirement_records(requirements, mentions, "provisional")
+    documents = annotate_structure(documents, requirements, mentions, mode=structure_mode, names=names)
     return build_graph(documents, reqs, referenced_document_records(mentions, documents))
+
+
+def classify_precedence(conflicts: list[PotentialConflict], documents: list[InputDocument], requirements: list[Requirement], units: list[RequirementDraft], ctx) -> None:
+    """Label each conflict with what stated precedence says about it (``conflicts.detector.classify_conflicts``)."""
+    docs = DocumentIndex(documents)
+    unit_family = {u.requirement_id: docs.family_of(u.document_id) for u in units}
+    unit_family |= {uid: u.family_id for uid, u in ctx.saved_units.items()}
+    classify_conflicts(conflicts, unit_family, precedence_facts(documents, requirements))
+
+
+def reference_coverage(
+    documents: list[InputDocument], units: list[RequirementDraft], mentions: list[MentionDraft], from_other_customers: int | None = None
+) -> ReferenceCoverage:
+    """How the active mentions resolve (``coverage.references``)."""
+    docs = DocumentIndex(documents)
+    inputs = set(docs.family) | set(docs.by_family)
+    unit_doc = {u.requirement_id: u.document_id for u in units}
+    active = [m for m in mentions if m.active]
+    cov = ReferenceCoverage(mentions=len(active))
+    for m in active:
+        doc_id = m.document_id
+        target_family = document_family_id(m.canonical) if m.canonical else doc_id
+        if doc_id in inputs or target_family in inputs:
+            cov.to_input_documents += 1
+            own = unit_doc.get(m.requirement_id)
+            if own is not None and target_family in (docs.family_of(own), own):
+                cov.self_references += 1
+        cov.to_identified_documents += int(m.canonical is not None)
+        cov.name_only += int(m.canonical is None)
+        cov.with_location += int(m.location is not None)
+        cov.by_resolution[m.resolution.value] = cov.by_resolution.get(m.resolution.value, 0) + 1
+        kind = m.evidence.verification
+        cov.evidence_matches[kind] = cov.evidence_matches.get(kind, 0) + 1
+    cov.input_resolution_rate = round(cov.to_input_documents / cov.mentions, 4) if cov.mentions else None
+    cov.from_other_customer_blocks = from_other_customers
+    return cov
 
 
 def _coverage(
@@ -233,6 +316,8 @@ def _coverage(
     n_conflicts: int,
     limitations: list[CoverageLimitation],
     fatal: str | None,
+    references: ReferenceCoverage | None = None,
+    customer_scope: CustomerScopeCoverage | None = None,
 ) -> Coverage:
     processed = set(plan.processed_segment_ids) if plan else set()
     doc_cov = []
@@ -318,6 +403,8 @@ def _coverage(
     unresolved = sorted({i for r in referenced if r.canonical_identifier is None for i in r.raw_identifiers})
     return Coverage(
         documents=doc_cov,
+        references=references or ReferenceCoverage(),
+        customer_scope=customer_scope or CustomerScopeCoverage(),
         referenced_documents=ref_cov,
         unresolved_identifiers=unresolved,
         conflict_analysis=cc,
@@ -376,14 +463,24 @@ def assemble(state: dict, ctx) -> AnalysisResult:
     mentions: list[MentionDraft] = state.get("mentions", [])
     fatal = state.get("fatal")
 
-    reqs = requirement_records([r for r in requirements if r.unit_kind == "chapter"], mentions, ctx.strategy.name)
-    passages = passage_records([r for r in requirements if r.unit_kind == "passage"], mentions)
+    merges = list(state.get("merge_decisions", []))
+    if options.reference_merging.merge_spacing_variants:  # mentions added after the merge stage (graph audit)
+        mentions = [m.model_copy(deep=True) for m in mentions]
+        merges += merge_spacing_variants(mentions, documents)
+    applies_to, from_other_customers = mention_scope(requirements, mentions)
+    reqs = requirement_records([r for r in requirements if r.unit_kind == "chapter"], mentions, ctx.strategy.name, applies_to)
+    passages = passage_records([r for r in requirements if r.unit_kind == "passage"], mentions, applies_to)
     kinds = {r.requirement_id: r.unit_kind for r in requirements} | {u: "saved" for u in ctx.saved_units}
     referenced = referenced_document_records(mentions, documents)
+    documents = annotate_structure(
+        documents, requirements, mentions, mode=options.structure_links, names=ctx.sources.names, known=saved_documents(ctx.saved_graph)
+    )
     conflicts_preview = conflict_records(state.get("conflicts", []), kinds=kinds)
     graph = build_graph(documents, reqs, referenced, conflicts_preview, passages)
     edge_ids = {e.relationship_id for e in graph.edges}
     conflicts = conflict_records(state.get("conflicts", []), edge_ids, kinds)
+    if options.conflicts.precedence_classification:
+        classify_precedence(conflicts, documents, reqs, requirements, ctx)
     graph_report = validate_graph(graph)
 
     errors = [f"[{e.stage}] {e.message}" for e in state.get("errors", [])]
@@ -446,7 +543,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
             for c in state.get("conflict_candidates", [])
         ],
         graph_decisions=state.get("graph_decisions", []),
-        reference_merges=state.get("merge_decisions", []),
+        reference_merges=merges,
         input_fidelity=fidelity_report(state),
         saved_graph=ctx.saved_graph_info,
         llm_calls=list(ctx.recorder.calls),
@@ -473,6 +570,8 @@ def assemble(state: dict, ctx) -> AnalysisResult:
             len(conflicts),
             state.get("limitations", []),
             fatal,
+            reference_coverage(documents, requirements, mentions, from_other_customers if options.customer_scoping != "off" else None),
+            scope_coverage(requirements, ctx),
         ),
         metadata=metadata,
     )

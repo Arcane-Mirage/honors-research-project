@@ -14,7 +14,7 @@ Runtime decisions use conditional edges:
       -> units_as_requirements                               (one requirement per chapter / chunk)
       -> extract_references
       [-> verify_references <-> targeted_reextraction]      (verification.enabled)
-      [-> merge_references]                                 (reference_merging.method != deterministic)
+      [-> merge_references]                                 (method != deterministic or merge_spacing_variants)
       [-> build_graph -> graph_reference_audit]             (graph.enabled)
       [-> (build_graph) -> select_conflict_candidates -> analyze_conflicts]  (conflicts.enabled)
       [-> check_saved_conflicts]                            (graph.enabled and graph.saved_conflicts;
@@ -61,7 +61,7 @@ def build_staged_workflow(options: PipelineOptions):
     else:
         after_refs = "finalize"
 
-    if options.reference_merging.method != "deterministic":
+    if options.reference_merging.method != "deterministic" or options.reference_merging.merge_spacing_variants:
         g.add_node("merge_references", nodes.merge_references)
         g.add_edge("merge_references", after_refs)
         after_refs = "merge_references"

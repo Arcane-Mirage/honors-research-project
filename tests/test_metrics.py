@@ -4,10 +4,9 @@ Scoring: undefined ratios, a perfect gold oracle, reference and conflict matchin
 """
 
 import pytest
-from helpers import GoldOracleProvider, case_documents
+from helpers import GoldOracleProvider, case_documents, run_case
 
 from csr_lab.evaluation.metrics import aggregate, describe, evaluate_case, prf
-from csr_lab.pipelines.run import run_analysis
 from csr_lab.schemas import AnalysisResult
 
 
@@ -18,27 +17,23 @@ def test_prf_undefined_values():
     assert prf(0, 2, 2) == (0.0, 0.0, 0.0)
 
 
-@pytest.mark.parametrize("case_id", ["dev_corvane_production", "dev_corvane_packaging", "heldout_tessaly_battery"])
-def test_gold_oracle_scores_perfectly(dataset, config, case_id):
-    """Feeding gold answers through the real pipeline must score 1.0 everywhere."""
-    _, docs, gold = case_documents(dataset, case_id)
-    result = run_analysis(docs, strategy="single_pass", config=config, provider=GoldOracleProvider(gold))
-    ev = evaluate_case(result, gold)
-    # Every gold requirement is found; informational chapters (scope) are extra units, not errors here.
-    assert ev.requirements.recall == 1.0 and ev.units.gold_coverage == 1.0
-    assert ev.requirements.chapter_accuracy == 1.0 and ev.requirements.verbatim_exact_rate == 1.0
-    assert ev.requirements.location_accuracy == 1.0
-    named = sum(1 for g in gold.requirements for r in g.references if r.resolution == "name_alias")
-    assert ev.references.fn == named, ev.references.false_negatives  # name aliases need graph resolution
-    assert ev.references.fp == named
-    assert ev.conflicts.f1 == 1.0 and ev.conflicts.evidence_validity_rate == 1.0
-    assert ev.graph.structurally_valid
-
-
 def _base(dataset, config):
-    _, docs, gold = case_documents(dataset, "dev_corvane_production")
-    result = run_analysis(docs, strategy="single_pass", config=config, provider=GoldOracleProvider(gold))
-    return result, gold
+    _, _, gold = case_documents(dataset)
+    return run_case(dataset, "single_pass", config, provider=GoldOracleProvider(gold))
+
+
+def test_gold_oracle_scores_perfectly(dataset, config):
+    """Gold answers fed through the real pipeline, as an experiment runs the case (documents.yaml,
+    the dataset's reader), must score 1.0 on every metric."""
+    result, gold = _base(dataset, config)
+    ev = evaluate_case(result, gold, customer="Global Motors")
+    assert (ev.requirements.precision, ev.requirements.recall, ev.requirements.verbatim_exact_rate, ev.requirements.location_accuracy) == (1, 1, 1, 1)
+    assert (ev.references.precision, ev.references.recall, ev.references.relation_accuracy, ev.references.location_accuracy) == (1, 1, 1, 1), ev.references.errors
+    assert ev.references.errors["unresolved_alias"] == 0  # name-only documents resolve through documents.yaml
+    assert ev.references.out_of_scope_gold > 0  # references for Brennic/Ostra exist and are not expected
+    assert ev.graph.chapter_link_f1 == 1.0
+    assert ev.conflicts.f1 == 1.0 and ev.conflicts.evidence_validity_rate == 1.0 and ev.conflicts.precedence_accuracy == 1.0
+    assert ev.graph.structurally_valid
 
 
 def test_reference_on_wrong_requirement_is_an_error(dataset, config):
@@ -52,7 +47,7 @@ def test_reference_on_wrong_requirement_is_an_error(dataset, config):
     src["referenced_document_ids"] = list(dict.fromkeys(m["document_id"] for m in src["reference_mentions"]))
     dst["reference_mentions"].append(moved)
     dst["referenced_document_ids"] = [moved["document_id"]]
-    ev = evaluate_case(AnalysisResult.model_validate(data), gold)
+    ev = evaluate_case(AnalysisResult.model_validate(data), gold, customer="Global Motors")
     assert ev.references.fp == 1 and ev.references.fn == 1
     assert ev.references.complete_set_correct == len(gold.requirements) - 2
 
@@ -75,8 +70,12 @@ def test_hard_negatives_and_aggregation(dataset, config):
     result, gold = _base(dataset, config)
     data = result.model_dump(mode="json")
     a, b = gold.non_conflicting_pairs[0].requirement_ids
-    ids = {r["chapter"]: r["requirement_id"] for r in data["requirements"]}
-    a_id, b_id = ids[a.split("#")[1]], ids[b.split("#")[1]]
+
+    def predicted(gold_id: str) -> str:  # 'HVG-CVS-20#1.1' -> the requirement of that document and chapter
+        doc, chapter = gold_id.split("#")
+        return next(r["requirement_id"] for r in data["requirements"] if r["chapter"] == chapter and r["source_document_id"].startswith(f"DOC-{doc}"))
+
+    a_id, b_id = predicted(a), predicted(b)
     extra = dict(data["potential_conflicts"][0])
     extra.update({"conflict_id": "CON-extra", "related_requirement_ids": [a_id, b_id], "related_relationship_ids": []})
     data["potential_conflicts"].append(extra)

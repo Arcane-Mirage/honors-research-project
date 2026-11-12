@@ -13,7 +13,10 @@ referenced document:
 * ``shared_reference:<doc>``     both requirements reference the same document;
 * ``relation_statement:<rule>``  an exclusion or precedence statement links them;
 * ``linked_documents:<a>-><b>``  their documents reference each other and the
-  texts share technical vocabulary.
+  texts share technical vocabulary;
+* ``aligned_chapter:<chapter>``  a delta-document chapter and the base chapter it amends;
+* ``chapter_reference:<chapter>`` a requirement and the chapter it names ("CVS10, Chapter 4.6")
+  (both with ``graph.structure_candidates``).
 
 Every selected pair records which selectors chose it, so candidate recall can
 be analysed per selector.
@@ -33,7 +36,7 @@ from csr_lab.relationships.queries import (
     requirements_in_linked_documents,
     requirements_sharing_references,
 )
-from csr_lab.schemas import GraphDecision
+from csr_lab.schemas import GraphDecision, RelationshipType
 
 _STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "by", "be", "is", "are", "shall", "must", "not", "no", "any", "all", "each", "this", "that", "these", "those", "as", "at", "from", "per", "its", "it", "which", "when", "where", "than", "then", "into", "under", "over", "such", "other", "only", "also", "may", "can", "will", "been", "being", "has", "have", "had", "their", "there", "was", "were", "within", "before", "after", "least", "more", "most", "less", "according", "accordance", "document", "supplier", "suppliers", "requirement", "requirements"}
 _UNIT_RE = re.compile(r"°C|°F|\bmm\b|\bkg\b|%|µg|\bhours?\b|\bdays?\b|\byears?\b|\bminutes?\b|\blux\b")
@@ -70,7 +73,7 @@ def select_candidates(
 ) -> tuple[list[CandidatePair], int, list[str], list[GraphDecision]]:
     """Return (candidates, total possible pairs, notes, graph decisions)."""
     ids = [r.requirement_id for r in requirements]
-    texts = {r.requirement_id: r.text for r in requirements}
+    texts = {r.requirement_id: r.prompt_text for r in requirements}
     by_id = {r.requirement_id: r for r in requirements}
     pairs = [(a, b) for a, b in combinations(ids, 2) if comparable(by_id[a], by_id[b])]  # never two passages of one document
     total = len(pairs)
@@ -111,6 +114,16 @@ def select_candidates(
             a, b = flag.requirement_ids
             if a in known and b in known:
                 graph_pairs.setdefault(ordered_pair(a, b), []).append(f"relation_statement:{flag.rule}")
+        if graph_settings.structure_candidates:
+            for e in graph.edges:
+                if e.relationship_type == RelationshipType.AMENDS:
+                    selector = f"aligned_chapter:{e.metadata.get('chapter')}"
+                elif e.relationship_type == RelationshipType.REFERENCES_CHAPTER:
+                    selector = f"chapter_reference:{e.metadata.get('chapter')}"
+                else:
+                    continue
+                if e.source_node_id in known and e.target_node_id in known:
+                    graph_pairs.setdefault(ordered_pair(e.source_node_id, e.target_node_id), []).append(selector)
         for a, b, doc_a, doc_b in requirements_in_linked_documents(graph):
             if a in known and b in known and attribute_score(texts[a], texts[b]) >= settings.attribute_min_score / 2:
                 graph_pairs.setdefault(ordered_pair(a, b), []).append(f"linked_documents:{doc_a}->{doc_b}")

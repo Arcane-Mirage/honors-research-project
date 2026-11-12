@@ -1,56 +1,44 @@
 {
   "name": "synthetic_csr",
-  "version": "1.1.0",
-  "description": "Fictional CSR-like documents with hand-specified gold annotations.",
+  "version": "2.0.0",
+  "description": "Fictional CSRs shaped like real ones (a delta document on a name-only base agreement, customer labels, stated precedence).",
   "generator": "csr_lab.datasets.synthetic",
+  "reader": {
+    "system_prompt": {
+      "enabled": true,
+      "supplier": "the supplier",
+      "customer": "Global Motors",
+      "customer_aliases": [
+        "Global",
+        "Global Motors LLC"
+      ],
+      "ambiguous_aliases": [
+        "Global"
+      ],
+      "other_customers": "skip",
+      "other_customers_names": {
+        "Brennic": [
+          "Brennic Trucks"
+        ],
+        "Ostra": [
+          "Ostra AB"
+        ]
+      }
+    },
+    "evaluation": {
+      "customer": "Global Motors"
+    }
+  },
   "cases": [
     {
-      "case_id": "dev_corvane_production",
-      "split": "dev",
-      "description": "Single production-part CSR: simple, multiple, table, revision, distractor and section-like references; three internal conflicts.",
-      "documents": [
-        "documents/dev_corvane_production/cvm_csr_100.txt"
-      ],
-      "ground_truth": "ground_truth/dev_corvane_production.json"
-    },
-    {
-      "case_id": "dev_corvane_packaging",
-      "split": "dev",
-      "description": "Two provided documents: a logistics CSR and the packaging specification it references; exclusion, precedence, name aliases and cross-document conflicts.",
-      "documents": [
-        "documents/dev_corvane_packaging/cvm_csr_200.txt",
-        "documents/dev_corvane_packaging/cvm_pkg_210.txt"
-      ],
-      "ground_truth": "ground_truth/dev_corvane_packaging.json"
-    },
-    {
-      "case_id": "heldout_tessaly_electronics",
+      "case_id": "heldout_halvard_delta",
       "split": "heldout",
-      "description": "ECU CSR with prefixed chapter labels (TSA 2.1), long requirements, similar identifiers, revision variants and spacing aliases.",
+      "description": "Real-CSR-shaped: a name-only base agreement and a delta standard that follows its chapter structure (pointer chapters), stated precedence, customer-labelled paragraphs, chapter-qualified references, contents pages.",
       "documents": [
-        "documents/heldout_tessaly_electronics/tsa_csr_300.txt"
+        "documents/heldout_halvard_delta/hvg_cvs_20.txt",
+        "documents/heldout_halvard_delta/halvard_q_agreement.txt"
       ],
-      "ground_truth": "ground_truth/heldout_tessaly_electronics.json"
-    },
-    {
-      "case_id": "heldout_tessaly_battery",
-      "split": "heldout",
-      "description": "Three provided documents (CSR, approval procedure, material specification) with nested references, mutual precedence, an exclusion contradicted downstream and cross-document conflicts.",
-      "documents": [
-        "documents/heldout_tessaly_battery/tsa_csr_400.txt",
-        "documents/heldout_tessaly_battery/tsa_ppap_410.txt",
-        "documents/heldout_tessaly_battery/tsa_mat_420.txt"
-      ],
-      "ground_truth": "ground_truth/heldout_tessaly_battery.json"
-    },
-    {
-      "case_id": "heldout_corvane_interior",
-      "split": "heldout",
-      "description": "Interior trim CSR with supersession, dense similar identifiers, distractor tokens, unavailable external documents and non-conflicting overlaps.",
-      "documents": [
-        "documents/heldout_corvane_interior/cvm_csr_500.txt"
-      ],
-      "ground_truth": "ground_truth/heldout_corvane_interior.json"
+      "ground_truth": "ground_truth/heldout_halvard_delta.json"
     }
   ]
 }

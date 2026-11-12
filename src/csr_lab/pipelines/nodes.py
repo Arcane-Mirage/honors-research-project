@@ -34,18 +34,20 @@ from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineE
 from csr_lab.extraction.fidelity import WordIndex
 from csr_lab.extraction.graph_audit import known_document_candidates, resolve_aliases
 from csr_lab.extraction.grounding import TextIndex
-from csr_lab.extraction.merging import hybrid_merge, llm_merge
+from csr_lab.extraction.merging import hybrid_merge, llm_merge, merge_spacing_variants
 from csr_lab.extraction.references import MentionCounter, extract_references, mentions_from_model
 from csr_lab.extraction.requirements import UnitText, ground_requirements
 from csr_lab.extraction.verification import targeted_reextraction, verify_pass
 from csr_lab.ids import document_family_id
 from csr_lab.ingestion.chapters import split_chapters
 from csr_lab.ingestion.chunking import plan_chunks
+from csr_lab.ingestion.segmentation import CustomerMatcher, find_blocks, hide_other_customers
 from csr_lab.ingestion.units import model_chunks, segments_from_chunks
 from csr_lab.pipelines.assembly import assemble, provisional_graph
 from csr_lab.pipelines.base import PipelineContext
 from csr_lab.pipelines.state import PipelineState
 from csr_lab.prompts import baseline as baseline_prompt
+from csr_lab.relationships.builder import annotate_structure, saved_documents
 from csr_lab.relationships.store import with_saved_documents
 from csr_lab.schemas import ConflictType, CoverageLimitation, GraphDecision, MentionStatus, VerificationEvent
 
@@ -185,7 +187,7 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
                     "document_id": req.document_id,
                     "identifier": docs[req.document_id].canonical_identifier,
                     "chapter": req.chapter,
-                    "text": req.text,
+                    "text": req.prompt_text,
                     "context_only": context_only,
                 }
             )
@@ -243,6 +245,7 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
             )
     for d in drafts:
         d.reference_status = "unverified" if d.requirement_id in answered else "failed"
+    merges = merge_spacing_variants(mentions, state["documents"]) if ctx.options.reference_merging.merge_spacing_variants else []
 
     # Implicit candidates: every pair of requirements that shared a prompt.
     candidates: dict[tuple[str, str], CandidatePair] = {}
@@ -260,6 +263,7 @@ def single_pass_extract(state: PipelineState, runtime: Runtime[PipelineContext])
         "mentions": mentions,
         "initial_mentions": [m.model_copy(deep=True) for m in mentions],
         "mention_seq": counter.value,
+        "merge_decisions": merges,
         "conflicts": merge_conflicts(conflicts),
         "conflict_candidates": list(candidates.values()),
         "conflict_stats": {
@@ -290,7 +294,27 @@ def _units_as_requirements(state: PipelineState, ctx: PipelineContext):
         if seg.is_candidate and seg.segment_id in owner
     ]
     chunk_docs = {c.chunk_id: c.document_ids for c in plan.chunks}
-    return ground_requirements(units, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
+    drafts, warnings = ground_requirements(units, sources=ctx.sources, segments=state["segments"], chunk_documents=chunk_docs)
+    apply_customer_scoping(drafts, state["segments"], ctx)
+    return drafts, warnings
+
+
+def apply_customer_scoping(drafts: list[RequirementDraft], segments, ctx: PipelineContext) -> None:
+    """Find customer-labelled blocks (tag), and hide other customers' blocks from the model (filter).
+
+    Only units whose text is an exact source slice are scoped (block offsets must be real)."""
+    mode = ctx.options.customer_scoping
+    matcher = CustomerMatcher.from_settings(ctx.config.system_prompt) if mode != "off" else None
+    if matcher is None:
+        return
+    titles = {s.segment_id: s.title for s in segments}
+    for d in drafts:
+        if d.start_offset is None or d.match != "exact":
+            continue
+        d.title = titles.get(d.segment_ids[0]) if d.segment_ids else None
+        d.scope_blocks = find_blocks(d.text, d.start_offset, matcher, d.title)
+        if mode == "filter" and any(not b.applies_to_target for b in d.scope_blocks):
+            d.model_text = hide_other_customers(d.text, d.start_offset, d.scope_blocks)
 
 
 @timed("units_as_requirements")
@@ -306,15 +330,21 @@ def units_as_requirements(state: PipelineState, runtime: Runtime[PipelineContext
 
 @timed("merge_references")
 def merge_references(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
-    """LLM: merge reference labels that denote the same document (method llm or hybrid)."""
+    """Merge reference labels that denote the same document: spacing variants (deterministic),
+    then the model-based method (LLM: method llm or hybrid)."""
     ctx = runtime.context
-    method = ctx.options.reference_merging.method
+    settings = ctx.options.reference_merging
     mentions = _copy_mentions(state)
-    if method == "llm":
-        decisions, errs = llm_merge(ctx, mentions)
-    else:
+    decisions, errs = [], []
+    if settings.merge_spacing_variants:
+        decisions += merge_spacing_variants(mentions, state["documents"])
+    if settings.method == "llm":
+        more, errs = llm_merge(ctx, mentions)
+        decisions += more
+    elif settings.method == "hybrid":
         texts = {r.requirement_id: r.text for r in state["requirements"]}
-        decisions, errs = hybrid_merge(ctx, mentions, state["documents"], texts)
+        more, errs = hybrid_merge(ctx, mentions, state["documents"], texts)
+        decisions += more
     return {
         "mentions": mentions,
         "merge_decisions": decisions,
@@ -418,7 +448,9 @@ def targeted_reextraction_node(state: PipelineState, runtime: Runtime[PipelineCo
 
 def _working_graph(state: PipelineState, ctx: PipelineContext, mentions: list) -> Any:
     """Graph of the current predictions, plus saved-graph documents when the run has them."""
-    graph = provisional_graph(state["documents"], state["requirements"], mentions)
+    graph = provisional_graph(
+        state["documents"], state["requirements"], mentions, structure_mode=ctx.options.structure_links, names=ctx.sources.names
+    )
     return with_saved_documents(graph, ctx.saved_graph)
 
 
@@ -594,6 +626,10 @@ def check_saved_conflicts(state: PipelineState, runtime: Runtime[PipelineContext
             if m.canonical:
                 refs.add(document_family_id(m.canonical))
     units = state["requirements"]
+    follows = {}
+    if ctx.options.structure_links != "off":  # a delta document added after its base agreement
+        annotated = annotate_structure(documents, units, state.get("mentions", []), mode=ctx.options.structure_links, names=ctx.sources.names, known=saved_documents(ctx.saved_graph))
+        follows = {d.document_id: document_family_id(d.follows_structure_of) for d in annotated if d.follows_structure_of}
     candidates, notes = saved_graph_candidates(
         units,
         unit_refs,
@@ -602,13 +638,14 @@ def check_saved_conflicts(state: PipelineState, runtime: Runtime[PipelineContext
         min_score=gs.saved_min_score,
         max_fanout=gs.max_shared_reference_fanout,
         families=families,
+        follows=follows,
     )
     stats = dict(state.get("conflict_stats", {}))
     stats["saved_graph_units"] = len(saved)
     stats["saved_graph_pairs"] = len(candidates)
     decision = GraphDecision(
         decision_type="saved_graph_conflict_check",
-        detail=f"{len(candidates)} pairs of new and saved units (linked by references) out of {len(saved)} saved units",
+        detail=f"{len(candidates)} pairs of new and saved units (linked by references or aligned chapters) out of {len(saved)} saved units",
     )
     if not candidates:
         return {"conflict_stats": stats | {"notes": [*stats.get("notes", []), *notes]}, "graph_decisions": [decision]}

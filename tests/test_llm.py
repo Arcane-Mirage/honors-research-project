@@ -112,12 +112,12 @@ def test_mock_provider_is_seeded_and_uses_prompt_input():
     from csr_lab.config import MockSettings
     from csr_lab.llm.interface import GenerationRequest
 
-    payload = {"requirements": [{"requirement_id": "R1", "chapter": "1", "text": "The supplier shall follow CVM-QS-110 and DRW-045."}]}
+    payload = {"requirements": [{"requirement_id": "R1", "chapter": "1", "text": "The supplier shall follow HVG-QS-110 and DRW-045."}]}
     system, user = reference_prompt.SPEC.render(payload)
     request = GenerationRequest(messages=[{"role": "system", "content": system}, {"role": "user", "content": user}], task="reference_extraction", schema_name="x", json_schema=None, mode="json_schema")
     perfect = MockProvider(MockSettings(reference_miss_rate=0, hallucination_rate=0, quote_paraphrase_rate=0))
     refs = json.loads(perfect.generate(request).text)["results"][0]["references"]
-    assert [r["identifier"] for r in refs] == ["CVM-QS-110", "DRW-045"]
+    assert [r["identifier"] for r in refs] == ["HVG-QS-110", "DRW-045"]
     noisy = MockSettings(reference_miss_rate=0.5, hallucination_rate=0.5)
     assert MockProvider(noisy, run_seed=1).generate(request).text == MockProvider(noisy, run_seed=1).generate(request).text
 

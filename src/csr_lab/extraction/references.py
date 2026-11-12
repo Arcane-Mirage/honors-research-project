@@ -14,8 +14,8 @@ import re
 from typing import TYPE_CHECKING
 
 from csr_lab.drafts import MentionDraft, RequirementDraft
-from csr_lab.extraction.grounding import SourceIndex, build_evidence, collapse_ws
-from csr_lab.extraction.normalization import parse_identifier
+from csr_lab.extraction.grounding import SourceIndex, build_evidence, collapse_ws, phrase_pattern
+from csr_lab.extraction.normalization import canonical_input_identifier, normalize_location, parse_identifier
 from csr_lab.prompts import references as reference_prompt
 from csr_lab.prompts.references import ExtractedReference
 from csr_lab.schemas import DocumentType, MentionStatus, ReferenceRelation, ResolutionMethod
@@ -54,10 +54,15 @@ def mention_from_reference(
         return None
     parsed = parse_identifier(raw, revision_hint=ref.revision)
     name = None
-    if parsed.canonical is None:
+    canonical = parsed.canonical
+    resolution = ResolutionMethod.IDENTIFIER
+    if canonical is None:
         name = parsed.name  # name-only mention: the mention itself is the name
         if not name:
             return None
+        resolution = ResolutionMethod.UNRESOLVED_NAME
+        if sources.names and (hit := sources.names.resolve(name)):  # a name listed in documents.yaml
+            canonical, resolution = canonical_input_identifier(hit), ResolutionMethod.REGISTRY
     else:
         # A document name is kept only when it appears in the requirement text (never invented).
         for candidate in (ref.document_name, parsed.name):
@@ -78,14 +83,15 @@ def mention_from_reference(
         mention_id=counter.next(),
         requirement_id=requirement.requirement_id,
         raw_identifier=raw,
-        canonical=parsed.canonical,
+        canonical=canonical,
         revision=parsed.revision,
         name=name,
         document_type=doc_type or DocumentType.UNKNOWN,
         relation=ref.relation or ReferenceRelation.REFERENCES,
+        location=normalize_location(ref.location) or parsed.location,
         evidence=evidence,
         status=status,
-        resolution=ResolutionMethod.IDENTIFIER if parsed.canonical else ResolutionMethod.UNRESOLVED_NAME,
+        resolution=resolution,
     )
 
 
@@ -126,7 +132,7 @@ def extract_references(
     def run(batch: list[RequirementDraft]):
         payload = {
             "requirements": [
-                {"requirement_id": f"R{i}", "chapter": r.chapter, "text": r.text} for i, r in enumerate(batch, start=1)
+                {"requirement_id": f"R{i}", "chapter": r.chapter, "text": r.prompt_text} for i, r in enumerate(batch, start=1)
             ]
         }
         system, user = reference_prompt.SPEC.render(payload)
@@ -161,7 +167,7 @@ def extract_references(
 
 
 def identifier_pattern(canonical: str) -> re.Pattern[str]:
-    """Regex matching an identifier with flexible separators ('TSA-MP-215' ~ 'TSA MP 215')."""
+    """Regex matching an identifier with flexible separators ('MAN-239-1' ~ 'MAN 239 1')."""
     tokens = [t for t in canonical.split("-") if t]
     sep = r"[\s\-‐-―_]*"
     return re.compile(r"(?<![A-Za-z0-9])" + sep.join(re.escape(t) for t in tokens) + r"(?![A-Za-z0-9])", re.IGNORECASE)
@@ -174,7 +180,7 @@ def find_mention_span(mention: MentionDraft, text: str) -> tuple[int, int] | Non
             return m.start(), m.end()
         return None
     if mention.name:
-        pattern = r"\s+".join(re.escape(w) for w in mention.name.split())
+        pattern = phrase_pattern(mention.name)
         if m := re.search(pattern, text, re.IGNORECASE):
             return m.start(), m.end()
     return None

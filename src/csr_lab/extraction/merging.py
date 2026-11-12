@@ -5,7 +5,7 @@ Reference merging: decide which extracted reference labels denote the same docum
 Three methods (``PipelineOptions.reference_merging.method``):
 
 * ``deterministic``: nothing here runs; identifiers are only normalised
-  (``normalization.parse_identifier``), so "Specification CVM-QS-110" and "CVM-QS-110"
+  (``normalization.parse_identifier``), so "Specification CVS168" and "CVS168"
   already share a key, but a document *name* is never linked to an identifier.
 * ``llm``: one model call per bundle sees only the list of reference labels and returns
   groups with a canonical name; the grouping is applied as given. This mirrors the
@@ -16,6 +16,12 @@ Three methods (``PipelineOptions.reference_merging.method``):
   (b) near-duplicate identifiers ("QP-012" / "QP-12"), only when ``protect_identifiers`` is off.
   The model answers one targeted question per candidate; guard rules veto merges
   across different explicit revisions (``protect_revisions``).
+
+Before any of these, ``merge_spacing_variants`` (every strategy, ``merge_spacing_variants: true``)
+merges identifiers that differ only by spaces ("CVS 10" / "CVS10", "IATF 16949" / "IATF16949"):
+their ``compact`` forms (``normalization.ParsedIdentifier``) are equal. A real hyphen or a
+leading zero is never ignored ("MAN 239-1" / "MAN-2391", "QP-012" / "QP-12" stay apart). When an
+input document has one of the spellings, its spelling wins; otherwise the most frequent one.
 
 Every decision is returned as a ``ReferenceMergeDecision``.
 """
@@ -33,7 +39,7 @@ from csr_lab.schemas import InputDocument, ReferenceMergeDecision, ResolutionMet
 if TYPE_CHECKING:
     from csr_lab.pipelines.base import PipelineContext
 
-_STOP = {"the", "of", "and", "for", "a", "an", "to", "in", "on", "corvane", "tessaly"}
+_STOP = {"the", "of", "and", "for", "a", "an", "to", "in", "on"}
 
 
 def mention_label(m: MentionDraft) -> str:
@@ -52,15 +58,17 @@ def _content_words(text: str) -> set[str]:
 
 
 def _dedupe_per_requirement(mentions: list[MentionDraft]) -> None:
-    seen: set[tuple[str, str]] = set()
+    seen: dict[tuple[str, str], MentionDraft] = {}
     for m in mentions:
         if not m.active:
             continue
         key = (m.requirement_id, m.key)
         if key in seen:
+            seen[key].absorb(m)
             m.active = False
             m.inactive_reason = "duplicate after reference merging"
-        seen.add(key)
+            continue
+        seen[key] = m
 
 
 def _apply(m: MentionDraft, canonical: str | None, revision: str | None, name: str | None) -> bool:
@@ -71,6 +79,44 @@ def _apply(m: MentionDraft, canonical: str | None, revision: str | None, name: s
         m.resolution = ResolutionMethod.MERGED
         return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# spacing variants (deterministic, every strategy)
+# ---------------------------------------------------------------------------
+
+
+def merge_spacing_variants(mentions: list[MentionDraft], documents: list[InputDocument]) -> list[ReferenceMergeDecision]:
+    """Rename identifiers that differ only by spaces to one spelling. Idempotent."""
+    groups: dict[str, dict[str, list[MentionDraft]]] = {}
+    for m in mentions:
+        if not m.active or not m.canonical:
+            continue
+        compact = parse_identifier(m.raw_identifier).compact
+        if compact:
+            groups.setdefault(compact, {}).setdefault(m.canonical, []).append(m)
+    provided = {}
+    for d in documents:
+        if d.canonical_identifier and (compact := parse_identifier(d.canonical_identifier).compact):
+            provided.setdefault(compact, d.canonical_identifier)
+    decisions: list[ReferenceMergeDecision] = []
+    for compact, by_canon in sorted(groups.items()):
+        spellings = set(by_canon) | ({provided[compact]} if compact in provided else set())
+        if len(spellings) < 2:
+            continue
+        target = provided.get(compact) or min(by_canon, key=lambda c: (-len(by_canon[c]), c))
+        changed, members = [], []
+        for canon, ms in sorted(by_canon.items()):
+            if canon == target:
+                continue
+            members.append(mention_label(ms[0]))
+            changed += [m.mention_id for m in ms if _apply(m, target, m.revision, m.name)]
+        if changed:
+            reason = "identifiers differ only by spaces" + ("; the input document's spelling is kept" if compact in provided else "")
+            decisions.append(ReferenceMergeDecision(method="spacing", members=members, canonical=target, applied=True, reason=reason, mention_ids=changed))
+    if decisions:
+        _dedupe_per_requirement(mentions)
+    return decisions
 
 
 # ---------------------------------------------------------------------------
@@ -139,9 +185,10 @@ def _known_documents(mentions: list[MentionDraft], documents: list[InputDocument
 
     for d in documents:
         if d.canonical_identifier:
-            add(d.canonical_identifier, None, d.title)  # the document (any revision) ...
-            if d.revision:
-                add(d.canonical_identifier, d.revision, d.title)  # ... and the provided revision
+            for name in [d.title, *d.aliases]:
+                add(d.canonical_identifier, None, name)  # the document (any revision) ...
+                if d.revision:
+                    add(d.canonical_identifier, d.revision, name)  # ... and the provided revision
     for m in mentions:
         if m.active and m.canonical:
             add(m.canonical, None, m.name)

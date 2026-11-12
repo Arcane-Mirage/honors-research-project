@@ -17,7 +17,7 @@ class ExtractedReference(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     identifier: str = Field(
-        description="Document identifier exactly as written (e.g. 'CVM-QS-110', 'ES 4.12'). "
+        description="Document identifier exactly as written (e.g. 'CVS10', 'IATF 16949'). "
         "If the document is named without an identifier, its name as written."
     )
     revision: str | None = Field(default=None, description="Revision stated next to the reference, else null.")
@@ -26,6 +26,11 @@ class ExtractedReference(BaseModel):
     )
     document_type: DocumentType | None = None
     relation: ReferenceRelation = ReferenceRelation.REFERENCES
+    location: str | None = Field(
+        default=None,
+        description="Chapter, section or clause of the referenced document if the text names one "
+        "(e.g. '4.6' for 'CVS10, Chapter 4.6'), else null.",
+    )
     quoted_text: str = Field(description="Short verbatim excerpt of the requirement containing the reference.")
 
 
@@ -44,7 +49,7 @@ class ReferenceExtractionResponse(BaseModel):
 
 SPEC = PromptSpec(
     name="reference_extraction",
-    version="references.v2",
+    version="references.v3",
     system=(
         "You extract document references from customer-specific requirements (CSR) for automotive "
         "supplier quality engineering.\n\n" + COMMON_RULES

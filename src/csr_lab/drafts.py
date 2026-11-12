@@ -17,6 +17,7 @@ from csr_lab.extraction.normalization import reference_key
 from csr_lab.ids import document_node_id
 from csr_lab.schemas import (
     ConflictType,
+    CustomerBlock,
     DocumentType,
     Evidence,
     MentionStatus,
@@ -47,6 +48,14 @@ class RequirementDraft(BaseModel):
         description="chapter: a requirement; passage: part of a document without chapters (no requirement); "
         "saved: a unit from the saved graph, used only for conflict checks.",
     )
+    title: str | None = None
+    scope_blocks: list[CustomerBlock] = Field(default_factory=list, description="customer-labelled blocks (customer_scoping)")
+    model_text: str | None = Field(default=None, description="text shown to the model when it differs from `text` (customer_scoping: filter)")
+
+    @property
+    def prompt_text(self) -> str:
+        """What the model is shown: ``text``, or ``model_text`` with other customers' blocks hidden."""
+        return self.model_text if self.model_text is not None else self.text
 
     @property
     def span(self) -> tuple[int, int] | None:
@@ -64,6 +73,7 @@ class MentionDraft(BaseModel):
     name: str | None = None
     document_type: DocumentType = DocumentType.UNKNOWN
     relation: ReferenceRelation = ReferenceRelation.REFERENCES
+    location: str | None = None  # chapter / section of the referenced document, when stated
     evidence: Evidence
     status: MentionStatus = MentionStatus.FOUND_INITIALLY
     resolution: ResolutionMethod = ResolutionMethod.IDENTIFIER
@@ -78,6 +88,14 @@ class MentionDraft(BaseModel):
     @property
     def document_id(self) -> str:
         return document_node_id(self.canonical, self.revision, self.name)
+
+    def absorb(self, duplicate: MentionDraft) -> None:
+        """Keep what a duplicate mention of the same document adds: a qualified relation
+        ('... this standard takes precedence') and a chapter location."""
+        if self.relation == ReferenceRelation.REFERENCES and duplicate.relation != ReferenceRelation.REFERENCES:
+            self.relation = duplicate.relation
+        if self.location is None and duplicate.location is not None:
+            self.location = duplicate.location
 
 
 class ConflictDraft(BaseModel):

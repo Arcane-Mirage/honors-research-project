@@ -1,0 +1,76 @@
+HALVARD VEHICLE GROUP
+Halvard Customer Requirements
+Document ID: HVG-CVS-20
+Revision: 2025-04
+Effective Date: 2025-04-01
+All names, companies and document identifiers in this document are fictional.
+
+Contents
+Scope ....................................................... 1
+0 General provisions ........................................ 1
+1 Request and offer ......................................... 1
+1.1 Offer prerequisites ..................................... 1
+1.2 Records ................................................. 2
+2 Approval .................................................. 2
+2.1 Part approval ........................................... 2
+2.2 Initial samples ......................................... 2
+3 Change management ......................................... 3
+3.1 Change notification ..................................... 3
+3.2 Field observation ....................................... 3
+3.3 Brennic ................................................. 3
+4 Labels .................................................... 4
+4.1 Label size .............................................. 4
+4.2 Label layout ............................................ 4
+
+Scope
+This standard follows the chapter structure of the Halvard Q Agreement and contains the
+requirements of Brennic, Ostra and Global Motors.
+Where this standard and the Halvard Q Agreement contradict each other, this standard takes
+precedence.
+
+0 General provisions
+In addition to the Halvard Q Agreement, the supplier shall comply with IATF 16949 throughout
+its global supply chain.
+Global: Unless exempted in writing, the supplier shall comply with the Global Motors
+Supplier Warranty Requirements GLB-SWR-001.
+Ostra: The supplier shall comply with the Ostra purchasing standard OST-STD-3868.
+Brennic: The Brennic purchasing conditions BRN-PC-001 apply in addition.
+
+1 Request and offer
+1.1 Offer prerequisites
+See Halvard Q Agreement. No additional requirements.
+
+1.2 Records
+Quality records shall be destroyed no later than 10 years after the end of series
+production.
+
+2 Approval
+2.1 Part approval
+See Halvard Q Agreement. No additional requirements.
+
+2.2 Initial samples
+Initial samples shall be delivered at least 20 working days before the planned start of
+production, and samples of new parts shall follow the Halvard Neuteil Program.
+Ostra: Sample reports for Ostra shall be uploaded according to the Ostra portal procedure
+OST-PR-410.
+
+3 Change management
+3.1 Change notification
+Process changes shall be handled in accordance with HVG-CVS-31, chapter 4.2.
+Global: The supplier shall also inform the Global supplier quality representative of every
+process change.
+
+3.2 Field observation
+See Halvard Q Agreement. No additional requirements.
+
+3.3 Brennic
+Field failures shall be reported to Brennic within 24 hours according to BRN-FF-120.
+
+4 Labels
+4.1 Label size
+Container labels shall be printed with a minimum barcode height of 25 mm.
+
+4.2 Label layout
+Labels shall follow the Halvard Q Agreement, chapter 2.3 and shall have a barcode height of
+no more than 20 mm.
+

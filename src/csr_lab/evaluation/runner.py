@@ -35,9 +35,8 @@ from csr_lab.datasets.loader import Case, load_dataset
 from csr_lab.evaluation.metrics import CaseEvaluation, aggregate, describe, evaluate_case, flatten_case
 from csr_lab.evaluation.reporting import write_reports
 from csr_lab.ids import stable_hash
-from csr_lab.ingestion.loader import load_bundle, processing_load_options
 from csr_lab.pipelines.registry import get_strategy
-from csr_lab.pipelines.run import run_analysis
+from csr_lab.pipelines.run import load_inputs, run_analysis
 from csr_lab.prompts import prompt_versions
 from csr_lab.schemas import AnalysisResult, InputDocument
 from csr_lab.storage.database import ExperimentStore
@@ -105,8 +104,11 @@ class ExperimentOutcome:
     case_runs: list[CaseRun] = field(default_factory=list)
 
 
-def validate_cases(cases: list[Case], config: AppConfig) -> tuple[dict[str, list[InputDocument]], list[str]]:
-    """Load every case's documents and gold once, before any model call."""
+def validate_cases(cases: list[Case], config: AppConfig, registries: dict | None = None) -> tuple[dict[str, list[InputDocument]], list[str]]:
+    """Load every case's documents and gold once, before any model call.
+
+    ``registries`` (filled in when given): case ID -> the case's ``documents.yaml`` registry.
+    """
     documents: dict[str, list[InputDocument]] = {}
     problems: list[str] = []
     for case in cases:
@@ -114,7 +116,9 @@ def validate_cases(cases: list[Case], config: AppConfig) -> tuple[dict[str, list
         if missing:
             problems.append(f"{case.case_id}: missing documents {missing}")
             continue
-        docs = load_bundle(list(case.document_paths), **processing_load_options(config.processing))
+        docs, registry = load_inputs(list(case.document_paths), config)
+        if registries is not None:
+            registries[case.case_id] = registry
         documents[case.case_id] = docs
         gold = case.load_gold()
         if gold is None:
@@ -141,7 +145,8 @@ def run_experiment(
     if not cases:
         raise ValueError(f"dataset {dataset.name} has no cases for split={experiment.split!r}")
     strategies = [get_strategy(name) for name in experiment.strategies]
-    documents, problems = validate_cases(cases, config)
+    registries: dict[str, Any] = {}
+    documents, problems = validate_cases(cases, config, registries)
     fatal = [p for p in problems if "missing documents" in p or "do not match gold" in p or "no ground truth" in p]
     if fatal:
         raise ValueError("dataset validation failed:\n  " + "\n  ".join(fatal))
@@ -211,6 +216,7 @@ def run_experiment(
                         run_seed=seed,
                         saved_graph=saved if use_saved else None,
                         saved_graph_path=saved_info.get("path") if use_saved else None,
+                        registry=registries.get(case.case_id),
                     )
                     status = result.status
                     if result.status == "failed":
@@ -219,7 +225,7 @@ def run_experiment(
                     status = "error"
                     error = f"{type(exc).__name__}: {exc}\n{traceback.format_exc(limit=8)}"
                 evaluation = evaluate_case(
-                    result if status != "error" else None, gold[case.case_id], threshold=threshold, status=status, saved_units=saved_texts  # type: ignore[arg-type]
+                    result if status != "error" else None, gold[case.case_id], threshold=threshold, status=status, saved_units=saved_texts, customer=config.evaluation.customer  # type: ignore[arg-type]
                 )
                 output_path = None
                 if result is not None:

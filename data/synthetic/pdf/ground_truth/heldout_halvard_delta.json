@@ -1,0 +1,619 @@
+{
+  "schema_version": "0.2.0",
+  "dataset_name": "synthetic_csr",
+  "dataset_version": "2.0.0",
+  "case_id": "heldout_halvard_delta",
+  "split": "heldout",
+  "description": "Real-CSR-shaped: a name-only base agreement and a delta standard that follows its chapter structure (pointer chapters), stated precedence, customer-labelled paragraphs, chapter-qualified references, contents pages.",
+  "documents": [
+    {
+      "document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "canonical_identifier": "HVG-CVS-20",
+      "filename": "hvg_cvs_20.pdf",
+      "title": "Halvard Customer Requirements",
+      "revision": "2025-04"
+    },
+    {
+      "document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "canonical_identifier": "HALVARD-Q-AGREEMENT",
+      "filename": "halvard_q_agreement.pdf",
+      "title": "Halvard Q Agreement",
+      "revision": null
+    }
+  ],
+  "graph_documents": [],
+  "requirements": [
+    {
+      "gold_id": "HVG-CVS-20#Scope",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "Scope",
+      "requirement_text": "This standard follows the chapter structure of the Halvard Q Agreement and contains the\nrequirements of Brennic, Ostra and Global Motors.\nWhere this standard and the Halvard Q Agreement contradict each other, this standard takes\nprecedence.",
+      "start_offset": 1228,
+      "end_offset": 1468,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "takes_precedence_over",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "structure_statement",
+        "precedence"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#0",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "0",
+      "requirement_text": "In addition to the Halvard Q Agreement, the supplier shall comply with IATF 16949 throughout\nits global supply chain.\nGlobal: Unless exempted in writing, the supplier shall comply with the Global Motors\nSupplier Warranty Requirements GLB-SWR-001.\nOstra: The supplier shall comply with the Ostra purchasing standard OST-STD-3868.\nBrennic: The Brennic purchasing conditions BRN-PC-001 apply in addition.",
+      "start_offset": 1491,
+      "end_offset": 1892,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "references",
+          "resolution": "name_alias"
+        },
+        {
+          "canonical_identifier": "IATF-16949",
+          "revision": null,
+          "mention_text": "IATF 16949",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "GLB-SWR-001",
+          "revision": null,
+          "mention_text": "GLB-SWR-001",
+          "relation": "references",
+          "resolution": "identifier",
+          "applies_to": [
+            "Global Motors"
+          ]
+        },
+        {
+          "canonical_identifier": "OST-STD-3868",
+          "revision": null,
+          "mention_text": "OST-STD-3868",
+          "relation": "references",
+          "resolution": "identifier",
+          "applies_to": [
+            "Ostra"
+          ]
+        },
+        {
+          "canonical_identifier": "BRN-PC-001",
+          "revision": null,
+          "mention_text": "BRN-PC-001",
+          "relation": "references",
+          "resolution": "identifier",
+          "applies_to": [
+            "Brennic"
+          ]
+        }
+      ],
+      "tags": [
+        "customer_labels",
+        "ambiguous_customer_word"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#1.1",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "1.1",
+      "requirement_text": "See Halvard Q Agreement. No additional requirements.",
+      "start_offset": 1938,
+      "end_offset": 1990,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "references",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "pointer_chapter"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#1.2",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "1.2",
+      "requirement_text": "Quality records shall be destroyed no later than 10 years after the end of series\nproduction.",
+      "start_offset": 2069,
+      "end_offset": 2162,
+      "references": [],
+      "tags": [
+        "conflict",
+        "amends"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#2.1",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "2.1",
+      "requirement_text": "See Halvard Q Agreement. No additional requirements.",
+      "start_offset": 1938,
+      "end_offset": 1990,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "references",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "pointer_chapter"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#2.2",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "2.2",
+      "requirement_text": "Initial samples shall be delivered at least 20 working days before the planned start of\nproduction, and samples of new parts shall follow the Halvard Neuteil Program.\nOstra: Sample reports for Ostra shall be uploaded according to the Ostra portal procedure\nOST-PR-410.",
+      "start_offset": 2267,
+      "end_offset": 2535,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-NEW-PARTS-PROGRAM",
+          "revision": null,
+          "mention_text": "Halvard Neuteil Program",
+          "relation": "references",
+          "resolution": "name_alias"
+        },
+        {
+          "canonical_identifier": "OST-PR-410",
+          "revision": null,
+          "mention_text": "OST-PR-410",
+          "relation": "references",
+          "resolution": "identifier",
+          "applies_to": [
+            "Ostra"
+          ]
+        }
+      ],
+      "tags": [
+        "conflict",
+        "amends",
+        "alias_of_registry_document",
+        "customer_labels"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#3.1",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "3.1",
+      "requirement_text": "Process changes shall be handled in accordance with HVG-CVS-31, chapter 4.2.\nGlobal: The supplier shall also inform the Global supplier quality representative of every\nprocess change.",
+      "start_offset": 2581,
+      "end_offset": 2764,
+      "references": [
+        {
+          "canonical_identifier": "HVG-CVS-31",
+          "revision": null,
+          "mention_text": "HVG-CVS-31",
+          "relation": "references",
+          "resolution": "identifier",
+          "location": "4.2"
+        }
+      ],
+      "tags": [
+        "chapter_reference",
+        "missing_external",
+        "customer_labels"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#3.2",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "3.2",
+      "requirement_text": "See Halvard Q Agreement. No additional requirements.",
+      "start_offset": 1938,
+      "end_offset": 1990,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "references",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "pointer_chapter"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#3.3",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "3.3",
+      "requirement_text": "Field failures shall be reported to Brennic within 24 hours according to BRN-FF-120.",
+      "start_offset": 2854,
+      "end_offset": 2938,
+      "references": [
+        {
+          "canonical_identifier": "BRN-FF-120",
+          "revision": null,
+          "mention_text": "BRN-FF-120",
+          "relation": "references",
+          "resolution": "identifier",
+          "applies_to": [
+            "Brennic"
+          ]
+        }
+      ],
+      "tags": [
+        "customer_chapter"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#4.1",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "4.1",
+      "requirement_text": "Container labels shall be printed with a minimum barcode height of 25 mm.",
+      "start_offset": 2964,
+      "end_offset": 3037,
+      "references": [],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "HVG-CVS-20#4.2",
+      "source_document_id": "DOC-HVG-CVS-20-REV-2025-04",
+      "chapter": "4.2",
+      "requirement_text": "Labels shall follow the Halvard Q Agreement, chapter 2.3 and shall have a barcode height of\nno more than 20 mm.",
+      "start_offset": 3056,
+      "end_offset": 3167,
+      "references": [
+        {
+          "canonical_identifier": "HALVARD-Q-AGREEMENT",
+          "revision": null,
+          "mention_text": "Halvard Q Agreement",
+          "relation": "references",
+          "resolution": "name_alias",
+          "location": "2.3"
+        }
+      ],
+      "tags": [
+        "conflict",
+        "chapter_reference"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#0",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "0",
+      "requirement_text": "The supplier shall comply with ISO 9001 and shall apply the Halvard New Parts Program to\nevery new part.",
+      "start_offset": 978,
+      "end_offset": 1082,
+      "references": [
+        {
+          "canonical_identifier": "ISO-9001",
+          "revision": null,
+          "mention_text": "ISO 9001",
+          "relation": "references",
+          "resolution": "identifier"
+        },
+        {
+          "canonical_identifier": "HALVARD-NEW-PARTS-PROGRAM",
+          "revision": null,
+          "mention_text": "Halvard New Parts Program",
+          "relation": "references",
+          "resolution": "name_alias"
+        }
+      ],
+      "tags": [
+        "name_only_reference",
+        "registry_only_document"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#1.1",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "1.1",
+      "requirement_text": "The supplier shall submit a complete offer that covers all documents listed in the request.",
+      "start_offset": 1128,
+      "end_offset": 1219,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#1.2",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "1.2",
+      "requirement_text": "The supplier shall retain quality records for a minimum of 15 years after the end of series\nproduction.",
+      "start_offset": 1233,
+      "end_offset": 1336,
+      "references": [],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#2.1",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "2.1",
+      "requirement_text": "Part approval shall be requested according to the Part Approval Manual HVG-PA-100 before the\nfirst delivery.",
+      "start_offset": 1367,
+      "end_offset": 1475,
+      "references": [
+        {
+          "canonical_identifier": "HVG-PA-100",
+          "revision": null,
+          "mention_text": "HVG-PA-100",
+          "relation": "references",
+          "resolution": "identifier"
+        }
+      ],
+      "tags": [
+        "simple"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#2.2",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "2.2",
+      "requirement_text": "Initial samples shall be delivered no earlier than 10 working days before the planned start\nof production.",
+      "start_offset": 1497,
+      "end_offset": 1603,
+      "references": [],
+      "tags": [
+        "conflict"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#2.3",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "2.3",
+      "requirement_text": "Part labels shall show the part number and the date of manufacture.",
+      "start_offset": 1621,
+      "end_offset": 1688,
+      "references": [],
+      "tags": [
+        "no_reference",
+        "chapter_target"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#3.1",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "3.1",
+      "requirement_text": "The supplier shall notify the customer in writing at least 30 days before any change to a\nmanufacturing process.",
+      "start_offset": 1768,
+      "end_offset": 1880,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    },
+    {
+      "gold_id": "HALVARD-Q-AGREEMENT#3.2",
+      "source_document_id": "DOC-HALVARD-Q-AGREEMENT",
+      "chapter": "3.2",
+      "requirement_text": "The supplier shall observe the field performance of its products and report field failures\nto the customer.",
+      "start_offset": 1904,
+      "end_offset": 2011,
+      "references": [],
+      "tags": [
+        "no_reference"
+      ]
+    }
+  ],
+  "referenced_documents": [
+    {
+      "canonical_identifier": "BRN-FF-120",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "BRN-PC-001",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "GLB-SWR-001",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "HALVARD-NEW-PARTS-PROGRAM",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "HALVARD-Q-AGREEMENT",
+      "revision": null,
+      "content_available": true,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "HVG-CVS-31",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "HVG-PA-100",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "IATF-16949",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "ISO-9001",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "OST-PR-410",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    },
+    {
+      "canonical_identifier": "OST-STD-3868",
+      "revision": null,
+      "content_available": false,
+      "document_type": "unknown"
+    }
+  ],
+  "conflicts": [
+    {
+      "gold_conflict_id": "heldout_halvard_delta-C01",
+      "requirement_ids": [
+        "HVG-CVS-20#1.2",
+        "HALVARD-Q-AGREEMENT#1.2"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "HVG-CVS-20#1.2",
+          "quoted_text": "destroyed no later than 10 years after the end of series production"
+        },
+        {
+          "requirement_id": "HALVARD-Q-AGREEMENT#1.2",
+          "quoted_text": "retain quality records for a minimum of 15 years"
+        }
+      ],
+      "note": "the delta chapter changes the base chapter; the delta standard takes precedence",
+      "precedence": "resolved_by_precedence",
+      "prevailing_document_id": "DOC-HVG-CVS-20"
+    },
+    {
+      "gold_conflict_id": "heldout_halvard_delta-C02",
+      "requirement_ids": [
+        "HVG-CVS-20#2.2",
+        "HALVARD-Q-AGREEMENT#2.2"
+      ],
+      "conflict_type": "timing_incompatibility",
+      "category": "conflict",
+      "cross_document": true,
+      "evidence": [
+        {
+          "requirement_id": "HVG-CVS-20#2.2",
+          "quoted_text": "delivered at least 20 working days before the planned start of production"
+        },
+        {
+          "requirement_id": "HALVARD-Q-AGREEMENT#2.2",
+          "quoted_text": "delivered no earlier than 10 working days before the planned start of production"
+        }
+      ],
+      "note": "",
+      "precedence": "resolved_by_precedence",
+      "prevailing_document_id": "DOC-HVG-CVS-20"
+    },
+    {
+      "gold_conflict_id": "heldout_halvard_delta-C03",
+      "requirement_ids": [
+        "HVG-CVS-20#4.1",
+        "HVG-CVS-20#4.2"
+      ],
+      "conflict_type": "numeric_incompatibility",
+      "category": "conflict",
+      "cross_document": false,
+      "evidence": [
+        {
+          "requirement_id": "HVG-CVS-20#4.1",
+          "quoted_text": "minimum barcode height of 25 mm"
+        },
+        {
+          "requirement_id": "HVG-CVS-20#4.2",
+          "quoted_text": "barcode height of no more than 20 mm"
+        }
+      ],
+      "note": "inside one document: precedence does not decide it",
+      "precedence": "unresolved"
+    }
+  ],
+  "non_conflicting_pairs": [
+    {
+      "requirement_ids": [
+        "HVG-CVS-20#1.1",
+        "HALVARD-Q-AGREEMENT#1.1"
+      ],
+      "note": "the delta chapter adopts the base chapter unchanged"
+    },
+    {
+      "requirement_ids": [
+        "HVG-CVS-20#3.1",
+        "HALVARD-Q-AGREEMENT#3.1"
+      ],
+      "note": "names another procedure; no contradictory obligation"
+    },
+    {
+      "requirement_ids": [
+        "HVG-CVS-20#0",
+        "HALVARD-Q-AGREEMENT#0"
+      ],
+      "note": "IATF 16949 is required in addition to ISO 9001"
+    }
+  ],
+  "chapter_links": [
+    {
+      "source": "HVG-CVS-20#0",
+      "target": "HALVARD-Q-AGREEMENT#0",
+      "kind": "amends"
+    },
+    {
+      "source": "HVG-CVS-20#1.1",
+      "target": "HALVARD-Q-AGREEMENT#1.1",
+      "kind": "inherits_from"
+    },
+    {
+      "source": "HVG-CVS-20#1.2",
+      "target": "HALVARD-Q-AGREEMENT#1.2",
+      "kind": "amends"
+    },
+    {
+      "source": "HVG-CVS-20#2.1",
+      "target": "HALVARD-Q-AGREEMENT#2.1",
+      "kind": "inherits_from"
+    },
+    {
+      "source": "HVG-CVS-20#2.2",
+      "target": "HALVARD-Q-AGREEMENT#2.2",
+      "kind": "amends"
+    },
+    {
+      "source": "HVG-CVS-20#3.1",
+      "target": "HALVARD-Q-AGREEMENT#3.1",
+      "kind": "amends"
+    },
+    {
+      "source": "HVG-CVS-20#3.2",
+      "target": "HALVARD-Q-AGREEMENT#3.2",
+      "kind": "inherits_from"
+    },
+    {
+      "source": "HVG-CVS-20#4.2",
+      "target": "HALVARD-Q-AGREEMENT#2.3",
+      "kind": "references_chapter"
+    }
+  ],
+  "notes": [
+    "PDF rendering: offsets are re-anchored to the extracted text when scoring"
+  ]
+}

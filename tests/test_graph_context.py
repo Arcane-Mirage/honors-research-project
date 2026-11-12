@@ -6,7 +6,7 @@ Graph context formats for the conflict prompt (graph.context_format).
 import json
 
 import pytest
-from helpers import ScriptedProvider, case_documents
+from helpers import ScriptedProvider
 
 from csr_lab.conflicts.detector import CONTEXT_FORMATS, graph_context_for_pair
 from csr_lab.llm.mock_provider import MockProvider
@@ -16,12 +16,12 @@ from csr_lab.relationships.builder import graph_from_result
 
 
 @pytest.fixture
-def packaging(dataset, config):
-    _, docs, _ = case_documents(dataset, "dev_corvane_packaging")
+def packaging(rules_docs, config):
+    docs = rules_docs
     result = run_analysis(docs, strategy="graph_assisted", config=config)
     graph = graph_from_result(result)
     by_chapter = {(r.source_document_id, r.chapter): r.requirement_id for r in result.requirements}
-    pair = (by_chapter[("DOC-CVM-CSR-200-REV-A", "1.3")], by_chapter[("DOC-CVM-PKG-210-REV-D", "2.1")])
+    pair = (by_chapter[("DOC-HVG-CSR-200-REV-A", "1.3")], by_chapter[("DOC-HVG-PKG-210-REV-D", "2.1")])
     return graph, pair
 
 
@@ -32,7 +32,7 @@ def test_every_format_uses_a_b_labels_except_ids_for_other_requirements(packagin
         text = json.dumps(out[fmt])
         assert "REQ-" not in text, fmt  # no raw requirement IDs left for the model to decode
     assert any("REQ-" in item for item in out["ids"])  # the original rendering keeps them
-    assert out["sentences"][0] == "Requirement A states that document CVM-PKG-050 does not apply (content not provided)."
+    assert out["sentences"][0] == "Requirement A states that document HVG-PKG-050 does not apply (content not provided)."
     assert all(isinstance(item, dict) for item in out["json"])
     assert all(item.count(" | ") == 3 for item in out["triples"])
 
@@ -41,8 +41,8 @@ def test_redundant_reference_is_collapsed_but_not_in_ids(packaging):
     graph, pair = packaging
     sentences = graph_context_for_pair(graph, pair, 6, "sentences")
     ids = graph_context_for_pair(graph, pair, 6, "ids")
-    assert not any(s.startswith("Requirement A refers to document CVM-PKG-050") for s in sentences)
-    assert "A references CVM-PKG-050 (not provided)" in ids
+    assert not any(s.startswith("Requirement A refers to document HVG-PKG-050") for s in sentences)
+    assert "A references HVG-PKG-050 (not provided)" in ids
 
 
 def test_context_is_deterministic_and_capped(packaging):
@@ -54,8 +54,8 @@ def test_context_is_deterministic_and_capped(packaging):
 
 
 @pytest.mark.parametrize("fmt", ["sentences", "json", "ids"])
-def test_prompt_receives_the_chosen_format(dataset, config, fmt):
-    _, docs, _ = case_documents(dataset, "dev_corvane_packaging")
+def test_prompt_receives_the_chosen_format(rules_docs, config, fmt):
+    docs = rules_docs
     mock = MockProvider(config.llm.mock)
     seen = []
 

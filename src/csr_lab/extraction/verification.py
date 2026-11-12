@@ -123,7 +123,7 @@ def verify_pass(
         )
 
     for req in requirements:
-        text = req.text
+        text = req.prompt_text
         seen: dict[str, MentionDraft] = {}
         req_mentions = sorted(by_req.get(req.requirement_id, []), key=lambda x: (not x.verified, x.mention_id))
         for m in req_mentions:
@@ -142,6 +142,7 @@ def verify_pass(
                 event(req.requirement_id, m, m.raw_identifier, "rejected", reason)
                 continue
             if m.key in seen:
+                seen[m.key].absorb(m)
                 m.active, m.inactive_reason = False, f"duplicate of {seen[m.key].mention_id}"
                 event(req.requirement_id, m, m.raw_identifier, "merged_duplicate", m.inactive_reason)
                 continue
@@ -249,14 +250,14 @@ def targeted_reextraction(
             m.raw_identifier for m in mentions if m.requirement_id == req_id and m.active and m.mention_id not in {c.mention_id for c in cands}
         ]
         payload = {
-            "requirement": {"requirement_id": req_id, "chapter": req.chapter, "text": req.text},
+            "requirement": {"requirement_id": req_id, "chapter": req.chapter, "text": req.prompt_text},
             "current_references": current,
             "candidates": [
                 {
                     "candidate_id": c.candidate_id,
                     "text": c.text,
                     "kind": c.kind,
-                    "context": _sentence_around(req.text, c.start, c.end),
+                    "context": _sentence_around(req.prompt_text, c.start, c.end),
                 }
                 for c in cands
             ],
@@ -308,7 +309,7 @@ def targeted_reextraction(
                     revision=decision.revision,
                     document_name=decision.document_name,
                     relation=decision.relation,
-                    quoted_text=decision.quoted_text or _sentence_around(req.text, cand.start, cand.end),
+                    quoted_text=decision.quoted_text or _sentence_around(req.prompt_text, cand.start, cand.end),
                 )
                 mention = mention_from_reference(ref, req, sources=ctx.sources, counter=counter, status=added_status)
                 if mention is not None:

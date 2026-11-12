@@ -1,0 +1,50 @@
+{
+  "name": "synthetic_csr_noisy",
+  "version": "2.0.0",
+  "description": "synthetic_csr with PDF extraction artifacts (rate 0.08, seed 0).",
+  "generator": "csr_lab.datasets.variants",
+  "reader": {
+    "system_prompt": {
+      "enabled": true,
+      "supplier": "the supplier",
+      "customer": "Global Motors",
+      "customer_aliases": [
+        "Global",
+        "Global Motors LLC"
+      ],
+      "ambiguous_aliases": [
+        "Global"
+      ],
+      "other_customers": "skip",
+      "other_customers_names": {
+        "Brennic": [
+          "Brennic Trucks"
+        ],
+        "Ostra": [
+          "Ostra AB"
+        ]
+      }
+    },
+    "evaluation": {
+      "customer": "Global Motors"
+    }
+  },
+  "source": "synthetic_csr",
+  "source_version": "2.0.0",
+  "noise": {
+    "rate": 0.08,
+    "seed": 0
+  },
+  "cases": [
+    {
+      "case_id": "heldout_halvard_delta",
+      "split": "heldout",
+      "description": "Real-CSR-shaped: a name-only base agreement and a delta standard that follows its chapter structure (pointer chapters), stated precedence, customer-labelled paragraphs, chapter-qualified references, contents pages. (PDF noise)",
+      "documents": [
+        "documents/heldout_halvard_delta/hvg_cvs_20.txt",
+        "documents/heldout_halvard_delta/halvard_q_agreement.txt"
+      ],
+      "ground_truth": "ground_truth/heldout_halvard_delta.json"
+    }
+  ]
+}

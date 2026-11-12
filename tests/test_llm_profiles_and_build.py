@@ -28,7 +28,7 @@ from csr_lab.relationships.queries import to_mermaid
 from csr_lab.relationships.render import to_llm_markdown
 from csr_lab.relationships.store import GraphStore
 
-SECOND_DOC = SIMPLE_DOC.replace("CVM-CSR-900", "CVM-CSR-901").replace("Test Requirements", "Other Requirements")
+SECOND_DOC = SIMPLE_DOC.replace("HVG-CSR-900", "HVG-CSR-901").replace("Test Requirements", "Other Requirements")
 
 
 # -- profiles ----------------------------------------------------------------------
@@ -80,7 +80,7 @@ def test_llms_command_lists_and_sets_default(tmp_path, capsys):
 
 
 def test_experiment_cli_accepts_llm(tmp_path):
-    args = ["experiment", "dev", "--llm", "mock", "--quiet", "--output-dir", str(tmp_path), "--db", str(tmp_path / "e.sqlite")]
+    args = ["experiment", "main", "--llm", "mock", "--quiet", "--output-dir", str(tmp_path), "--db", str(tmp_path / "e.sqlite")]
     assert main(args) == 0
     summary = json.loads(next(tmp_path.glob("*/summary.json")).read_text(encoding="utf-8"))
     assert "mock" in json.dumps(summary)
@@ -201,7 +201,7 @@ def test_build_graph_read_only_leaves_graph_untouched(input_dir, tmp_path, confi
     graph = tmp_path / "g.json"
     build_graph(input_dir, config=config, strategy="graph_assisted", graph_path=graph, group="all", output_root=tmp_path / "out")
     before = graph.read_bytes()
-    (input_dir / "new.pdf").write_bytes(make_pdf([SIMPLE_DOC.replace("CVM-CSR-900", "CVM-CSR-902").splitlines()]))
+    (input_dir / "new.pdf").write_bytes(make_pdf([SIMPLE_DOC.replace("HVG-CSR-900", "HVG-CSR-902").splitlines()]))
     outcome = build_graph(input_dir, config=config, strategy="graph_assisted", graph_path=graph, update=False, group="file", output_root=tmp_path / "out")
     assert graph.read_bytes() == before
     assert any(r["status"] == "completed" and "nodes_added" not in r for r in outcome.rows)
@@ -236,9 +236,9 @@ def test_llm_markdown_and_overview(simple_docs, config):
     result = run_analysis(simple_docs, strategy="graph_assisted", config=config)
     graph = graph_from_result(result)
     text = to_llm_markdown(graph)
-    assert "**CVM-CSR-900" in text and "CVM-QS-110" in text
-    assert "refers to CVM-QS-110" in text
-    assert "states that CVM-PKG-050 does not apply" in text
+    assert "**HVG-CSR-900" in text and "HVG-QS-110" in text
+    assert "refers to HVG-QS-110" in text
+    assert "states that HVG-PKG-050 does not apply" in text
     assert "## Potential conflicts" in text and "105 °C" in text
     req_id = next(r.requirement_id for r in result.requirements if r.referenced_document_ids)
     assert req_id not in text and req_id in to_llm_markdown(graph, include_ids=True)

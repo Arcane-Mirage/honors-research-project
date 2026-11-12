@@ -17,6 +17,12 @@ Where the chapter list comes from:
    are not in the contents ('3.3.3.1 ...') stay inside their parent chapter, so
    numbered list items such as '1. TRATON Customer Requirements CVS10' never cut a
    chapter. The contents pages themselves are not analysed.
+   An entry whose heading is worded differently in the body ('0 General provisions' in the
+   contents, '0 General Regulations' in the text) is found by its number alone, or by its
+   title under another number (a contents typo: '3.1 Components ...' for '3.3.1 Components
+   ...'), with ``chapter_toc_fallback``. The search stops at the next entry that matches
+   normally, and every such match is noted. A heading printed as a bare number line followed
+   by its title line ('1' / 'Scope', as PyMuPDF extracts some PDFs) is matched too.
 2. **No usable contents**: every labelled line found by the paragraph segmenter
    (a numbered heading or a numbered paragraph) starts a chapter; unlabelled
    paragraphs stay in the chapter above them.
@@ -37,7 +43,7 @@ import re
 from dataclasses import dataclass
 
 from csr_lab.config import ChunkingSettings
-from csr_lab.ingestion.segmentation import MODAL_RE, Segment, page_range, segment_document
+from csr_lab.ingestion.segmentation import MODAL_RE, Segment, line_spans, page_range, segment_document
 from csr_lab.schemas import InputDocument
 
 # '1.1.4 Compliance with ... regulations......... 7', 'Scope ......... 4'
@@ -67,15 +73,9 @@ class _Start:
 
 def _norm(text: str) -> str:
     text = text.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
+    text = re.sub(r"(?<=\w)[-‐‑–](?=\w)", " ", text)  # 'Self-Declaration' == 'Self Declaration'
+    text = re.sub(r"(?<=\w)[-‐‑–]\s*$", "", text)  # a heading wrapped after 'Require-'
     return " ".join(text.split()).lower()
-
-
-def _lines(text: str) -> list[tuple[int, int, str]]:
-    out, pos = [], 0
-    for raw in text.split("\n"):
-        out.append((pos, pos + len(raw), raw))
-        pos += len(raw) + 1
-    return out
 
 
 def _parse_toc(lines: list[tuple[int, int, str]]) -> tuple[list[tuple[str | None, str]], tuple[int, int] | None]:
@@ -114,25 +114,78 @@ def _matches(content: str, label: str | None, title: str) -> bool:
     return line == _norm(title) or (line.startswith(want) and len(line) <= len(_norm(title)) + 3)
 
 
-def _starts_from_toc(text: str, lines, entries, toc_span) -> tuple[list[_Start], list[str]]:
+_HEADING_REST_RE = re.compile(r"^[A-Z(\"'„“]")
+_MAX_HEADING_WORDS = 14
+
+
+def _number_heading(content: str, label: str) -> bool:
+    """'0  General Regulations' for contents entry '0': the label, then a short capitalised title."""
+    m = _TOC_LABEL_RE.match(content.strip())
+    if not m or _norm(m.group("label")) != _norm(label):
+        return False
+    rest = m.group("title").strip()
+    return bool(_HEADING_REST_RE.match(rest)) and len(rest.split()) <= _MAX_HEADING_WORDS and not rest.endswith((".", ";", ","))
+
+
+def _title_heading(content: str, title: str) -> str | None:
+    """The body label when the line is '<another label> <title>' (a contents numbering typo)."""
+    m = _TOC_LABEL_RE.match(content.strip())
+    if m and _norm(m.group("title")) == _norm(title):
+        return m.group("label")
+    return None
+
+
+def _starts_from_toc(text: str, lines, entries, toc_span, fallback: bool = True) -> tuple[list[_Start], list[str]]:
     starts: list[_Start] = []
     notes: list[str] = []
+
+    def body_lines(lo: int, hi: int):
+        for j in range(lo, hi):
+            start, _end, content = lines[j]
+            if not (toc_span[0] <= start <= toc_span[1]) and content.strip():
+                yield j, content
+
+    def exact(entry, lo: int) -> int | None:
+        label, title = entry
+        return next((j for j, content in body_lines(lo, len(lines)) if _matches(content, label, title) or split_heading(j, label, title)), None)
+
+    def split_heading(j: int, label: str | None, title: str) -> bool:
+        """'1' on one line and 'Scope' on the next."""
+        if not label or _norm(lines[j][2]).rstrip(".") != _norm(label):
+            return False
+        k = next((k for k in range(j + 1, min(j + 3, len(lines))) if lines[k][2].strip()), None)
+        return k is not None and _matches(f"{label} {lines[k][2].strip()}", label, title)
+
+    def heading_end(j: int, label: str | None) -> int:
+        """Index of the heading's last line (the title line of a split heading)."""
+        if label and _norm(lines[j][2]).rstrip(".") == _norm(label):
+            return next((k for k in range(j + 1, min(j + 3, len(lines))) if lines[k][2].strip()), j)
+        return j
+
     i = 0
-    for label, title in entries:
-        found = None
-        for j in range(i, len(lines)):
-            start, end, content = lines[j]
-            if toc_span[0] <= start <= toc_span[1]:
-                continue
-            if content.strip() and _matches(content, label, title):
-                found = j
-                break
+    for k, (label, title) in enumerate(entries):
+        name = f"{(label + ' ') if label else ''}{title}"
+        found, body_label = exact((label, title), i), label
+        if found is None and fallback:
+            # Search only up to the next entry that matches normally, so the order is kept.
+            nxt = next((j for e in entries[k + 1 :] if (j := exact(e, i)) is not None), len(lines))
+            if label:
+                found = next((j for j, content in body_lines(i, nxt) if _number_heading(content, label)), None)
+                if found is not None:
+                    notes.append(f"contents entry '{name}' matched by its number only (body heading: '{lines[found][2].strip()}')")
+            if found is None:
+                hit = next(((j, lab) for j, content in body_lines(i, nxt) if (lab := _title_heading(content, title))), None)
+                if hit is not None:
+                    found, body_label = hit
+                    notes.append(f"contents entry '{name}' matched by its title under number {body_label} (contents numbering differs)")
         if found is None:
-            notes.append(f"contents entry '{(label + ' ') if label else ''}{title}' not found in the text; its text stays in the chapter before it")
+            notes.append(f"contents entry '{name}' not found in the text; its text stays in the chapter before it")
             continue
-        start, end, _ = lines[found]
-        starts.append(_Start(line_start=start, body_start=min(end + 1, len(text)), label=label, title=title))
-        i = found + 1
+        last = heading_end(found, label)
+        start = lines[found][0]
+        end = lines[last][1]
+        starts.append(_Start(line_start=start, body_start=min(end + 1, len(text)), label=body_label, title=title))
+        i = last + 1
     return starts, notes
 
 
@@ -152,14 +205,14 @@ def _starts_from_labels(doc: InputDocument) -> list[_Start]:
 def split_chapters(doc: InputDocument, settings: ChunkingSettings) -> tuple[list[Segment], list[str]]:
     """Segments for ``doc``, one per chapter, and notes on how the chapters were found."""
     text = doc.text or ""
-    lines = _lines(text)
+    lines = line_spans(text)
     notes: list[str] = []
     toc_span = None
     starts: list[_Start] = []
     if settings.chapter_use_toc:
         entries, toc_span = _parse_toc(lines)
         if entries:
-            starts, notes = _starts_from_toc(text, lines, entries, toc_span)
+            starts, notes = _starts_from_toc(text, lines, entries, toc_span, settings.chapter_toc_fallback)
             notes.insert(0, f"chapters from the table of contents: {len(starts)} of {len(entries)} entries found")
     if not starts:
         toc_span = None
@@ -256,7 +309,7 @@ def split_passages(doc: InputDocument, words: int) -> list[Segment]:
             if len(para.split()) <= words:
                 pieces.append((pos, end))
             else:
-                for start, line_end, content in _lines(para):
+                for start, line_end, content in line_spans(para):
                     if content.strip():
                         pieces.append((pos + start, pos + line_end))
         pos = m.end() if m else len(text)

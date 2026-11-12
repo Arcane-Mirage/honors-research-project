@@ -62,6 +62,9 @@ Definitions used in every task:
   "takes_precedence_over" when the text says the current document takes precedence over or
   governs the referenced one; "depends_on" when it must be used in conjunction with it;
   otherwise "references".
+- When the text points to a chapter, section or clause of the referenced document ("CVS10,
+  Chapter 4.6", "Chapter 3.3 of Formel Q konkret"), report the document as the identifier and
+  the chapter number as the location.
 - Every quoted_text value must be copied character for character from the input text.
 - Never invent identifiers, names, revisions or content of documents you were not given."""
 

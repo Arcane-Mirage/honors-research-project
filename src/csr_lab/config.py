@@ -10,6 +10,7 @@ strategy registry (``csr_lab.pipelines.registry``) defines named presets.
 from __future__ import annotations
 
 import copy
+import json
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -52,6 +53,11 @@ class MockSettings(_Settings):
     merge_confusion_rate: float = Field(default=0.3, ge=0, le=1, description="two similar identifiers merged as one document")
     merge_revision_drop_rate: float = Field(default=0.5, ge=0, le=1, description="revision variants merged under one name without the revision")
     merge_alias_miss_rate: float = Field(default=0.2, ge=0, le=1, description="a document name not linked to its identifier")
+    quote_cleanup_rate: float = Field(
+        default=0.8, ge=0, le=1,
+        description="quotes in which the mock repairs PDF artifacts as a real model does: a split-off letter "
+        "('s upplier' -> 'supplier') and line-end hyphenation ('require-\\nments' -> 'requirements')",
+    )
     seed: int = 0
 
 
@@ -139,6 +145,15 @@ class ProcessingSettings(_Settings):
         default=False, description="Remove header/footer lines that repeat at the top or bottom of many pages."
     )
     pdf_repeated_line_min_share: float = Field(default=0.5, gt=0, le=1, description="Share of pages a line must appear on to count as a header/footer.")
+    document_registry: bool = Field(
+        default=True,
+        description="read documents.yaml next to the input files (identifiers, titles, aliases; ingestion/loader.py)",
+    )
+    grounding_artifact_match: bool = Field(
+        default=True,
+        description="Quotes that differ from the source only by spaces and dashes ('s upplier', 'require-\\nments') "
+        "still count as found (match kind artifact_normalized). False: whitespace differences only.",
+    )
 
 
 class VerificationSettings(_Settings):
@@ -161,6 +176,9 @@ class ConflictSettings(_Settings):
     attribute_min_score: float = Field(default=0.12, ge=0)
     max_candidate_pairs: int = Field(default=400, ge=1)
     validate_evidence: bool = False
+    precedence_classification: bool = Field(
+        default=True, description="label each conflict resolved_by_precedence / mutual_precedence_claims / unresolved from stated precedence"
+    )
 
 
 class GraphSettings(_Settings):
@@ -173,6 +191,9 @@ class GraphSettings(_Settings):
     context_retrieval: bool = True
     applicability_rules: bool = True
     precedence_rules: bool = True
+    structure_candidates: bool = Field(
+        default=True, description="conflict candidates from amends edges (delta chapters) and references_chapter edges"
+    )
     related_document_hops: int = Field(default=1, ge=0)
     max_context_items: int = Field(default=6, ge=0)
     context_format: Literal["sentences", "triples", "json", "ids"] = Field(
@@ -205,6 +226,10 @@ class ChunkingSettings(_Settings):
 
     method: Literal["chapter", "llm"] = "chapter"
     chapter_use_toc: bool = Field(default=True, description="take the chapter list from the table of contents when there is one")
+    chapter_toc_fallback: bool = Field(
+        default=True,
+        description="a contents entry worded differently in the body is found by its number alone, or by its title under another number",
+    )
     chapter_max_depth: int = Field(default=0, ge=0, description="deepest heading level that starts a chapter (0 = every level); deeper headings stay in their parent")
     chapter_include_front_matter: bool = Field(default=False, description="analyse the text before the first chapter (cover page) as one more unit")
     chapter_min_count: int = Field(
@@ -229,6 +254,9 @@ class MergingSettings(_Settings):
     """
 
     method: Literal["deterministic", "llm", "hybrid"] = "deterministic"
+    merge_spacing_variants: bool = Field(
+        default=True, description="every method: merge identifiers that differ only by spaces ('CVS 10' / 'CVS10'); deterministic"
+    )
     protect_revisions: bool = Field(default=True, description="hybrid: never merge references with different explicit revisions")
     protect_identifiers: bool = Field(default=True, description="hybrid: never merge two different explicit identifiers")
     max_candidates_per_name: int = Field(default=5, ge=1)
@@ -236,12 +264,28 @@ class MergingSettings(_Settings):
 
 class PipelineOptions(_Settings):
     workflow: Literal["single_pass", "staged"] = "staged"
+    structure_links: Literal["off", "registry", "detect"] = Field(
+        default="detect",
+        description="delta documents (relationships/builder.py, 'Document structure'): off; registry (documents.yaml follows_structure_of only); "
+        "detect (also sentences such as 'follows the ... document structure')",
+    )
+    customer_scoping: Literal["off", "tag", "filter"] = Field(
+        default="tag",
+        description="customer-labelled blocks ('MAN: ...'): off; tag (record which customers each block and reference "
+        "applies to); filter (also hide blocks for other customers from the model). See ingestion/segmentation.py (Customer scoping).",
+    )
     reference_batch_size: int = Field(default=8, ge=1)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
     reference_merging: MergingSettings = Field(default_factory=MergingSettings)
     verification: VerificationSettings = Field(default_factory=VerificationSettings)
     conflicts: ConflictSettings = Field(default_factory=ConflictSettings)
     graph: GraphSettings = Field(default_factory=GraphSettings)
+
+    @field_validator("customer_scoping", "structure_links", mode="before")
+    @classmethod
+    def _yaml_off(cls, value: Any) -> Any:
+        """YAML reads an unquoted `off` as false."""
+        return "off" if value is False else value
 
 
 class GraphStoreSettings(_Settings):
@@ -270,6 +314,11 @@ class GraphStoreSettings(_Settings):
 class EvaluationSettings(_Settings):
     requirement_match_threshold: float = Field(default=0.75, ge=0, le=1)
     baseline_strategy: str = "single_pass"
+    customer: str | None = Field(
+        default=None,
+        description="Score from this customer's point of view: gold references in blocks labelled only for other customers "
+        "are not expected, and predicting them counts as an 'other_customer' error. None: every reference is expected.",
+    )
 
 
 class SystemPromptSettings(_Settings):
@@ -281,8 +330,8 @@ class SystemPromptSettings(_Settings):
       also ordinary words ('International'), which get an extra sentence.
     * ``other_customers``: ``skip`` or ``keep`` text that applies only to other customers.
 
-    Experiments start with it off (``ExperimentConfig.system_prompt``): the synthetic cases have
-    other customers. ``analyze`` and ``build-graph`` use these settings.
+    ``analyze`` and ``build-graph`` use these settings. Experiments use the dataset's own reader
+    instead (``reader`` in its manifest, see ``apply_experiment``).
     """
 
     enabled: bool = False
@@ -291,6 +340,11 @@ class SystemPromptSettings(_Settings):
     customer_aliases: list[str] = Field(default_factory=list)
     ambiguous_aliases: list[str] = Field(default_factory=list)
     other_customers: Literal["skip", "keep"] = "skip"
+    other_customers_names: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Other customers that share the standards, with their other names. Lines labelled only with them "
+        "('MAN: ...') are found by customer scoping (PipelineOptions.customer_scoping).",
+    )
 
 
 class AppConfig(_Settings):
@@ -309,7 +363,8 @@ class AppConfig(_Settings):
     database_path: str = "outputs/experiments.sqlite"
 
     def resolve_path(self, value: str) -> Path:
-        path = Path(value)
+        """A configured path: '~' is the home folder; relative paths are relative to the project."""
+        path = Path(value).expanduser()
         return path if path.is_absolute() else PROJECT_ROOT / path
 
 
@@ -333,8 +388,9 @@ class ExperimentConfig(_Settings):
     )
     processing: dict[str, Any] = Field(default_factory=dict)
     system_prompt: dict[str, Any] = Field(
-        default_factory=lambda: {"enabled": False},
-        description="Overrides of the extra system-prompt text. Off by default: the synthetic cases have other customers.",
+        default_factory=dict,
+        description="Overrides of the extra system-prompt text, on top of the dataset's `reader` (manifest.json). "
+        "A dataset without a reader starts with it off.",
     )
     evaluation: dict[str, Any] = Field(default_factory=dict)
     case_ids: list[str] | None = None
@@ -462,15 +518,38 @@ def load_experiment(name: str, path: str | Path | None = None) -> ExperimentConf
     return ExperimentConfig.model_validate({"name": name, **experiments[name]})
 
 
+def dataset_reader(dataset: str | Path) -> dict[str, Any]:
+    """The ``reader`` a dataset's manifest declares (who its documents are read for), or {}."""
+    path = Path(dataset)
+    path = path if path.is_absolute() else PROJECT_ROOT / path
+    path = path / "manifest.json" if path.is_dir() else path
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("reader") or {}
+    except (OSError, ValueError):
+        return {}  # a missing or unreadable manifest is reported when the dataset is loaded
+
+
 def apply_experiment(config: AppConfig, experiment: ExperimentConfig) -> AppConfig:
-    """Return a new AppConfig with the experiment's overrides applied (``profile:`` names expanded)."""
+    """Return a new AppConfig with the experiment's overrides applied (``profile:`` names expanded).
+
+    Who the documents are read for comes from the dataset (its manifest's ``reader``: system
+    prompt and ``evaluation.customer``), replacing the analysis settings in default.yaml; the
+    experiment's own ``system_prompt`` / ``evaluation`` entries go on top. A dataset without a
+    reader is analysed with the system prompt off.
+    """
+    reader = dataset_reader(experiment.dataset)
+    data = config.model_dump()
+    if reader.get("system_prompt"):
+        data["system_prompt"] = deep_merge(SystemPromptSettings().model_dump(), reader["system_prompt"])
+    else:
+        data["system_prompt"]["enabled"] = False
     merged = deep_merge(
-        config.model_dump(),
+        data,
         {
             "llm": expand_llm_block(experiment.llm),
             "system_prompt": experiment.system_prompt,
             "processing": experiment.processing,
-            "evaluation": experiment.evaluation,
+            "evaluation": deep_merge(reader.get("evaluation") or {}, experiment.evaluation),
         },
     )
     return AppConfig.model_validate(merged)

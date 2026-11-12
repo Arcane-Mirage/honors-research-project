@@ -28,7 +28,13 @@ from csr_lab.ids import document_family_id
 # 0.3.0: input fidelity report, reference-merge decisions, per-stage cost (all additive)
 # 0.4.0: one requirement per chapter; document_passages (documents without chapters);
 #        conflicts may involve passages and saved-graph units (additive)
-SCHEMA_VERSION = "0.4.0"
+# 0.5.0: real-document support (additive): input title_source/aliases/running_lines, identifier_source
+#        'registry', mention location, artifact_normalized evidence, coverage.references,
+#        customer scope, chapter alignment edges, conflict precedence status
+SCHEMA_VERSION = "0.5.0"
+# Gold 0.2.0 plus optional fields, written only when a case uses them (so older gold files are
+# unchanged): GoldReference.applies_to / location, GoldConflict.precedence / prevailing_document_id,
+# CaseGold.chapter_links.
 GOLD_SCHEMA_VERSION = "0.2.0"
 
 
@@ -77,6 +83,10 @@ class RelationshipType(StrEnum):
     EXPLICITLY_DEPENDS_ON = "explicitly_depends_on"
     EXPLICITLY_TAKES_PRECEDENCE_OVER = "explicitly_takes_precedence_over"
     POTENTIALLY_CONFLICTS_WITH = "potentially_conflicts_with"
+    # Document structure (relationships/builder.py):
+    AMENDS = "amends"  # delta-document chapter -> same-numbered chapter of the base document it changes
+    INHERITS_FROM = "inherits_from"  # delta-document chapter that only points to the base chapter (no own text)
+    REFERENCES_CHAPTER = "references_chapter"  # requirement -> the chapter a reference names ('CVS10, Chapter 4.6')
     # Revision tracking (derived from document headers, never from requirement text):
     HAS_REVISION = "has_revision"  # document -> one revision of it
     SUPERSEDED_BY = "superseded_by"  # older revision -> newer revision; older requirement -> its newer version
@@ -112,11 +122,13 @@ class ResolutionMethod(StrEnum):
     IDENTIFIER = "identifier"  # resolved from an explicit identifier in the text
     NAME_ALIAS = "name_alias"  # a document name resolved to a known identifier
     UNRESOLVED_NAME = "unresolved_name"  # a document name with no known identifier
+    REGISTRY = "registry"  # a document name listed in documents.yaml (title or alias of an identifier)
     MERGED = "merged"  # renamed by the reference-merging stage (see metadata.reference_merges)
 
 
 # How a piece of quoted text was located in the extracted source text.
-TextMatch = Literal["exact", "whitespace_normalized", "not_found", "not_checked"]
+# artifact_normalized: found only when whitespace and dashes are ignored (PDF extraction artifacts).
+TextMatch = Literal["exact", "whitespace_normalized", "artifact_normalized", "not_found", "not_checked"]
 
 
 # ---------------------------------------------------------------------------
@@ -192,9 +204,22 @@ class Evidence(_Model):
 class InputDocument(_Model):
     document_id: str
     canonical_identifier: str | None
-    identifier_source: Literal["header", "filename", "manifest"]
+    identifier_source: Literal["header", "filename", "manifest", "registry"]
     filename: str
     title: str | None = None
+    title_source: Literal["explicit", "header", "registry", "running_line"] | None = Field(
+        default=None, description="Where the title came from; running_line: a repeated page header/footer."
+    )
+    aliases: list[str] = Field(default_factory=list, description="Other names of the document (from documents.yaml).")
+    running_lines: list[str] = Field(
+        default_factory=list, description="PDF header/footer lines removed from the text (as first printed); kept as metadata."
+    )
+    follows_structure_of: str | None = Field(
+        default=None, description="Identifier of the document whose chapter numbering this one follows (a delta document)."
+    )
+    structure_source: Literal["registry", "text"] | None = None
+    structure_evidence: str | None = Field(default=None, description="The sentence that states the structure, when found in the text.")
+    takes_precedence_over: list[str] = Field(default_factory=list, description="Identifiers this document takes precedence over (documents.yaml).")
     revision: str | None = None
     effective_date: str | None = Field(default=None, description="As stated in the header; ISO dates are used to order revisions.")
     format: Literal["txt", "pdf", "json"]
@@ -214,6 +239,18 @@ class InputDocument(_Model):
 # ---------------------------------------------------------------------------
 
 
+class CustomerBlock(_Model):
+    """A part of a unit that applies only to the named customers (``ingestion/segmentation.py``, customer scoping).
+
+    Offsets are absolute offsets into the document text."""
+
+    start_offset: int
+    end_offset: int
+    customers: list[str]
+    label: str = Field(description="The label as printed ('Scania/Navistar') or the chapter title.")
+    applies_to_target: bool = Field(description="True when the customer the documents are read for is among the customers.")
+
+
 class ReferenceMention(_Model):
     """One occurrence of a document reference inside one requirement."""
 
@@ -221,6 +258,10 @@ class ReferenceMention(_Model):
     document_id: str
     raw_identifier: str
     relation: ReferenceRelation = ReferenceRelation.REFERENCES
+    location: str | None = Field(default=None, description="Chapter/section of the referenced document the text points to ('4.6').")
+    applies_to: list[str] = Field(
+        default_factory=list, description="Customers whose labelled block holds this reference; empty: unlabelled text (every customer)."
+    )
     evidence: Evidence
     status: MentionStatus
     resolution: ResolutionMethod
@@ -253,6 +294,9 @@ class Requirement(_Model):
     reference_mentions: list[ReferenceMention] = Field(default_factory=list)
     department: str | None = None
     department_status: Literal["deferred", "assigned"] = "deferred"
+    customer_scope: list[CustomerBlock] = Field(
+        default_factory=list, description="Labelled blocks of this chapter that apply only to some customers (customer_scoping tag/filter)."
+    )
     extraction_metadata: RequirementExtractionMetadata
 
     @model_validator(mode="after")
@@ -339,6 +383,12 @@ class PotentialConflict(_Model):
     assessment: Literal["apparent_incompatibility", "ambiguous"] = "apparent_incompatibility"
     detection_methods: list[str] = Field(default_factory=list)
     evidence_valid: bool | None = None
+    precedence_status: Literal["resolved_by_precedence", "mutual_precedence_claims", "unresolved", "not_assessed"] = Field(
+        default="not_assessed",
+        description="resolved_by_precedence: a stated precedence decides which text prevails (still for human review).",
+    )
+    prevailing_document_id: str | None = Field(default=None, description="With resolved_by_precedence: the document whose text prevails.")
+    precedence_basis: list[str] = Field(default_factory=list, description="The precedence statements used (documents.yaml or quoted text).")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -406,8 +456,38 @@ class ConflictCoverage(_Model):
     notes: list[str] = Field(default_factory=list)
 
 
+class ReferenceCoverage(_Model):
+    """How the result's references are resolved. Needs no gold, so it works on real documents."""
+
+    mentions: int = Field(0, description="Active reference mentions (requirements and passages).")
+    to_input_documents: int = Field(0, description="Mentions that resolve to a document of this analysis (or a revision of one).")
+    self_references: int = Field(0, description="... of which point at the mentioning unit's own document.")
+    input_resolution_rate: float | None = Field(None, description="to_input_documents / mentions.")
+    to_identified_documents: int = Field(0, description="Mentions with an identifier (not a bare name).")
+    name_only: int = Field(0, description="Mentions left as a bare name (no identifier could be resolved).")
+    with_location: int = Field(0, description="Mentions that name a chapter/section of the referenced document.")
+    by_resolution: dict[str, int] = Field(default_factory=dict, description="Mentions per ResolutionMethod.")
+    evidence_matches: dict[str, int] = Field(
+        default_factory=dict, description="Mention evidence per match kind (exact, whitespace_normalized, artifact_normalized, not_found ...)."
+    )
+    from_other_customer_blocks: int | None = Field(
+        None, description="Mentions inside blocks that apply only to other customers (None: customer scoping off)."
+    )
+
+
+class CustomerScopeCoverage(_Model):
+    mode: Literal["off", "tag", "filter"] = "off"
+    target: str | None = None
+    units_with_blocks: int = 0
+    blocks: int = 0
+    other_customer_blocks: int = 0
+    chars_hidden: int = Field(0, description="Characters of other-customer blocks the model did not see (filter mode).")
+
+
 class Coverage(_Model):
     documents: list[DocumentCoverage] = Field(default_factory=list)
+    references: ReferenceCoverage = Field(default_factory=ReferenceCoverage)
+    customer_scope: CustomerScopeCoverage = Field(default_factory=CustomerScopeCoverage)
     referenced_documents: list[ReferencedDocumentCoverage] = Field(default_factory=list)
     unresolved_identifiers: list[str] = Field(default_factory=list)
     conflict_analysis: ConflictCoverage
@@ -529,7 +609,7 @@ class GraphDecision(_Model):
 class ReferenceMergeDecision(_Model):
     """One grouping decision of the reference-merging stage."""
 
-    method: Literal["llm", "hybrid"]
+    method: Literal["llm", "hybrid", "spacing"]
     members: list[str] = Field(description="Reference labels (as extracted) the decision covers.")
     canonical: str = Field(description="Label the members were renamed to.")
     applied: bool
@@ -618,12 +698,23 @@ class AnalysisResult(_Model):
 # ---------------------------------------------------------------------------
 
 
+def _unset(value: Any) -> bool:
+    return value is None or value == []
+
+
 class GoldReference(_Model):
     canonical_identifier: str
     revision: str | None = None
     mention_text: str = Field(description="Exact substring of the requirement text that names the document.")
     relation: ReferenceRelation = ReferenceRelation.REFERENCES
     resolution: Literal["identifier", "name_alias"] = "identifier"
+    applies_to: list[str] = Field(
+        default_factory=list,
+        exclude_if=_unset,
+        description="The reference sits in a block labelled for these customers only ('MAN: ...'); empty: every customer. "
+        "With evaluation.customer set, a reference for other customers is not expected (predicting it is an 'other_customer' error).",
+    )
+    location: str | None = Field(default=None, exclude_if=_unset, description="Chapter of the referenced document the text names ('4.6').")
 
 
 class GoldRequirement(_Model):
@@ -650,6 +741,18 @@ class GoldConflict(_Model):
     cross_document: bool = False
     evidence: list[GoldEvidence] = Field(default_factory=list)
     note: str = ""
+    precedence: Literal["resolved_by_precedence", "mutual_precedence_claims", "unresolved"] | None = Field(
+        default=None, exclude_if=_unset, description="What the documents' stated precedence says about this conflict (None: not annotated)."
+    )
+    prevailing_document_id: str | None = Field(default=None, exclude_if=_unset)
+
+
+class GoldChapterLink(_Model):
+    """A structure edge between two gold requirements (relationships/builder.py, structure_edges)."""
+
+    source: str
+    target: str
+    kind: Literal["inherits_from", "amends", "references_chapter"]
 
 
 class GoldPair(_Model):
@@ -692,11 +795,15 @@ class CaseGold(_Model):
         default_factory=list,
         description="Hard negatives: related requirements that should NOT be flagged.",
     )
+    chapter_links: list[GoldChapterLink] = Field(default_factory=list, exclude_if=_unset)
     notes: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _ids_known(self) -> CaseGold:
         ids = {r.gold_id for r in self.requirements}
+        for link in self.chapter_links:
+            if not {link.source, link.target} <= ids:
+                raise ValueError(f"chapter link {link.source} -> {link.target} names unknown requirements")
         for c in self.conflicts:
             if not set(c.requirement_ids) <= ids:
                 raise ValueError(f"gold conflict {c.gold_conflict_id} names unknown requirements")

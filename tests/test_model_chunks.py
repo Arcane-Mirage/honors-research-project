@@ -5,10 +5,9 @@ Model-made chunks (llm_chunked strategies): fidelity, repair, fallback and scori
 
 import json
 
-from helpers import ScriptedProvider
+from helpers import ScriptedProvider, run_case
 
 from csr_lab.evaluation.metrics import evaluate_case
-from csr_lab.ingestion.loader import load_bundle
 from csr_lab.pipelines.run import run_analysis
 
 
@@ -34,7 +33,7 @@ def test_reworded_model_chunk_is_flagged_or_repaired(simple_docs, config):
     unit = next(r for r in as_given.requirements if "must be validated" in r.requirement_text)
     assert unit.source_location.match == "not_found"  # analysed as given: not verbatim
     repaired = run_analysis(simple_docs, strategy="llm_chunked_repaired", config=config, provider=_rewording_chunker(config))
-    unit = next(r for r in repaired.requirements if "CVM-TM-320" in r.requirement_text and "validated" in r.requirement_text)
+    unit = next(r for r in repaired.requirements if "HVG-TM-320" in r.requirement_text and "validated" in r.requirement_text)
     assert unit.source_location.match in ("exact", "whitespace_normalized")  # the aligned source text
     assert "shall be validated" in unit.requirement_text
 
@@ -68,11 +67,10 @@ def test_failed_chunking_falls_back_to_whole_batch(simple_docs, config):
 
 
 def test_unit_metrics_credit_chunks_but_strict_metrics_do_not(dataset, config):
-    case = next(c for c in dataset.cases if c.case_id == "dev_corvane_production")
-    docs = load_bundle(list(case.document_paths))
-    gold = case.load_gold()
-    chunked = evaluate_case(run_analysis(docs, strategy="llm_chunked", config=config), gold)
-    staged = evaluate_case(run_analysis(docs, strategy="staged", config=config), gold)
+    chunked_result, gold = run_case(dataset, "llm_chunked", config)
+    staged_result, _ = run_case(dataset, "staged", config)
+    chunked = evaluate_case(chunked_result, gold, customer="Global Motors")
+    staged = evaluate_case(staged_result, gold, customer="Global Motors")
     assert chunked.units.mean_gold_per_unit > 1 and staged.units.mean_gold_per_unit == 1
     assert chunked.units.recall > 0.5  # documents are found ...
     assert chunked.references.tp == 0  # ... but not attributed to individual requirements

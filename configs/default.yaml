@@ -42,6 +42,7 @@ llm:
     merge_confusion_rate: 0.3  # model-only merging: look-alike identifiers merged
     merge_revision_drop_rate: 0.5  # model-only merging: revision variants merged without revision
     merge_alias_miss_rate: 0.2 # a document name not linked to its identifier
+    quote_cleanup_rate: 0.8    # quotes repaired like a real model's ('s upplier' -> 'supplier')
     seed: 0
 
 # Extra system-prompt text: who the documents are read for (edit the wording in
@@ -51,9 +52,24 @@ system_prompt:
   enabled: true
   supplier: Bendix
   customer: Navistar
-  customer_aliases: [International, International Motors, Navistar International Corporation]
+  customer_aliases: [International, International Motors, International Motors LLC, International Motors Inc., Navistar International Corporation, Navistar Inc.]
   ambiguous_aliases: [International]   # also an ordinary word
   other_customers: skip                # skip | keep text that applies only to other customers
+  # Other customers that share the standards, with their other names. Customer scoping
+  # (strategy option customer_scoping: off | tag | filter) recognises a label line such as
+  # "MAN: ..." or "Scania/Navistar: ..." only when every name before the colon is listed here
+  # or is the customer above. Names match from the start of a part, word by word.
+  other_customers_names:
+    MAN: [MAN Truck & Bus, MAN Truck & Bus SE]
+    Scania: [Scania CV AB]
+    VWTB: [VW T&B, VW Truck & Bus, Volkswagen Truck & Bus]
+    TRATON: [TRATON Group, TRATON SE, RIO]
+    Audi: [AUDI AG, AUDI HUNGARIA]
+    Porsche: [Dr. Ing. h.c. F. Porsche AG]
+    ŠKODA AUTO: [SKODA AUTO, Skoda]
+    Bentley: [Bentley Motors]
+    SEAT: []
+    Volkswagen: [VW, Volkswagen AG, Volkswagen Passenger Cars, VW Passenger Cars, VW PKW, VW Commercial Vehicles, VW Components]
 
 processing:
   max_document_chars: 200000
@@ -64,6 +80,8 @@ processing:
   pdf_backend: pypdf                 # pypdf | pypdf_layout | pymupdf (optional, AGPL)
   pdf_strip_repeated_lines: true     # remove running headers / page footers (sweeps compare false/true)
   pdf_repeated_line_min_share: 0.5   # share of pages a header/footer line must appear on
+  document_registry: true            # read documents.yaml next to the files (identifiers, titles, aliases)
+  grounding_artifact_match: true     # quotes differing only by spaces/dashes ('s upplier') still count as found
 
 evaluation:
   requirement_match_threshold: 0.75

@@ -170,7 +170,8 @@ class WordIndex:
 # ---------------------------------------------------------------------------
 
 
-def _pages_for(start: int | None, end: int | None, pages: list | None) -> tuple[int | None, int | None]:
+def page_range(start: int | None, end: int | None, pages: list | None) -> tuple[int | None, int | None]:
+    """First and last page (``PageSpan`` list) of a character span; (None, None) when unknown."""
     if start is None or end is None or not pages:
         return None, None
     first = last = None
@@ -202,7 +203,7 @@ def check_fragment(
     base = {"fragment_id": fragment_id, "document_id": document_id, "title": title, "reported_pages": reported, "fragment_words": len(fwords)}
 
     def finish(check: FragmentCheck) -> FragmentCheck:
-        check.page_start, check.page_end = _pages_for(check.start_offset, check.end_offset, pages)
+        check.page_start, check.page_end = page_range(check.start_offset, check.end_offset, pages)
         if reported and check.page_start is not None:
             check.pages_agree = reported == list(range(check.page_start, (check.page_end or check.page_start) + 1))
         return check

@@ -15,38 +15,38 @@ from csr_lab.relationships.store import GraphStore
 from csr_lab.relationships.validation import validate_graph
 from csr_lab.schemas import RelationshipType
 
-HEADER = "CORVANE MOTORS\n{title}\nDocument ID: {ident}\nRevision: {rev}\nEffective Date: {date}\n\n"
+HEADER = "HALVARD MOTORS\n{title}\nDocument ID: {ident}\nRevision: {rev}\nEffective Date: {date}\n\n"
 
-REV_C = HEADER.format(title="Supplier Requirements", ident="CVM-CSR-700", rev="C", date="2026-01-10") + """\
+REV_C = HEADER.format(title="Supplier Requirements", ident="HVG-CSR-700", rev="C", date="2026-01-10") + """\
 1 Scope
 1.1 This document applies to test suppliers.
 
 2 Requirements
-2.1 The supplier shall comply with Specification CVM-QS-110.
+2.1 The supplier shall comply with Specification HVG-QS-110.
 2.2 The supplier shall report quality incidents within 10 working days.
 2.3 The supplier shall keep records for five years.
 """
 
 # Rev D: 2.1 unchanged, 2.2 changed, 2.3 removed, 2.4 added.
-REV_D = HEADER.format(title="Supplier Requirements", ident="CVM-CSR-700", rev="D", date="2026-08-01") + """\
+REV_D = HEADER.format(title="Supplier Requirements", ident="HVG-CSR-700", rev="D", date="2026-08-01") + """\
 1 Scope
 1.1 This document applies to test suppliers.
 
 2 Requirements
-2.1 The supplier shall comply with Specification CVM-QS-110.
+2.1 The supplier shall comply with Specification HVG-QS-110.
 2.2 The supplier shall report quality incidents within 5 working days.
-2.4 The supplier shall label every shipment according to Standard CVM-LBL-220.
+2.4 The supplier shall label every shipment according to Standard HVG-LBL-220.
 """
 
-NAMES_WITH_ID = HEADER.format(title="Production Requirements", ident="CVM-CSR-710", rev="A", date="2026-01-10") + """\
+NAMES_WITH_ID = HEADER.format(title="Production Requirements", ident="HVG-CSR-710", rev="A", date="2026-01-10") + """\
 1 Requirements
-1.1 The supplier shall maintain a quality system that conforms to the Corvane Supplier Quality
-Manual CVM-SQM-001.
+1.1 The supplier shall maintain a quality system that conforms to the Halvard Supplier Quality
+Manual HVG-SQM-001.
 """
 
-NAME_ONLY = HEADER.format(title="Service Requirements", ident="CVM-CSR-720", rev="B", date="2026-03-01") + """\
+NAME_ONLY = HEADER.format(title="Service Requirements", ident="HVG-CSR-720", rev="B", date="2026-03-01") + """\
 1 Requirements
-1.1 Service parts shall be packed as described in the Corvane Supplier Quality Manual.
+1.1 Service parts shall be packed as described in the Halvard Supplier Quality Manual.
 """
 
 
@@ -64,10 +64,10 @@ def _run(tmp_path, name, text, config, **kwargs):
 
 
 def test_requirement_id_comes_from_revision_and_chapter():
-    rid = requirement_id("DOC-CVM-CSR-700-REV-C", "2.1")
-    assert rid == "REQ-CVM-CSR-700-REV-C-2.1"
-    assert rid != requirement_id("DOC-CVM-CSR-700-REV-C", "2.2")
-    assert rid != requirement_id("DOC-CVM-CSR-700-REV-D", "2.1")
+    rid = requirement_id("DOC-HVG-CSR-700-REV-C", "2.1")
+    assert rid == "REQ-HVG-CSR-700-REV-C-2.1"
+    assert rid != requirement_id("DOC-HVG-CSR-700-REV-C", "2.2")
+    assert rid != requirement_id("DOC-HVG-CSR-700-REV-D", "2.1")
     assert requirement_id("DOC-X", None) == "REQ-X-NOCHAPTER"
 
 
@@ -75,7 +75,7 @@ def test_pipeline_ids_are_stable_across_runs(tmp_path, config):
     a = _run(tmp_path, "c.txt", REV_C, config, run_seed=1)
     b = _run(tmp_path, "c.txt", REV_C, config, run_seed=2)
     assert [r.requirement_id for r in a.requirements] == [r.requirement_id for r in b.requirements]
-    assert all(r.source_document_id == "DOC-CVM-CSR-700-REV-C" for r in a.requirements)
+    assert all(r.source_document_id == "DOC-HVG-CSR-700-REV-C" for r in a.requirements)
 
 
 def test_compare_revisions():
@@ -91,24 +91,24 @@ def test_compare_revisions():
 
 
 def test_reference_to_provided_revision_meets_input_node(tmp_path, config):
-    provided = HEADER.format(title="Packaging Specification", ident="CVM-PKG-210", rev="D", date="2026-01-01") + (
+    provided = HEADER.format(title="Packaging Specification", ident="HVG-PKG-210", rev="D", date="2026-01-01") + (
         "1 Requirements\n1.1 Parts shall be packed in returnable containers.\n"
     )
-    citing = HEADER.format(title="Supplier Requirements", ident="CVM-CSR-730", rev="A", date="2026-01-01") + (
+    citing = HEADER.format(title="Supplier Requirements", ident="HVG-CSR-730", rev="A", date="2026-01-01") + (
         "1 Requirements\n"
-        "1.1 Packaging shall conform to CVM-PKG-210 Rev D.\n"
-        "1.2 Labels shall follow CVM-PKG-210.\n"
-        "1.3 Legacy parts shall use CVM-PKG-210 Rev C.\n"
+        "1.1 Packaging shall conform to HVG-PKG-210 Rev D.\n"
+        "1.2 Labels shall follow HVG-PKG-210.\n"
+        "1.3 Legacy parts shall use HVG-PKG-210 Rev C.\n"
     )
     docs = load_bundle([_write(tmp_path, "pkg.txt", provided), _write(tmp_path, "csr.txt", citing)])
     result = run_analysis(docs, strategy="graph_assisted", config=config)
     available = {d.document_id: d.content_available for d in result.referenced_documents}
-    assert available == {"DOC-CVM-PKG-210-REV-D": True, "DOC-CVM-PKG-210": True, "DOC-CVM-PKG-210-REV-C": False}
+    assert available == {"DOC-HVG-PKG-210-REV-D": True, "DOC-HVG-PKG-210": True, "DOC-HVG-PKG-210-REV-C": False}
     graph = graph_from_result(result)
     assert validate_graph(graph).valid
-    assert graph.current_revision("DOC-CVM-PKG-210") == "DOC-CVM-PKG-210-REV-D"
-    assert set(graph.revisions_of("DOC-CVM-PKG-210")) == {"DOC-CVM-PKG-210-REV-C", "DOC-CVM-PKG-210-REV-D"}
-    assert not graph.same_document("DOC-CVM-PKG-210-REV-C", "DOC-CVM-PKG-210-REV-D")
+    assert graph.current_revision("DOC-HVG-PKG-210") == "DOC-HVG-PKG-210-REV-D"
+    assert set(graph.revisions_of("DOC-HVG-PKG-210")) == {"DOC-HVG-PKG-210-REV-C", "DOC-HVG-PKG-210-REV-D"}
+    assert not graph.same_document("DOC-HVG-PKG-210-REV-C", "DOC-HVG-PKG-210-REV-D")
 
 
 # -- the store -----------------------------------------------------------------------
@@ -121,28 +121,28 @@ def test_store_tracks_revisions(tmp_path, config):
     store.merge_result(rev_d)  # merge order does not matter: effective dates decide
     store.merge_result(rev_c)
     # Another document citing an older, never-analysed revision must not disturb the order.
-    citing = HEADER.format(title="Other", ident="CVM-CSR-740", rev="A", date="2026-01-01") + "1 Requirements\n1.1 Old parts shall follow CVM-CSR-700 Rev B.\n"
+    citing = HEADER.format(title="Other", ident="HVG-CSR-740", rev="A", date="2026-01-01") + "1 Requirements\n1.1 Old parts shall follow HVG-CSR-700 Rev B.\n"
     store.merge_result(_run(tmp_path, "e.txt", citing, config))
-    assert "DOC-CVM-CSR-700-REV-B" in store.nodes
+    assert "DOC-HVG-CSR-700-REV-B" in store.nodes
 
     graph = store.to_graph()
     assert validate_graph(graph).valid
-    assert graph.revisions_of("DOC-CVM-CSR-700") == ["DOC-CVM-CSR-700-REV-C", "DOC-CVM-CSR-700-REV-D", "DOC-CVM-CSR-700-REV-B"]
-    assert graph.current_revision("DOC-CVM-CSR-700") == "DOC-CVM-CSR-700-REV-D"
+    assert graph.revisions_of("DOC-HVG-CSR-700") == ["DOC-HVG-CSR-700-REV-C", "DOC-HVG-CSR-700-REV-D", "DOC-HVG-CSR-700-REV-B"]
+    assert graph.current_revision("DOC-HVG-CSR-700") == "DOC-HVG-CSR-700-REV-D"
     status = {n.node_id: n.attributes["revision_status"] for n in graph.nodes_of_type("requirement")}
     assert {status[r.requirement_id] for r in rev_c.requirements} == {"superseded"}
     assert {status[r.requirement_id] for r in rev_d.requirements} == {"current"}
 
-    changes = {(c["change"], c["old_chapter"], c["new_chapter"]) for c in store.revision_changes("DOC-CVM-CSR-700")}
+    changes = {(c["change"], c["old_chapter"], c["new_chapter"]) for c in store.revision_changes("DOC-HVG-CSR-700")}
     assert {("changed", "2.2", "2.2"), ("removed", "2.3", None), ("added", None, "2.4")} <= changes
     assert ("unchanged", "2.1", "2.1") in changes
     lineage = [e for e in graph.edges if e.relationship_type == RelationshipType.SUPERSEDED_BY]
-    assert any(e.source_node_id == "DOC-CVM-CSR-700-REV-C" and e.target_node_id == "DOC-CVM-CSR-700-REV-D" for e in lineage)
+    assert any(e.source_node_id == "DOC-HVG-CSR-700-REV-C" and e.target_node_id == "DOC-HVG-CSR-700-REV-D" for e in lineage)
     assert any(e.metadata.get("change") == "changed" for e in lineage)
 
     # A declared order overrides dates.
-    store.set_revision_order("DOC-CVM-CSR-700", ["D", "C"])
-    assert store.to_graph().current_revision("DOC-CVM-CSR-700") == "DOC-CVM-CSR-700-REV-C"
+    store.set_revision_order("DOC-HVG-CSR-700", ["D", "C"])
+    assert store.to_graph().current_revision("DOC-HVG-CSR-700") == "DOC-HVG-CSR-700-REV-C"
 
 
 def test_store_save_load_remove_and_prune(tmp_path, config):
@@ -167,7 +167,7 @@ def test_store_save_load_remove_and_prune(tmp_path, config):
     assert not any(n.attributes.get("revision_status") == "superseded" for n in loaded.nodes.values())
 
     loaded.remove_source(rev_c.analysis_id)
-    assert "DOC-CVM-CSR-700-REV-C" not in loaded.nodes and "DOC-CVM-CSR-700-REV-D" in loaded.nodes
+    assert "DOC-HVG-CSR-700-REV-C" not in loaded.nodes and "DOC-HVG-CSR-700-REV-D" in loaded.nodes
     assert validate_graph(loaded.to_graph()).valid
 
     loaded.prune(drop_mock=True)
@@ -184,14 +184,14 @@ def test_saved_graph_resolves_a_name_seen_in_an_earlier_run(tmp_path, config):
     def refs(result):
         return {d.canonical_identifier or d.document_name for d in result.referenced_documents}
 
-    assert "CVM-SQM-001" not in refs(fresh)
-    assert "CVM-SQM-001" in refs(with_saved)
+    assert "HVG-SQM-001" not in refs(fresh)
+    assert "HVG-SQM-001" in refs(with_saved)
     assert any("saved graph" in d.detail for d in with_saved.metadata.graph_decisions)
     assert with_saved.metadata.saved_graph["fingerprint"] == store.fingerprint()
     assert with_saved.analysis_id != fresh.analysis_id
     # The exported result holds only this run's own documents and references.
-    assert {d.document_id for d in with_saved.input_documents} == {"DOC-CVM-CSR-720-REV-B"}
-    assert "DOC-CVM-CSR-710-REV-A" not in {d.document_id for d in with_saved.referenced_documents}
+    assert {d.document_id for d in with_saved.input_documents} == {"DOC-HVG-CSR-720-REV-B"}
+    assert "DOC-HVG-CSR-710-REV-A" not in {d.document_id for d in with_saved.referenced_documents}
 
 
 def test_saved_graph_is_ignored_without_graph_use(tmp_path, config):
@@ -206,13 +206,13 @@ def test_graph_store_cli(tmp_path, capsys):
     store = tmp_path / "store.json"
     a, b = _write(tmp_path, "c.txt", REV_C), _write(tmp_path, "d.txt", REV_D)
     for doc in (a, b):
-        assert main(["analyze", str(doc), "--graph-store", str(store), "--out", str(tmp_path / f"{doc.stem}.json")]) == 0
+        assert main(["analyze", str(doc), "--graph", str(store), "--no-use-graph", "--out", str(tmp_path / f"{doc.stem}.json")]) == 0
     capsys.readouterr()
     assert main(["graph-store", "info", str(store)]) == 0
     info = json.loads(capsys.readouterr().out)
     assert info["validation"]["valid"] and info["analysed_document_revisions"] == 2
     assert info["requirements_by_revision_status"]["superseded"] > 0
-    assert main(["graph-store", "revisions", str(store), "DOC-CVM-CSR-700"]) == 0
+    assert main(["graph-store", "revisions", str(store), "DOC-HVG-CSR-700"]) == 0
     assert any(c["change"] == "added" for c in json.loads(capsys.readouterr().out)["changes"])
     assert main(["graph-store", "prune", str(store), "--superseded"]) == 0
-    assert main(["analyze", str(a), "--use-saved-graph"]) == 1  # needs --graph-store
+    assert main(["analyze", str(a), "--use-graph"]) == 1  # needs --graph

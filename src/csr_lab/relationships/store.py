@@ -14,7 +14,7 @@ Typical use::
 
     store.remove_source("ANL-...")      # undo one analysis
     store.prune(drop_unverified=True)   # keep only verified references
-    store.revision_changes("DOC-CVM-CSR-100")
+    store.revision_changes("DOC-HVG-CVS-20")
 
 Design rules
 ------------
@@ -63,14 +63,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from csr_lab.ids import stable_hash
 from csr_lab.relationships.builder import (
-    MAX_AGGREGATED_EVIDENCE,
     GraphNode,
     RelationshipGraph,
     add_conflict_edge,
     add_revision_structure,
+    aggregated_reference_edge,
     conflict_edge,
     graph_from_result,
     make_edge,
+    revision_family,
 )
 from csr_lab.relationships.revisions import RequirementVersion, RevisionChange, compare_revisions
 from csr_lab.schemas import SCHEMA_VERSION, AnalysisResult, Relationship, RelationshipType
@@ -231,8 +232,7 @@ class GraphStore(BaseModel):
         exclude = exclude_families or set()
 
         def family(node_id: str) -> str:
-            node = self.nodes.get(node_id)
-            return (node.attributes.get("revision_of") if node else None) or node_id
+            return revision_family(self.nodes, node_id)
 
         refs: dict[str, set[str]] = {}
         for e in self.edges.values():
@@ -508,20 +508,6 @@ class GraphStore(BaseModel):
         self.refresh()
         return report
 
-    def remove_nodes(self, node_ids: list[str]) -> StoreChangeReport:
-        report = StoreChangeReport()
-        self._remove_nodes(set(node_ids) & set(self.nodes), report)
-        self.refresh()
-        return report
-
-    def remove_edges(self, relationship_ids: list[str]) -> StoreChangeReport:
-        report = StoreChangeReport()
-        for rid in relationship_ids:
-            if self.edges.pop(rid, None) is not None:
-                report.edges_removed += 1
-        self.refresh()
-        return report
-
     def prune(
         self,
         *,
@@ -601,8 +587,7 @@ class GraphStore(BaseModel):
         container = {e.target_node_id: e.source_node_id for e in self.edges.values() if e.relationship_type == RelationshipType.CONTAINS}
 
         def family(node_id: str) -> str:
-            node = self.nodes.get(node_id)
-            return (node.attributes.get("revision_of") if node else None) or node_id
+            return revision_family(self.nodes, node_id)
 
         grouped: dict[tuple[str, str], list[tuple[str, Any]]] = {}
         for e in self.edges.values():
@@ -613,15 +598,7 @@ class GraphStore(BaseModel):
                 continue
             grouped.setdefault((src, e.target_node_id), []).extend((e.source_node_id, ev) for ev in e.evidence)
         for (src, tgt), items in sorted(grouped.items()):
-            edge = make_edge(
-                src,
-                RelationshipType.REFERENCES,
-                tgt,
-                [ev for _, ev in items[:MAX_AGGREGATED_EVIDENCE]],
-                origin="aggregation",
-                derived=True,
-                via_requirement_ids=sorted({rid for rid, _ in items}),
-            )
+            edge = aggregated_reference_edge(src, tgt, items)
             self.edges[edge.relationship_id] = edge
 
     def _rebuild_supersession(self) -> None:

@@ -10,7 +10,7 @@ Matching rules (applied identically to every strategy):
    intersection-over-union of character offsets. Pairs scoring at least the
    threshold (default 0.75) are matched greedily, best first.
 2. **Documents** are compared by key: canonical identifier (via the shared
-   canonicalisation) plus revision when one is stated, e.g. ``CVM-ES-210@REV-B``.
+   canonicalisation) plus revision when one is stated, e.g. ``IW-001-SWR@REV-B``.
    A revision-qualified reference and an unqualified one are different keys.
    A name-only prediction has key ``NAME:<name>`` and never matches an identifier.
 3. **References** are scored as (gold requirement, document key) pairs. A
@@ -148,15 +148,16 @@ def _words(text: str) -> list[str]:
 def contains_requirement(unit: Requirement, gold: GoldRequirement, min_share: float = 0.8) -> bool:
     """True when a predicted unit contains a gold requirement.
 
-    By offsets when both are known (2-character tolerance), otherwise when at least
-    ``min_share`` of the gold requirement's words occur in the unit's text. The word
-    test also accepts units whose wording was changed a little (a reworded chunk).
+    By offsets when the unit has them (2-character tolerance): a unit with offsets is an exact
+    source slice, and chapters can share their wording ('See ... No additional requirements.'),
+    so words would mismatch them. A unit without offsets (a reworded chunk) contains the gold
+    requirement when at least ``min_share`` of its words occur in the unit's text.
     """
     if unit.source_document_id != gold.source_document_id:
         return False
     start, end = unit.source_location.start_offset, unit.source_location.end_offset
-    if start is not None and end is not None and start <= gold.start_offset + 2 and gold.end_offset <= end + 2:
-        return True
+    if start is not None and end is not None:
+        return start <= gold.start_offset + 2 and gold.end_offset <= end + 2
     gold_words = _words(gold.requirement_text)
     if not gold_words:
         return False
@@ -172,7 +173,7 @@ def contains_requirement(unit: Requirement, gold: GoldRequirement, min_share: fl
 
 
 def family_key(key: str) -> str:
-    """'CVM-TM-311@REV-B' -> 'CVM-TM-311'."""
+    """'ISQ-011-PR@REV-B' -> 'ISQ-011-PR'."""
     return key.split("@", 1)[0]
 
 
@@ -196,12 +197,17 @@ def reanchor_gold(gold: CaseGold, documents: list[InputDocument]) -> CaseGold:
         if found := index.find(g.requirement_text):
             span = found[0], found[1]
         else:
+            # Interrupted by a page break (running header/footer inside): anchor on the first
+            # and last words. The last words may straddle the break themselves ('takes' /
+            # 'Page 1 of 3' / 'precedence.'), so the end window shrinks until it is found.
             words = g.requirement_text.split()
             head = index.find(" ".join(words[:_EDGE_WORDS]))
             if head is not None:
-                tail = index.find(" ".join(words[-_EDGE_WORDS:]), head[0])
-                if tail is not None and tail[1] > head[0]:
-                    span = head[0], tail[1]
+                for k in range(min(_EDGE_WORDS, len(words)), 0, -1):
+                    tail = index.find(" ".join(words[-k:]), head[0])
+                    if tail is not None and tail[1] > head[0]:
+                        span = head[0], tail[1]
+                        break
         if span and span != (g.start_offset, g.end_offset):
             requirements.append(g.model_copy(update={"start_offset": span[0], "end_offset": span[1]}))
             changed = True

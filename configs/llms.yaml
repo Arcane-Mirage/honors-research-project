@@ -1,7 +1,7 @@
 # Named LLM connections. Pick one per command with `--llm NAME`, e.g.
 #
 #   csr-lab llm-check --llm lmstudio          # is it reachable, which model is loaded?
-#   csr-lab experiment dev --llm lmstudio
+#   csr-lab experiment main --llm lmstudio
 #   csr-lab build-graph --llm lmstudio
 #
 # Without --llm, the profile named by the CSR_LAB_LLM environment variable (it can go in

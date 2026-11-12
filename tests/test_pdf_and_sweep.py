@@ -5,6 +5,8 @@ PDF and incremental variants, header/footer removal, readers, gold re-anchoring,
 
 import json
 
+from helpers import run_case
+
 from csr_lab.cli import main
 from csr_lab.config import PROJECT_ROOT, ExperimentConfig, load_config
 from csr_lab.datasets.loader import load_dataset
@@ -12,8 +14,7 @@ from csr_lab.datasets.variants import write_incremental_dataset, write_pdf_datas
 from csr_lab.evaluation.matching import reanchor_gold
 from csr_lab.evaluation.metrics import evaluate_case
 from csr_lab.evaluation.sweep import SweepConfig, run_sweep
-from csr_lab.ingestion.loader import load_bundle, strip_repeated_lines
-from csr_lab.pipelines.run import run_analysis
+from csr_lab.ingestion.loader import load_bundle, strip_running_lines
 
 
 def test_strip_repeated_lines_only_touches_page_edges():
@@ -22,35 +23,41 @@ def test_strip_repeated_lines_only_touches_page_edges():
         "ACME | DOC-1 Rev A\nshared body line\nBody line two\nmore\nmore\nmore\nPage 2 of 3",
         "ACME | DOC-1 Rev A\nBody line three\nmore\nmore\nmore\nshared body line\nmore\nmore\nmore\nPage 3 of 3",
     ]
-    cleaned, removed = strip_repeated_lines(pages)
-    assert "page # of #" in removed and "acme | doc-# rev a" in removed
+    cleaned, removed, _originals = strip_running_lines(pages)
+    assert "page of" in removed and "acme | doc- rev a" in removed  # digits are ignored when lines are compared
     assert all("Page" not in p and "ACME" not in p for p in cleaned)
     assert "shared body line" in cleaned[2]  # repeated, but in the body: kept
 
 
-def test_pdf_dataset_loads_and_scores(tmp_path, config):
+def test_pdf_dataset_loads_and_scores_like_the_text(tmp_path, config, dataset):
     manifest = write_pdf_dataset(tmp_path / "pdf", lines_per_page=30)
-    dataset = load_dataset(manifest)
-    case = next(c for c in dataset.cases if c.case_id == "dev_corvane_production")
+    pdf = load_dataset(manifest)
+    (case,) = pdf.cases
     gold = case.load_gold()
     for strip in (False, True):
         docs = load_bundle(list(case.document_paths), pdf_strip_repeated_lines=strip)
         assert {d.document_id for d in docs} == {d.document_id for d in gold.documents}
-        assert docs[0].format == "pdf" and len(docs[0].pages) >= 2
+        assert all(d.format == "pdf" and len(d.pages) >= 2 for d in docs)
         anchored = reanchor_gold(gold, docs)
-        text = docs[0].text
+        texts = {d.document_id: d.text for d in docs}
         # Every gold requirement is found in the extracted text after re-anchoring.
-        assert all(" ".join(text[g.start_offset : g.end_offset].split()).startswith(" ".join(g.requirement_text.split()[:5])) for g in anchored.requirements)
-    result = run_analysis(load_bundle(list(case.document_paths), pdf_strip_repeated_lines=True), strategy="staged_verified", config=config)
-    ev = evaluate_case(result, gold)
-    assert ev.requirements.recall == 1.0 and ev.references.f1 > 0.8
+        assert all(" ".join(texts[g.source_document_id][g.start_offset : g.end_offset].split()).startswith(" ".join(g.requirement_text.split()[:5])) for g in anchored.requirements)
+    config = config.model_copy(update={"processing": config.processing.model_copy(update={"pdf_strip_repeated_lines": True})})
+    as_pdf, _ = run_case(pdf, "staged_verified", config)
+    as_text, text_gold = run_case(dataset, "staged_verified", config)
+    ev_pdf = evaluate_case(as_pdf, gold, customer="Global Motors")
+    ev_text = evaluate_case(as_text, text_gold, customer="Global Motors")
+    assert ev_pdf.requirements.recall == 1.0
+    # Same case, same gold: with running headers and page breaks removed, the PDF scores like the text.
+    assert (ev_pdf.references.f1, ev_pdf.conflicts.f1, ev_pdf.graph.chapter_link_f1) == (ev_text.references.f1, ev_text.conflicts.f1, ev_text.graph.chapter_link_f1)
 
 
 def test_pdf_layout_backend(tmp_path):
     manifest = write_pdf_dataset(tmp_path / "pdf")
-    case = next(c for c in load_dataset(manifest).cases if c.case_id == "dev_corvane_production")
-    docs = load_bundle(list(case.document_paths), pdf_backend="pypdf_layout")
-    assert "Salt spray corrosion" in docs[0].text and "pypdf_layout" in docs[0].warnings[-1]
+    (case,) = load_dataset(manifest).cases
+    docs = {d.filename: d for d in load_bundle(list(case.document_paths), pdf_backend="pypdf_layout")}
+    base = docs["halvard_q_agreement.pdf"]
+    assert "Part labels shall show the part number" in base.text and any("pypdf_layout" in w for w in base.warnings)
 
 
 def test_committed_variant_datasets_match_generator(tmp_path):
@@ -66,13 +73,13 @@ def test_committed_variant_datasets_match_generator(tmp_path):
 def test_sweep_over_strategy_option_and_mock_rate(tmp_path):
     sweep = SweepConfig(
         name="t",
-        experiment="dev_mock",
+        experiment="demo_mock",
         strategies=["llm_chunked"],
         repetitions=1,
         grid={"options.chunking.target_chunk_words": [60, 500], "llm.mock.reference_miss_rate": [0.0]},
         metrics=["units.f1", "units.mean_gold_per_unit"],
     )
-    base = ExperimentConfig(name="dev_mock", split="dev", strategies=["llm_chunked"], llm={"provider": "mock"})
+    base = ExperimentConfig(name="demo_mock", split="all", strategies=["llm_chunked"], llm={"provider": "mock"})
     out_dir, rows = run_sweep(sweep, base, load_config(), output_root=tmp_path, database_path=tmp_path / "s.sqlite")
     assert len(rows) == 2 and {r["strategy"] for r in rows} == {"llm_chunked"}
     small, large = rows
