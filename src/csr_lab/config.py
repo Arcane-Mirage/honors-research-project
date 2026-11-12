@@ -24,6 +24,10 @@ DEFAULT_EXPERIMENTS_PATH = PROJECT_ROOT / "configs" / "experiments.yaml"
 DEFAULT_LLMS_PATH = PROJECT_ROOT / "configs" / "llms.yaml"
 LLM_ENV_VAR = "CSR_LAB_LLM"  # names the default LLM profile; wins over `default:` in llms.yaml
 AUTO_MODEL = "auto"  # model name meaning "ask the server which model is loaded"
+# Used when no folder is given (command line or `input:`): the synthetic demo documents, built into
+# their own graph so they never mix with a graph of real documents.
+DEMO_DOCUMENTS = "data/synthetic/pdf/documents"
+DEMO_GRAPH = "graphs/demo.json"
 
 
 class _Settings(BaseModel):
@@ -353,7 +357,11 @@ class AppConfig(_Settings):
     processing: ProcessingSettings = Field(default_factory=ProcessingSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
     graph_store: GraphStoreSettings = Field(default_factory=GraphStoreSettings)
-    input: str = Field(default="input", description="Folder `csr-lab build-graph` reads when no folder is given.")
+    input: str | None = Field(
+        default=None,
+        description="Folder `csr-lab build-graph` reads when none is given on the command line. "
+        "Empty: the synthetic demo documents (DEMO_DOCUMENTS), into their own graph (DEMO_GRAPH).",
+    )
     input_formats: list[str] = Field(
         default_factory=lambda: [".pdf"],
         description="File types `build-graph` analyses (the data pool). Other files are skipped; they still "

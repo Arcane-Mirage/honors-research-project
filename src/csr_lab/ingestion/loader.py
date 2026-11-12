@@ -13,7 +13,7 @@ name ("Formel Q Konkret", "Formel Q Capability"), sometimes under several names 
 Neuteile Integral" is "Formel Q New Parts Integral"). A *document registry*,
 ``documents.yaml`` next to the files, states what the text does not, and wins over the header::
 
-    # input/traton/documents.yaml
+    # ~/Documents/CSRs/traton/documents.yaml
     documents:
       - file: Formel Q Konkret.pdf          # a file in this folder ...
         identifier: FORMEL-Q-KONKRET

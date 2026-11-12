@@ -226,8 +226,6 @@ outputs/
 *.sqlite3
 .venv/
 # Documents dropped in for `csr-lab build-graph`, and the graphs built from them
-input/*
-!input/README.md
 graphs/
 # Datasets: only the generated synthetic ones are committed. Everything else in data/
 # (e.g. PURE, https://zenodo.org/records/7118517) stays local.

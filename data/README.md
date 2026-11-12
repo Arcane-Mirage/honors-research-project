@@ -18,7 +18,6 @@ data/
 
 | Folder | What it is |
 |---|---|
-| [`../input/`](../input/) | Your own documents for `csr-lab build-graph`: no gold and never scored. Git-ignored. |
 | `../outputs/` | Experiment results and the results database. Git-ignored. |
 | `../graphs/` | Saved relationship graphs built by `build-graph` / `analyze --graph`. Git-ignored. |
 | [`../docs/examples/`](../docs/examples/) | Committed sample outputs for the documentation. |
@@ -28,9 +27,9 @@ and regenerate. The test suite fails if the committed files differ from the gene
 
 ## Real documents
 
-Real CSRs are not a benchmark: there is no gold, so they are analysed, not scored. Put them in
-`../input/` (one subfolder per bundle: a CSR plus any referenced documents you have) and run
-`csr-lab build-graph --llm lmstudio`, or `csr-lab analyze FILE.pdf --llm lmstudio --out result.json`.
+Real CSRs are not a benchmark: there is no gold, so they are analysed, not scored. Put them in a
+folder of your own (one subfolder per bundle: a CSR plus any referenced documents you have) and run
+`csr-lab build-graph FOLDER --llm lmstudio`, or `csr-lab analyze FILE.pdf --llm lmstudio --out result.json`.
 Name files `<identifier>_<revision>.pdf` (`CVS10_2024-08.pdf`) when the document has no
 `Document ID:` header; the revision then orders the revisions in the saved graph.
 

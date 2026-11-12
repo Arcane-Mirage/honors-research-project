@@ -247,3 +247,12 @@ def test_llm_markdown_and_overview(simple_docs, config):
     assert "requirement" not in overview.lower().replace("requirements", "")
     assert "explicitly_excludes" in overview
     assert "(not provided)" in overview
+
+
+def test_without_a_folder_the_demo_documents_and_demo_graph_are_used(capsys):
+    from csr_lab.cli import main
+
+    assert main(["build-graph", "--dry-run", "--llm", "mock"]) == 0
+    err = capsys.readouterr().err
+    assert "synthetic demo documents" in err
+    assert "graphs/demo.json" in err and "data/synthetic/pdf/documents" in err  # never the real graph

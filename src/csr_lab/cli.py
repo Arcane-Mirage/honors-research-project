@@ -12,6 +12,8 @@ from pathlib import Path
 
 from csr_lab.config import (
     DEFAULT_LLMS_PATH,
+    DEMO_DOCUMENTS,
+    DEMO_GRAPH,
     LLM_ENV_VAR,
     PROJECT_ROOT,
     AppConfig,
@@ -141,10 +143,15 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     _register_yaml_strategies(args.experiments)
     config = _load(args)
     graph_path, use_graph, update_graph = _graph_choice(args, config)
+    inputs = args.inputs
+    if not inputs:  # the synthetic demo case(s): one bundle
+        demo = config.resolve_path(DEMO_DOCUMENTS)
+        inputs = sorted(d for d in demo.iterdir() if d.is_dir())
+        print(f"no files given: analysing the synthetic demo documents ({demo})", file=sys.stderr)
     _print_llm(config)
     store = GraphStore.load_or_new(graph_path) if graph_path else None
     result = analyze_files(
-        args.inputs,
+        inputs,
         strategy=args.strategy,
         config=config,
         run_seed=args.seed,
@@ -580,8 +587,11 @@ def cmd_build_graph(args: argparse.Namespace) -> int:
 
     _register_yaml_strategies(args.experiments)
     config = load_config(args.config, _llm_overrides(args), llm_profile=args.llm or default_llm_profile())
-    folder = Path(args.folder) if args.folder else config.resolve_path(config.input)
-    graph = Path(args.graph) if args.graph else config.resolve_path(config.graph_store.path)
+    folder_given = args.folder or config.input
+    folder = Path(args.folder).expanduser() if args.folder else config.resolve_path(config.input or DEMO_DOCUMENTS)
+    graph = Path(args.graph) if args.graph else config.resolve_path(config.graph_store.path if folder_given else DEMO_GRAPH)
+    if not folder_given:
+        print("no folder given (argument or `input:` in the config): using the synthetic demo documents", file=sys.stderr)
     use = config.graph_store.use if args.use_graph is None else args.use_graph
     update = config.graph_store.update if args.update_graph is None else args.update_graph
     bundles = plan_bundles(folder, args.group, config.input_formats)
@@ -715,7 +725,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("analyze", help="analyse input documents with one strategy")
-    p.add_argument("inputs", nargs="+", help=".txt/.pdf/.json files or directories (one bundle)")
+    p.add_argument("inputs", nargs="*", help=".txt/.pdf/.json files or directories (one bundle); none: the synthetic demo documents")
     p.add_argument("--strategy", default="graph_assisted")
     p.add_argument("--out", help="write the JSON result here (default: stdout)")
     p.add_argument("--graph-out", help="also write the relationship graph JSON")
@@ -729,8 +739,8 @@ def build_parser() -> argparse.ArgumentParser:
     common(p)
     p.set_defaults(func=cmd_analyze)
 
-    p = sub.add_parser("build-graph", help="analyse a folder of PDFs (default: input/) and build up a saved graph")
-    p.add_argument("folder", nargs="?", help="folder to read; subfolders are bundles (default: `input:` in the config)")
+    p = sub.add_parser("build-graph", help="analyse a folder of PDFs and build up a saved graph")
+    p.add_argument("folder", nargs="?", help="folder to read; subfolders are bundles (default: `input:` in the config, else the synthetic demo PDFs into graphs/demo.json)")
     graph_args(p, "default: graph_store.path in the config, graphs/main.json")
     system_prompt_arg(p)
     p.add_argument("--strategy", default="graph_assisted")

@@ -46,7 +46,7 @@ python scripts/run_demo.py
 | Command | What it does |
 |---|---|
 | `csr-lab llms` / `llms models lmstudio` / `llms use lmstudio` | List LLM profiles, show what a server has loaded, change the default |
-| `csr-lab build-graph [FOLDER] [--graph PATH] [--llm lmstudio]` | Analyse the PDFs in `input/` (or FOLDER) and build up a saved graph |
+| `csr-lab build-graph [FOLDER] [--graph PATH] [--llm lmstudio]` | Analyse the PDFs in FOLDER (default: `input:` in the config, else the demo) and build up a saved graph |
 | `csr-lab analyze FILES... --strategy graph_assisted --out result.json` | Analyse a document bundle (`.txt`, text `.pdf`, `.json`, or a folder) |
 | `csr-lab experiment main --llm lmstudio` | Run a named experiment from `configs/experiments.yaml` with an LLM profile |
 | `csr-lab evaluate result.json gold.json` | Score one result against one gold file |
@@ -107,29 +107,32 @@ their dataset names in its `manifest.json` instead.
 
 ## Running it on your documents
 
-1. Put the PDFs in `input/`, or in any folder you like, with one subfolder per group of related
-   documents (a CSR together with the documents it references), so references between them
-   can be resolved.
+1. Put the PDFs in a folder, with one subfolder per group of related documents (a CSR together
+   with the documents it references), so references between them can be resolved.
 2. Start your model server (for LM Studio: load a model and start its server), then run:
 
    ```bash
-   csr-lab build-graph --llm lmstudio                     # every folder in input/ -> graphs/main.json
-   csr-lab build-graph ~/Documents/CSRs --llm lmstudio    # the same, for another folder
-   csr-lab analyze input/my_folder --llm lmstudio --out result.json   # one folder (or files), one result
+   csr-lab build-graph ~/Documents/CSRs --llm lmstudio                  # every subfolder -> graphs/main.json
+   csr-lab analyze ~/Documents/CSRs/traton --llm lmstudio --out result.json   # one folder (or files), one result
    ```
 
-   To change the default folder for good, set `input:` in [configs/default.yaml](configs/default.yaml)
-   (`~` and absolute paths work).
-
-3. Read the output. `result.json` lists every chapter with its verbatim text, the documents it
-   references and the potential conflicts, with quotes as evidence. `build-graph` writes one
-   result per folder plus `build_report.md` under `outputs/graph_builds/`, and updates the saved
-   graph (see [Saved graph](#saved-persistent-graph)). Files already in the graph are skipped
-   the next time, so you can keep adding documents.
+   To use the same folder every time, set `input:` in [configs/default.yaml](configs/default.yaml)
+   and run `csr-lab build-graph` without a folder. With no folder at all, both commands run on the
+   synthetic demo documents (`build-graph` then writes `graphs/demo.json`, never your real graph).
+3. Read the output in `result.json`.
 
 **Optional: `documents.yaml`.** If a document has no identifier in its text (it is known only by
-name), add a `documents.yaml` to its folder to give it an identifier, a title and other names.
-The format is in [input/README.md](input/README.md).
+name), put a `documents.yaml` in its folder:
+
+```yaml
+documents:
+  - file: Base Agreement.pdf          # a file in this folder
+    identifier: BASE-AGREEMENT
+    title: Base Agreement
+    aliases: [The Agreement]
+  - identifier: OTHER-STANDARD        # a document you do not have: names only
+    title: Other Standard
+```
 
 **Settings.** Who the documents are read for (supplier, customer, other customers that share the
 standards) is set under `system_prompt:` in [configs/default.yaml](configs/default.yaml).
@@ -288,11 +291,10 @@ without real documents: a customer standard built on a base agreement, plus an a
 errors (`noisy/`), and split for the saved-graph experiment (`incremental/`).
 `csr-lab generate-data` rebuilds it; don't edit the files by hand.
 
-To analyse your own documents, put them in [input/](input/) (one subfolder per group of related
-documents) and run `csr-lab build-graph`, or `csr-lab analyze FILES`. A `documents.yaml` next to
-them can name documents that have no identifier (see [input/README.md](input/README.md)). Real
-documents have no answer key, so they are analysed, not scored. To score your own documents,
-add them as a dataset with a gold file ([data/README.md](data/README.md)).
+Running a command without a folder uses this demo. To analyse your own documents, see
+[Running it on your documents](#running-it-on-your-documents); real documents have no answer key,
+so they are analysed, not scored. To score your own documents, add them as a dataset with a gold
+file ([data/README.md](data/README.md)).
 
 ## Results and storage
 
@@ -314,12 +316,12 @@ Every run builds a graph for its own documents. A **graph store** (one JSON file
 so knowledge builds up across runs. It is kept apart from the SQLite file: SQLite records
 experiment runs, while the store is reusable knowledge that a CSR evaluator can curate.
 
-**Building a graph from your own PDFs.** Drop files into [input/](input/) (each subfolder is
-analysed as one bundle, so a CSR and the documents it references belong together), then:
+**Building a graph from your own PDFs.** Give `build-graph` a folder (each subfolder is analysed
+as one bundle, so a CSR and the documents it references belong together):
 
 ```bash
-csr-lab build-graph --dry-run                         # what would run, what is already in the graph
-csr-lab build-graph --llm lmstudio                    # input/ -> graphs/main.json
+csr-lab build-graph ~/csr_docs --dry-run              # what would run, what is already in the graph
+csr-lab build-graph ~/csr_docs --llm lmstudio         # -> graphs/main.json
 csr-lab build-graph ~/csr_docs --graph graphs/traton.json --llm lmstudio
 csr-lab build-graph --graph graphs/main.json --no-update-graph   # use it, do not change it
 ```

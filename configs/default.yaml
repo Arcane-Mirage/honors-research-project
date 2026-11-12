@@ -95,7 +95,7 @@ graph_store:
   write_views: true  # also write <graph>.overview.mmd, .detail.mmd (people) and .llm.md (LLMs)
   prune_superseded_conflicts: true   # after an update, drop conflicts with requirements of superseded revisions
 
-input: input         # folder `csr-lab build-graph` reads when no folder is given
+input: null          # folder `csr-lab build-graph` reads when none is given; null: the synthetic demo PDFs
 input_formats: [.pdf]  # the data pool: other files are skipped (they still become nodes when referenced)
 
 output_dir: outputs
