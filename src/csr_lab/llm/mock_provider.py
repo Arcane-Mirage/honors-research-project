@@ -68,6 +68,7 @@ class MockProvider(LLMProvider):
             "semantic_chunking": self._semantic_chunks,
             "reference_merging": self._merge_labels,
             "reference_alias_check": self._alias_check,
+            "issuer_classification": self._issuers,
         }.get(request.task)
         if handler is None:
             raise ValueError(f"mock provider has no behaviour for task {request.task!r}")
@@ -270,6 +271,22 @@ class MockProvider(LLMProvider):
                     answer = opt["option_id"]
             decisions.append({"candidate_id": cand["candidate_id"], "same_document_as": answer, "reason": "name matches" if answer else "no clear match"})
         return {"decisions": decisions}
+
+    def _issuers(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Answers from the mock's own knowledge (``mock_rules.ISSUER_KNOWLEDGE``); a name that is not
+        listed is returned as new only when the input allows it."""
+        listed = {i["name"].casefold() for i in payload.get("issuers", [])}
+        aliases = {"iso": "ISO/IEC", "european standards": "European Standards (EN/DIN)"}
+        results = []
+        for doc in payload.get("documents", []):
+            texts = [t for t in [doc.get("identifier"), *doc.get("names", []), doc.get("header")] if t]
+            name = rules.mock_issuer(texts)
+            known = name is not None and (name.casefold() in listed or aliases.get(name.casefold(), "").casefold() in listed)
+            if name is None or (not known and not payload.get("new_issuers_allowed")):
+                results.append({"key": doc["key"], "issuer": "unknown", "new_issuer": False})
+            else:
+                results.append({"key": doc["key"], "issuer": name, "new_issuer": not known})
+        return {"results": results}
 
     def _references(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {

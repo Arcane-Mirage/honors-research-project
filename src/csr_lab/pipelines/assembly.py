@@ -26,6 +26,7 @@ from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment, block_at
 from csr_lab.prompts import prompt_versions, system_prompt
 from csr_lab.relationships.builder import DocumentIndex, RelationshipGraph, annotate_structure, build_graph, saved_documents
+from csr_lab.relationships.issuers import MAX_EXAMPLES, summarize_issuers
 from csr_lab.relationships.validation import validate_graph
 from csr_lab.schemas import (
     AnalysisMetadata,
@@ -39,6 +40,10 @@ from csr_lab.schemas import (
     DocumentPassage,
     DocumentType,
     InputDocument,
+    IssuerAssignment,
+    IssuerGroup,
+    IssuerLink,
+    IssuerReport,
     PotentialConflict,
     ReferenceCoverage,
     ReferencedDocument,
@@ -270,6 +275,61 @@ def provisional_graph(
     return build_graph(documents, reqs, referenced_document_records(mentions, documents))
 
 
+def apply_issuers(
+    documents: list[InputDocument], referenced: list[ReferencedDocument], assignments: list[IssuerAssignment]
+) -> tuple[list[InputDocument], list[ReferencedDocument]]:
+    """Copy each document's issuer (``classify_issuers``) onto the exported records."""
+    by_node = {i: a for a in assignments if a.issuer for i in a.document_ids}
+    if not by_node:
+        return documents, referenced
+
+    def lookup(document_id: str, canonical: str | None) -> IssuerAssignment | None:
+        return by_node.get(document_id) or (by_node.get(document_family_id(canonical)) if canonical else None)
+
+    docs = []
+    for d in documents:
+        a = lookup(d.document_id, d.canonical_identifier)
+        docs.append(d.model_copy(update={"issuer": a.issuer, "issuer_source": a.source}) if a else d)
+    refs = []
+    for r in referenced:
+        a = lookup(r.document_id, r.canonical_identifier)
+        refs.append(r.model_copy(update={"issuer": a.issuer, "issuer_source": a.source}) if a else r)
+    return docs, refs
+
+
+def issuer_report(graph: RelationshipGraph, documents: list[InputDocument], assignments: list[IssuerAssignment] | None, new_issuers: list[str], ctx) -> IssuerReport:
+    """Groups and cross-group references of this result (``relationships/issuers.py``)."""
+    settings = ctx.options.issuer_classification
+    if assignments is None:  # the stage did not run (disabled, or the input was unusable)
+        return IssuerReport(enabled=settings.enabled, method=settings.method if settings.enabled else None)
+    known = [s.name for s in ctx.config.issuers.known]
+    summary = summarize_issuers(graph)
+    inputs = {document_family_id(d.canonical_identifier) if d.canonical_identifier else d.document_id for d in documents}
+    groups = [
+        IssuerGroup(issuer=issuer, known=issuer in known, document_ids=ids, input_document_ids=[i for i in ids if i in inputs])
+        for issuer, ids in sorted(summary.groups.items(), key=lambda kv: (kv[0] not in known, known.index(kv[0]) if kv[0] in known else 0, kv[0] or ""))
+        if issuer is not None
+    ]
+    links = [
+        IssuerLink(source_issuer=a, target_issuer=b, document_pairs=len(pairs), examples=[list(p) for p in pairs[:MAX_EXAMPLES]])
+        for (a, b), pairs in summary.cross_links.items()
+    ]
+    by_source: dict[str, int] = {}
+    for a in assignments:
+        by_source[a.source or "none"] = by_source.get(a.source or "none", 0) + 1
+    return IssuerReport(
+        enabled=True,
+        method=settings.method,
+        known_issuers=known,
+        new_issuers=new_issuers,
+        groups=groups,
+        links=links,
+        unclassified_document_ids=sorted(a.document_id for a in assignments if not a.issuer),
+        by_source=dict(sorted(by_source.items())),
+        assignments=assignments,
+    )
+
+
 def classify_precedence(conflicts: list[PotentialConflict], documents: list[InputDocument], requirements: list[Requirement], units: list[RequirementDraft], ctx) -> None:
     """Label each conflict with what stated precedence says about it (``conflicts.detector.classify_conflicts``)."""
     docs = DocumentIndex(documents)
@@ -472,6 +532,8 @@ def assemble(state: dict, ctx) -> AnalysisResult:
     passages = passage_records([r for r in requirements if r.unit_kind == "passage"], mentions, applies_to)
     kinds = {r.requirement_id: r.unit_kind for r in requirements} | {u: "saved" for u in ctx.saved_units}
     referenced = referenced_document_records(mentions, documents)
+    assignments = state.get("issuer_assignments")
+    documents, referenced = apply_issuers(documents, referenced, assignments or [])
     documents = annotate_structure(
         documents, requirements, mentions, mode=options.structure_links, names=ctx.sources.names, known=saved_documents(ctx.saved_graph)
     )
@@ -560,6 +622,7 @@ def assemble(state: dict, ctx) -> AnalysisResult:
         referenced_documents=referenced,
         relationships=graph.edges,
         potential_conflicts=conflicts,
+        issuers=issuer_report(graph, documents, assignments, state.get("new_issuers", []), ctx),
         coverage=_coverage(
             documents,
             state.get("segments", []),

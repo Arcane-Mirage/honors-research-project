@@ -524,6 +524,12 @@ def evaluate_case(
             "pages": o.pages,
             "units": o.requirements,
             "gold_requirements": len(gold.requirements),
+            # Issuer groups (no gold yet: counts only). Cross-group = distinct document pairs.
+            "issuer_documents": len(result.issuers.assignments),
+            "issuer_unclassified": len(result.issuers.unclassified_document_ids),
+            "issuer_new": len(result.issuers.new_issuers),
+            "issuer_groups": len(result.issuers.groups),
+            "issuer_cross_links": sum(link.document_pairs for link in result.issuers.links),
             **{f"stage_seconds.{k}": v for k, v in o.stage_seconds.items()},
             **{f"stage_calls.{k}": v.calls for k, v in o.stage_costs.items()},
             **{f"stage_tokens.{k}": v.estimated_tokens for k, v in o.stage_costs.items()},
@@ -596,6 +602,10 @@ def reference_errors(
 # ---------------------------------------------------------------------------
 
 _SUMMED_OPS = [
+    "issuer_documents",
+    "issuer_unclassified",
+    "issuer_new",
+    "issuer_cross_links",
     "llm_calls",
     "llm_failed_calls",
     "json_validation_failures",

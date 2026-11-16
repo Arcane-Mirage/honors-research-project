@@ -31,7 +31,9 @@ from csr_lab.ids import document_family_id
 # 0.5.0: real-document support (additive): input title_source/aliases/running_lines, identifier_source
 #        'registry', mention location, artifact_normalized evidence, coverage.references,
 #        customer scope, chapter alignment edges, conflict precedence status
-SCHEMA_VERSION = "0.5.0"
+# 0.6.0: issuer groups (additive): issuer / issuer_source on input and referenced documents,
+#        top-level `issuers` (groups, references between groups, how each document was classified)
+SCHEMA_VERSION = "0.6.0"
 # Gold 0.2.0 plus optional fields, written only when a case uses them (so older gold files are
 # unchanged): GoldReference.applies_to / location, GoldConflict.precedence / prevailing_document_id,
 # CaseGold.chapter_links.
@@ -125,6 +127,10 @@ class ResolutionMethod(StrEnum):
     REGISTRY = "registry"  # a document name listed in documents.yaml (title or alias of an identifier)
     MERGED = "merged"  # renamed by the reference-merging stage (see metadata.reference_merges)
 
+
+# Where a document's issuer came from (extraction/issuers.py): documents.yaml, the saved graph,
+# the issuers' identifier patterns, or the model.
+IssuerSource = Literal["registry", "saved_graph", "rules", "llm"]
 
 # How a piece of quoted text was located in the extracted source text.
 # artifact_normalized: found only when whitespace and dashes are ignored (PDF extraction artifacts).
@@ -220,6 +226,8 @@ class InputDocument(_Model):
     structure_source: Literal["registry", "text"] | None = None
     structure_evidence: str | None = Field(default=None, description="The sentence that states the structure, when found in the text.")
     takes_precedence_over: list[str] = Field(default_factory=list, description="Identifiers this document takes precedence over (documents.yaml).")
+    issuer: str | None = Field(default=None, description="Who issued the document (a customer, an industry body, a standards body, a government).")
+    issuer_source: IssuerSource | None = None
     revision: str | None = None
     effective_date: str | None = Field(default=None, description="As stated in the header; ISO dates are used to order revisions.")
     format: Literal["txt", "pdf", "json"]
@@ -340,6 +348,8 @@ class ReferencedDocument(_Model):
     document_name: str | None = None
     revision: str | None = None
     document_type: DocumentType = DocumentType.UNKNOWN
+    issuer: str | None = None
+    issuer_source: IssuerSource | None = None
     content_available: bool
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -647,6 +657,50 @@ class AnalysisMetadata(_Model):
 
 
 # ---------------------------------------------------------------------------
+# Issuer groups
+# ---------------------------------------------------------------------------
+
+
+class IssuerAssignment(_Model):
+    """How one document (all its revisions) got its issuer."""
+
+    document_id: str = Field(description="The document (family) node, e.g. DOC-CVS10.")
+    document_ids: list[str] = Field(default_factory=list, description="Every node of the document in this result (revisions included).")
+    issuer: str | None = Field(default=None, description="None: not identified.")
+    source: IssuerSource | None = None
+    new_issuer: bool = Field(default=False, description="The model named an issuer that was not in the known list.")
+    model_answer: str | None = Field(default=None, description="The model's answer as written, when it differs from `issuer`.")
+
+
+class IssuerGroup(_Model):
+    issuer: str
+    known: bool = Field(description="True: from issuers.known in the config; false: added by the model or documents.yaml.")
+    document_ids: list[str] = Field(default_factory=list, description="Document (family) nodes issued by it.")
+    input_document_ids: list[str] = Field(default_factory=list, description="... of which were analysed in this run.")
+
+
+class IssuerLink(_Model):
+    """Documents of one issuer that refer to documents of another (from document-to-document references)."""
+
+    source_issuer: str = Field(description="'unknown' for documents whose issuer was not identified.")
+    target_issuer: str
+    document_pairs: int = Field(description="Distinct (citing document, cited document) pairs.")
+    examples: list[list[str]] = Field(default_factory=list, description="Up to five [citing, cited] document IDs.")
+
+
+class IssuerReport(_Model):
+    enabled: bool = False
+    method: Literal["llm", "hybrid", "rules"] | None = None
+    known_issuers: list[str] = Field(default_factory=list, description="The issuers offered to the model, in order.")
+    new_issuers: list[str] = Field(default_factory=list, description="Issuers the model added in this run.")
+    groups: list[IssuerGroup] = Field(default_factory=list)
+    links: list[IssuerLink] = Field(default_factory=list, description="References between different issuers (cross-group).")
+    unclassified_document_ids: list[str] = Field(default_factory=list)
+    by_source: dict[str, int] = Field(default_factory=dict, description="Documents per IssuerSource ('none': not identified).")
+    assignments: list[IssuerAssignment] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # Top-level result
 # ---------------------------------------------------------------------------
 
@@ -661,6 +715,7 @@ class AnalysisResult(_Model):
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     relationships: list[Relationship] = Field(default_factory=list)
     potential_conflicts: list[PotentialConflict] = Field(default_factory=list)
+    issuers: IssuerReport = Field(default_factory=IssuerReport)
     coverage: Coverage
     metadata: AnalysisMetadata
 

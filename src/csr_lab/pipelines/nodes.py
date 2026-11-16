@@ -34,6 +34,7 @@ from csr_lab.drafts import CandidatePair, ConflictDraft, MentionDraft, PipelineE
 from csr_lab.extraction.fidelity import WordIndex
 from csr_lab.extraction.graph_audit import known_document_candidates, resolve_aliases
 from csr_lab.extraction.grounding import TextIndex
+from csr_lab.extraction.issuers import annotate_graph, classify_issuers
 from csr_lab.extraction.merging import hybrid_merge, llm_merge, merge_spacing_variants
 from csr_lab.extraction.references import MentionCounter, extract_references, mentions_from_model
 from csr_lab.extraction.requirements import UnitText, ground_requirements
@@ -527,6 +528,26 @@ def graph_reference_audit(state: PipelineState, runtime: Runtime[PipelineContext
         "examined_candidates": examined,
         "errors": errors,
     }
+
+
+# ---------------------------------------------------------------------------
+# Issuer groups (LLM, unless documents.yaml / saved graph / rules settle every document)
+# ---------------------------------------------------------------------------
+
+
+@timed("classify_issuers")
+def classify_issuers_node(state: PipelineState, runtime: Runtime[PipelineContext]) -> dict[str, Any]:
+    """Who issued each input and referenced document (``extraction/issuers.py``), once the references are final."""
+    outcome = classify_issuers(runtime.context, state["documents"], state.get("mentions", []))
+    update: dict[str, Any] = {
+        "issuer_assignments": outcome.assignments,
+        "new_issuers": sorted({a.issuer for a in outcome.assignments if a.new_issuer and a.issuer}),
+        "errors": outcome.errors,
+        "limitations": outcome.limitations,
+    }
+    if state.get("graph") is not None:
+        update["graph"] = annotate_graph(state["graph"], outcome.assignments)
+    return update
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ Runtime decisions use conditional edges:
       [-> verify_references <-> targeted_reextraction]      (verification.enabled)
       [-> merge_references]                                 (method != deterministic or merge_spacing_variants)
       [-> build_graph -> graph_reference_audit]             (graph.enabled)
+      [-> classify_issuers]                                 (issuer_classification.enabled; references are final here)
       [-> (build_graph) -> select_conflict_candidates -> analyze_conflicts]  (conflicts.enabled)
       [-> check_saved_conflicts]                            (graph.enabled and graph.saved_conflicts;
                                                              a no-op without a saved graph)
@@ -51,15 +52,18 @@ def build_staged_workflow(options: PipelineOptions):
 
     use_graph = options.graph.enabled
     use_conflicts = options.conflicts.enabled
+    use_issuers = options.issuer_classification.enabled
     needs_graph_node = use_graph and (options.graph.reference_audit or options.graph.alias_resolution or use_conflicts)
 
+    # Where the reference stages end (the references are final), and what follows them.
+    conflict_entry = "select_conflict_candidates" if use_conflicts else "finalize"
+    refs_final = "classify_issuers" if use_issuers else conflict_entry
+    if use_issuers:
+        g.add_node("classify_issuers", nodes.classify_issuers_node)
+        g.add_edge("classify_issuers", conflict_entry)
+
     # The stage that follows reference extraction (and verification, if enabled).
-    if needs_graph_node:
-        after_refs = "build_graph"
-    elif use_conflicts:
-        after_refs = "select_conflict_candidates"
-    else:
-        after_refs = "finalize"
+    after_refs = "build_graph" if needs_graph_node else refs_final
 
     if options.reference_merging.method != "deterministic" or options.reference_merging.merge_spacing_variants:
         g.add_node("merge_references", nodes.merge_references)
@@ -79,7 +83,7 @@ def build_staged_workflow(options: PipelineOptions):
 
     if needs_graph_node:
         g.add_node("build_graph", nodes.build_graph_node)
-        after_graph = "select_conflict_candidates" if use_conflicts else "finalize"
+        after_graph = refs_final
         if options.graph.reference_audit or options.graph.alias_resolution:
             g.add_node("graph_reference_audit", nodes.graph_reference_audit)
             g.add_edge("build_graph", "graph_reference_audit")

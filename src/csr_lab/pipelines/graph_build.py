@@ -40,6 +40,7 @@ from typing import Any, Literal
 from csr_lab.config import AppConfig
 from csr_lab.ingestion.loader import SUPPORTED_SUFFIXES
 from csr_lab.relationships.builder import RelationshipGraph, graph_from_result
+from csr_lab.relationships.issuers import UNKNOWN_ISSUER, summarize_issuers
 from csr_lab.relationships.queries import to_mermaid
 from csr_lab.relationships.render import to_llm_markdown
 from csr_lab.relationships.store import GraphStore
@@ -143,6 +144,25 @@ def real_document_summary(result) -> dict[str, Any]:
         "chapter_refs": kinds.count("references_chapter"),
         "resolved_by_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "resolved_by_precedence"),
         "mutual_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "mutual_precedence_claims"),
+        "issuers": issuer_summary(result),
+    }
+
+
+def issuer_summary(result) -> dict[str, Any]:
+    """The bundle's issuer groups: documents per issuer, new issuers, cross-group references, stage cost."""
+    rep = result.issuers
+    cost = result.metadata.operational.stage_costs.get("classify_issuers")
+    return {
+        "enabled": rep.enabled,
+        "method": rep.method,
+        "documents": len(rep.assignments),
+        "groups": {g.issuer: len(g.document_ids) for g in rep.groups},
+        "new": rep.new_issuers,
+        "unclassified": len(rep.unclassified_document_ids),
+        "by_source": rep.by_source,
+        "cross_links": sum(link.document_pairs for link in rep.links),
+        "calls": cost.calls if cost else 0,
+        "tokens": cost.estimated_tokens if cost else 0,
     }
 
 
@@ -157,7 +177,35 @@ def format_real_document_summary(s: dict[str, Any]) -> str:
         f"structure: {'; '.join(s['follows']) or 'no delta document'}; {s['inherits_from']} inherits_from, {s['amends']} amends, {s['chapter_refs']} chapter references",
         f"precedence: {s['resolved_by_precedence']} conflicts resolved by precedence, {s['mutual_precedence']} with mutual claims",
     ]
+    if (i := s.get("issuers")) and i["enabled"]:
+        new = f", new: {', '.join(i['new'])}" if i["new"] else ""
+        parts.append(
+            f"issuers ({i['method']}): {i['documents']} documents in {len(i['groups'])} groups{new}; {i['unclassified']} unclassified; "
+            f"{i['cross_links']} cross-group references; {i['calls']} calls, {i['tokens']} tokens"
+        )
     return "\n".join(parts)
+
+
+def saved_issuer_groups(graph: RelationshipGraph) -> dict[str, Any] | None:
+    """Documents per issuer in the saved graph and the references between groups."""
+    summary = summarize_issuers(graph)
+    if not summary.has_issuers:
+        return None
+    cross = summary.cross_links
+    groups = []
+    for issuer in sorted(summary.groups, key=lambda k: (k is None, (k or "").casefold())):
+        label = issuer or UNKNOWN_ISSUER
+        groups.append(
+            {
+                "issuer": label,
+                "documents": len(summary.groups[issuer]),
+                "analysed": len(summary.analysed.get(issuer, [])),
+                "out": sum(len(p) for (a, _), p in cross.items() if a == label),
+                "in": sum(len(p) for (_, b), p in cross.items() if b == label),
+            }
+        )
+    links = [(a, b, len(p)) for (a, b), p in sorted(cross.items(), key=lambda kv: (-len(kv[1]), kv[0]))]
+    return {"groups": groups, "links": links}
 
 
 def _safe(name: str) -> str:
@@ -262,6 +310,7 @@ def build_graph(
         view_paths = write_views(store.to_graph(include_superseded=False), graph_path, title=f"Relationship graph: {graph_path.stem}")
     llm = config.llm
     summary = {
+        "issuer_groups": saved_issuer_groups(store.to_graph(include_superseded=False)) if store.nodes else None,
         "graph": str(graph_path),
         "use_graph": use,
         "update_graph": update,
@@ -336,6 +385,34 @@ def _report(s: dict[str, Any]) -> str:
         follows = [f for r in checked for f in r["real_document"]["follows"]]
         if follows:
             lines += ["", "Delta documents: " + "; ".join(follows)]
+        with_issuers = [r for r in checked if (r["real_document"].get("issuers") or {}).get("enabled")]
+        if with_issuers:
+            lines += [
+                "",
+                "### Issuer classification per bundle",
+                "",
+                "| Bundle | Method | Documents | Groups | New issuers | Unclassified | By source | Cross-group refs | Calls | Tokens |",
+                "|---|---|---|---|---|---|---|---|---|---|",
+            ]
+            for r in with_issuers:
+                i = r["real_document"]["issuers"]
+                src = ", ".join(f"{k} {v}" for k, v in i["by_source"].items())
+                lines.append(
+                    f"| {r['bundle']} | {i['method']} | {i['documents']} | {len(i['groups'])} | {', '.join(i['new']) or '–'} | "
+                    f"{i['unclassified']} | {src} | {i['cross_links']} | {i['calls']} | {i['tokens']} |"
+                )
+    if s.get("issuer_groups"):
+        g = s["issuer_groups"]
+        lines += [
+            "",
+            "## Issuer groups in the saved graph",
+            "",
+            "| Issuer | Documents | Analysed | Refers to other groups | Referred to by other groups |",
+            "|---|---|---|---|---|",
+            *[f"| {x['issuer']} | {x['documents']} | {x['analysed']} | {x['out']} | {x['in']} |" for x in g["groups"]],
+        ]
+        if g["links"]:
+            lines += ["", "Cross-group references (document pairs): " + "; ".join(f"{a} → {b}: {n}" for a, b, n in g["links"])]
     if s.get("outside_pool"):
         lines += [
             "",

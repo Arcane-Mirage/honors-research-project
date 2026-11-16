@@ -19,7 +19,15 @@ from csr_lab.extraction.verification import AuditCandidate
 from csr_lab.ingestion.chunking import ChunkPlan
 from csr_lab.ingestion.segmentation import Segment
 from csr_lab.relationships.builder import RelationshipGraph
-from csr_lab.schemas import AnalysisResult, CoverageLimitation, GraphDecision, InputDocument, ReferenceMergeDecision, VerificationEvent
+from csr_lab.schemas import (
+    AnalysisResult,
+    CoverageLimitation,
+    GraphDecision,
+    InputDocument,
+    IssuerAssignment,
+    ReferenceMergeDecision,
+    VerificationEvent,
+)
 
 
 def sum_seconds(a: dict[str, float] | None, b: dict[str, float] | None) -> dict[str, float]:
@@ -50,6 +58,8 @@ class PipelineState(TypedDict, total=False):
     conflict_stats: dict[str, Any]
     graph_decisions: Annotated[list[GraphDecision], operator.add]
     merge_decisions: Annotated[list[ReferenceMergeDecision], operator.add]
+    issuer_assignments: list[IssuerAssignment]  # classify_issuers; None/missing: the stage did not run
+    new_issuers: list[str]
     limitations: Annotated[list[CoverageLimitation], operator.add]
     errors: Annotated[list[PipelineError], operator.add]
     warnings: Annotated[list[str], operator.add]

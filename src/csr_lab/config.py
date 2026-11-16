@@ -266,6 +266,24 @@ class MergingSettings(_Settings):
     max_candidates_per_name: int = Field(default=5, ge=1)
 
 
+class IssuerClassificationSettings(_Settings):
+    """Who issued each document (``extraction/issuers.py``); the known issuers are ``issuers:`` in default.yaml.
+
+    * ``method``: ``llm`` asks the model about every document not settled by documents.yaml or the
+      saved graph; ``hybrid`` first applies the issuers' identifier ``patterns`` and asks the model
+      only about the rest; ``rules`` uses the patterns only (no model call).
+    * ``allow_new``: the model may name an issuer that is not in the list (otherwise: unknown).
+    """
+
+    enabled: bool = True
+    method: Literal["llm", "hybrid", "rules"] = "llm"
+    allow_new: bool = True
+    batch_size: int = Field(default=40, ge=1, description="documents per model call; calls run one after another so new issuers carry over")
+    header_chars: int = Field(default=400, ge=0, description="characters of an input document's first text shown to the model")
+    context_chars: int = Field(default=200, ge=0, description="characters of the sentence citing a referenced document shown to the model")
+    reuse_saved: bool = Field(default=True, description="with a saved graph: documents it already has an issuer for are not asked again")
+
+
 class PipelineOptions(_Settings):
     workflow: Literal["single_pass", "staged"] = "staged"
     structure_links: Literal["off", "registry", "detect"] = Field(
@@ -284,6 +302,7 @@ class PipelineOptions(_Settings):
     verification: VerificationSettings = Field(default_factory=VerificationSettings)
     conflicts: ConflictSettings = Field(default_factory=ConflictSettings)
     graph: GraphSettings = Field(default_factory=GraphSettings)
+    issuer_classification: IssuerClassificationSettings = Field(default_factory=IssuerClassificationSettings)
 
     @field_validator("customer_scoping", "structure_links", mode="before")
     @classmethod
@@ -351,9 +370,53 @@ class SystemPromptSettings(_Settings):
     )
 
 
+class IssuerSpec(_Settings):
+    """One known issuer (``issuers.known`` in default.yaml).
+
+    ``description`` and ``examples`` are shown to the model; ``aliases`` are other spellings of the
+    issuer's name that are mapped back to ``name``; ``patterns`` (regular expressions, case-insensitive)
+    are matched against identifiers and names by the ``rules`` and ``hybrid`` methods and are not
+    shown to the model.
+    """
+
+    name: str = Field(min_length=1)
+    description: str = ""
+    examples: list[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
+    patterns: list[str] = Field(default_factory=list)
+
+    @field_validator("patterns")
+    @classmethod
+    def _compiles(cls, value: list[str]) -> list[str]:
+        import re
+
+        for p in value:
+            try:
+                re.compile(p)
+            except re.error as exc:
+                raise ValueError(f"issuer pattern {p!r} is not a valid regular expression: {exc}") from exc
+        return value
+
+
+class IssuerCatalogSettings(_Settings):
+    """The issuers documents are grouped by. The model picks from ``known`` first and names a new
+    issuer only when none fits (``PipelineOptions.issuer_classification.allow_new``)."""
+
+    known: list[IssuerSpec] = Field(default_factory=list)
+
+    @field_validator("known")
+    @classmethod
+    def _unique(cls, value: list[IssuerSpec]) -> list[IssuerSpec]:
+        names = [s.name.casefold() for s in value]
+        if len(set(names)) != len(names):
+            raise ValueError("issuer names in issuers.known must be unique")
+        return value
+
+
 class AppConfig(_Settings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     system_prompt: SystemPromptSettings = Field(default_factory=SystemPromptSettings)
+    issuers: IssuerCatalogSettings = Field(default_factory=IssuerCatalogSettings)
     processing: ProcessingSettings = Field(default_factory=ProcessingSettings)
     evaluation: EvaluationSettings = Field(default_factory=EvaluationSettings)
     graph_store: GraphStoreSettings = Field(default_factory=GraphStoreSettings)

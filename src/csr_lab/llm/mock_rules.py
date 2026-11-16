@@ -399,3 +399,38 @@ def assess_pair(text_a: str, doc_a: str, text_b: str, doc_b: str) -> PairJudgeme
 
 def first_clause(text: str) -> str:
     return _clause(text, 0)
+
+
+# ---------------------------------------------------------------------------
+# Issuer classification: the mock's "world knowledge" of who publishes what
+# ---------------------------------------------------------------------------
+# Kept apart from the configured patterns (configs/default.yaml), like a real model's knowledge:
+# the mock answers with an issuer name and lets the pipeline match it to the list. "International
+# Motors" is not a configured issuer, so it exercises the new-issuer path.
+
+ISSUER_KNOWLEDGE: list[tuple[re.Pattern, str]] = [
+    (re.compile(p, re.IGNORECASE), name)
+    for p, name in [
+        (r"^CVS[\s-]*\d", "TRATON"),
+        (r"^M[\s-]*3\d{3}\b|^MAN[\s-]*\d", "MAN"),
+        (r"^STD[\s-]*\d{4}\b", "Scania"),
+        (r"^VW[\s-]*\d|formel[\s-]*q", "Volkswagen Group"),
+        (r"^VDA\b", "VDA"),
+        (r"^(AIAG|CQI)\b", "AIAG"),
+        (r"^IATF\b", "IATF"),
+        (r"^(ISO|IEC)\b", "ISO"),  # an alias, as a model might answer
+        (r"^(EN|DIN)\b", "European Standards"),  # the name without its parenthesis
+        (r"\d{2,4}/\d+/(EC|EU|EEC)\b|\((EC|EU)\)|european parliament|official journal of the european", "EU Legislation"),
+        (r"\bCFR\b|^(FMVSS|TSCA)\b", "US Legislation"),
+        (r"(stockholm|basel) convention|montreal protocol", "International Treaties"),
+        (r"^(ISQ|IW)-\d|^MPAPS\b|international motors|navistar", "International Motors"),
+    ]
+]
+
+
+def mock_issuer(texts: list[str]) -> str | None:
+    for text in texts:
+        for pattern, name in ISSUER_KNOWLEDGE:
+            if pattern.search(text):
+                return name
+    return None

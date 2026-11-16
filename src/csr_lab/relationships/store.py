@@ -73,6 +73,7 @@ from csr_lab.relationships.builder import (
     make_edge,
     revision_family,
 )
+from csr_lab.relationships.issuers import UNKNOWN_ISSUER, summarize_issuers
 from csr_lab.relationships.revisions import RequirementVersion, RevisionChange, compare_revisions
 from csr_lab.schemas import SCHEMA_VERSION, AnalysisResult, Relationship, RelationshipType
 
@@ -314,6 +315,7 @@ class GraphStore(BaseModel):
             "sources": len(self.sources),
             "mock_sources": sum(1 for s in self.sources.values() if s.provider_is_mock),
             "documents_needing_revision_order": unordered,
+            "documents_by_issuer": {k or UNKNOWN_ISSUER: len(v) for k, v in summarize_issuers(self.to_graph()).groups.items()},
         }
 
     def revision_changes(self, document_id: str) -> list[dict[str, Any]]:
@@ -694,9 +696,14 @@ class GraphStore(BaseModel):
 def _merge_attributes(existing: dict[str, Any], new: dict[str, Any]) -> None:
     """Names are unioned, flags OR-ed, and other values filled in when missing."""
     for key, value in new.items():
-        if key == "sources":
+        if key in ("sources", "issuer_source"):
             continue
-        if key == "names":
+        if key == "issuer":
+            # documents.yaml wins over any earlier reading; otherwise the first issuer stays, so a
+            # document does not move between groups from one build to the next.
+            if value and (not existing.get("issuer") or (new.get("issuer_source") == "registry" and existing.get("issuer_source") != "registry")):
+                existing["issuer"], existing["issuer_source"] = value, new.get("issuer_source")
+        elif key == "names":
             existing["names"] = list(dict.fromkeys([*existing.get("names", []), *(value or [])]))
         elif key in _OR_ATTRIBUTES:
             existing[key] = bool(existing.get(key)) or bool(value)
@@ -720,7 +727,7 @@ def with_saved_documents(graph: RelationshipGraph, saved: RelationshipGraph | No
         if n.node_id in nodes:
             target = nodes[n.node_id].attributes
             target["names"] = list(dict.fromkeys([*target.get("names", []), *n.attributes.get("names", [])]))
-            for key in ("document_type", "document_name", "title"):
+            for key in ("document_type", "document_name", "title", "issuer", "issuer_source"):
                 if target.get(key) in (None, "unknown") and n.attributes.get(key):
                     target[key] = n.attributes[key]
         else:

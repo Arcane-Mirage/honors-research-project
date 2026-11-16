@@ -105,6 +105,40 @@ handled. The text's fingerprint is stored in `metadata.prompt_versions.system_pr
 and `build-graph` use it (`--no-system-prompt` to compare without); experiments use the reader
 their dataset names in its `manifest.json` instead.
 
+## Issuer groups: who published each document
+
+After the references are found, one stage (`classify_issuers`) works out who issued every input
+and referenced document, and the documents are grouped by issuer. References from a document of
+one issuer to a document of another are the **cross-group references**.
+
+- **Known issuers first.** `issuers.known` in [configs/default.yaml](configs/default.yaml) lists
+  TRATON (shared CVS standards), MAN, Scania, Volkswagen Group, VDA, AIAG, IATF, ISO/IEC, European
+  Standards (EN/DIN), EU Legislation, US Legislation and International Treaties, each with a short
+  description and examples for the model. The model picks one of them, names a new issuer only when
+  none fits (`allow_new`), or answers unknown. New names are offered to later batches and later
+  bundles, so the same publisher is not named two ways.
+- **Order of sources:** `issuer:` in documents.yaml, then the saved graph (documents classified in
+  an earlier build are not asked again), then the issuers' identifier `patterns` (methods `hybrid`
+  and `rules`), then the model. One batched call per 40 documents; every revision of a document
+  shares one answer.
+- **Output:** `issuer` / `issuer_source` on input and referenced documents and on graph nodes;
+  `issuers` in the result (groups, cross-group links, how each document was classified); the
+  `.llm.md` view lists documents under issuer headings with a "References between issuer groups"
+  section; the `.overview.mmd` view draws one box per issuer; `build_report.md` has an issuer table
+  per bundle and for the saved graph.
+- **Knobs** (strategy options `issuer_classification.*`): `enabled`, `method` (`llm` / `hybrid` /
+  `rules`), `allow_new`, `batch_size`, `header_chars`, `context_chars`, `reuse_saved`. Sweep
+  `issuer_method` compares the methods' calls and tokens against what they leave unclassified.
+
+```yaml
+# documents.yaml: an issuer you state yourself always wins
+documents:
+  - file: ISQ-011-PR Restricted Substance Reporting Procedure Rev C.pdf
+    issuer: International Motors
+  - identifier: MPAPS-B-50        # a document you do not have
+    issuer: International Motors
+```
+
 ## Running it on your documents
 
 1. Put the PDFs in a folder, with one subfolder per group of related documents (a CSR together
@@ -188,6 +222,7 @@ with the mock model, or with a real model by overriding `llm:`.
 | `customer_scoping_mock`, sweep `customer_scoping` | Hiding other customers' paragraphs from the model | other-customer errors, precision, extract_references tokens |
 | sweep `pdf_noise`, `noisy_mock` | PDF artifacts, with and without artifact-insensitive quote matching | artifact-matched quotes, conflict evidence validity |
 | sweep `structure` | Delta-document links and precedence labels | chapter-link F1, precedence accuracy |
+| sweep `issuer_method` | Issuer patterns vs the model (llm / hybrid / rules) | classify_issuers calls and tokens, unclassified, new issuers |
 
 ```bash
 csr-lab experiment practice_vs_pipeline_mock
@@ -264,12 +299,13 @@ evaluator need no changes because every strategy returns an `AnalysisResult`.
 
 ## Output
 
-Each analysis produces one JSON document (schema version `0.4.0`), validated by Pydantic:
+Each analysis produces one JSON document (schema version `0.6.0`), validated by Pydantic:
 
 - `document_passages`: passages of documents without chapters, with their references (not requirements);
 - `requirements`: one per chapter: chapter, verbatim text, source offsets and pages, `referenced_document_ids`, per-mention
   evidence, and `department: null` (assignment is deliberately deferred);
-- `referenced_documents`: canonical identifier, raw spellings, revision, type, `content_available`;
+- `referenced_documents`: canonical identifier, raw spellings, revision, type, issuer, `content_available`;
+- `issuers`: documents grouped by issuer, references between issuer groups, how each document was classified;
 - `relationships`: graph edges (`contains`, `references`, `explicitly_excludes`,
   `explicitly_takes_precedence_over`, `potentially_conflicts_with`, ...) with evidence;
 - `potential_conflicts`: two units (requirements, passages, or units already in the saved graph:

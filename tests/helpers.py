@@ -21,8 +21,11 @@ class ScriptedProvider(LLMProvider):
 
     is_mock = True
 
-    def __init__(self, fn: Callable[[str, dict, GenerationRequest], str | dict]):
+    def __init__(self, fn: Callable[[str, dict, GenerationRequest], str | dict], *, scripts_issuers: bool = False):
+        """``scripts_issuers``: ``fn`` also answers issuer classification; otherwise that task gets an
+        empty answer (every document unclassified), so older scripts need not know the stage."""
         self.fn = fn
+        self.scripts_issuers = scripts_issuers
         self.requests: list[GenerationRequest] = []
 
     def describe(self) -> dict[str, Any]:
@@ -31,6 +34,8 @@ class ScriptedProvider(LLMProvider):
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         self.requests.append(request)
         user = next(m["content"] for m in reversed(request.messages) if "<input_json>" in m["content"])
+        if request.task == "issuer_classification" and not self.scripts_issuers:
+            return GenerationResponse(text=json.dumps({"results": []}), input_tokens=10, output_tokens=5)
         out = self.fn(request.task, parse_input_payload(user), request)
         return GenerationResponse(text=out if isinstance(out, str) else json.dumps(out), input_tokens=10, output_tokens=5)
 
@@ -48,6 +53,8 @@ class GoldOracleProvider(LLMProvider):
         return {"provider": "gold_oracle"}
 
     def generate(self, request: GenerationRequest) -> GenerationResponse:
+        if request.task == "issuer_classification":  # not graded; leave every document unclassified
+            return GenerationResponse(text=json.dumps({"results": []}), input_tokens=None, output_tokens=None)
         assert request.task == "single_pass_extraction"
         user = next(m["content"] for m in reversed(request.messages) if "<input_json>" in m["content"])
         units = parse_input_payload(user)["units"]

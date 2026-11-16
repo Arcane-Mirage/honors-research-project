@@ -53,6 +53,8 @@ class PipelineContext:
     # Requirements and passages already in the saved graph (``GraphStore.saved_units()``),
     # for the saved-graph conflict check; unit ID -> unit.
     saved_units: dict[str, Any] = field(default_factory=dict)
+    # `issuer:` entries of documents.yaml: document (family) node -> issuer, also for documents not loaded.
+    registry_issuers: dict[str, str] = field(default_factory=dict)
 
     @property
     def options(self) -> PipelineOptions:

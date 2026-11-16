@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from itertools import combinations
 
 from csr_lab.relationships.builder import GraphNode, RelationshipGraph
+from csr_lab.relationships.issuers import node_issuer
 from csr_lab.schemas import Evidence, RelationshipType
 
 REF = RelationshipType.REFERENCES
@@ -239,10 +240,23 @@ def to_mermaid(graph: RelationshipGraph, include_contains: bool = False, documen
     lines = ["flowchart LR"]
     if documents_only:
         docs = graph.nodes_of_type("document")
-        for n in docs:
+
+        def box(n: GraphNode, indent: str = "  ") -> str:
             available = n.attributes.get("analyzed") or n.attributes.get("content_available")
             label = esc(n.label)[:50] + ("" if available else " (not provided)")
-            lines.append(f'  {nid(n.node_id)}[("{label}")]')
+            return f'{indent}{nid(n.node_id)}[("{label}")]'
+
+        by_issuer: dict[str | None, list[GraphNode]] = {}
+        for n in docs:
+            by_issuer.setdefault(node_issuer(graph, n.node_id), []).append(n)
+        if set(by_issuer) == {None}:
+            lines += [box(n) for n in docs]
+        else:  # one box per issuer group (relationships/issuers.py); arrows between boxes are cross-group references
+            for issuer in sorted(by_issuer, key=lambda k: (k is None, (k or "").casefold())):
+                title = esc(issuer or "Issuer not identified")
+                lines.append(f'  subgraph {"g_" + "".join(c if c.isalnum() else "_" for c in (issuer or "unknown"))}["{title}"]')
+                lines += [box(n, "    ") for n in by_issuer[issuer]]
+                lines.append("  end")
         doc_ids = {n.node_id for n in docs}
         seen: set[tuple[str, str, str]] = set()
         for e in graph.edges:

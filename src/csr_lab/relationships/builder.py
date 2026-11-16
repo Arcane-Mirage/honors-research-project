@@ -317,6 +317,7 @@ def build_graph(
                 **({"follows_structure_of": doc.follows_structure_of, "structure_source": doc.structure_source} if doc.follows_structure_of else {}),
                 **({"takes_precedence_over": doc.takes_precedence_over} if doc.takes_precedence_over else {}),
                 **({"revision_of": family} if is_revision else {}),
+                **({"issuer": doc.issuer, "issuer_source": doc.issuer_source} if doc.issuer else {}),
             },
         )
         if is_revision and family:
@@ -335,6 +336,8 @@ def build_graph(
             fam.attributes["is_input_document"] = True
             fam.attributes["content_available"] = fam.attributes.get("content_available") or available
             fam.attributes["provided_revisions"] = [*fam.attributes.get("provided_revisions", []), doc.revision]
+            if doc.issuer and not fam.attributes.get("issuer"):
+                fam.attributes.update(issuer=doc.issuer, issuer_source=doc.issuer_source)
     for ref in referenced_documents:
         attrs = {
             "canonical_identifier": ref.canonical_identifier,
@@ -344,6 +347,7 @@ def build_graph(
             "content_available": ref.content_available,
             "is_input_document": ref.document_id in nodes,
             "names": [n for n in ref.metadata.get("names", []) if n],
+            **({"issuer": ref.issuer, "issuer_source": ref.issuer_source} if ref.issuer else {}),
         }
         if ref.document_id in nodes:
             existing = nodes[ref.document_id].attributes
@@ -351,6 +355,8 @@ def build_graph(
             existing["document_type"] = attrs["document_type"]
             existing["document_name"] = ref.document_name
             existing["referenced"] = True
+            if ref.issuer and not existing.get("issuer"):
+                existing.update(issuer=ref.issuer, issuer_source=ref.issuer_source)
         else:
             if ref.canonical_identifier and ref.revision:
                 family = document_family_id(ref.canonical_identifier)

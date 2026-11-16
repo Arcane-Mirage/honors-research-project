@@ -10,7 +10,7 @@ from pathlib import Path
 
 from csr_lab.config import AppConfig
 from csr_lab.extraction.grounding import SourceIndex
-from csr_lab.extraction.normalization import NameIndex
+from csr_lab.extraction.normalization import NameIndex, canonical_input_identifier
 from csr_lab.ids import document_family_id
 from csr_lab.ingestion.loader import DocumentRegistry, expand_inputs, load_bundle, load_registry, processing_load_options
 from csr_lab.llm.interface import CallRecorder, LLMProvider, StructuredLLM
@@ -70,6 +70,7 @@ def run_analysis(
         sources=SourceIndex(documents, artifact_match=config.processing.grounding_artifact_match, names=registry_names(registry, documents)),
         run_seed=seed,
         case_id=case_id,
+        registry_issuers=registry_issuers(registry, documents),
     )
     warnings: list[str] = []
     if saved_graph is not None:
@@ -121,6 +122,18 @@ def registry_names(registry: DocumentRegistry | None, documents: list[InputDocum
             for name in e.names:
                 index.add(name, ident)
     return index
+
+
+def registry_issuers(registry: DocumentRegistry | None, documents: list[InputDocument]) -> dict[str, str]:
+    """``issuer:`` entries of documents.yaml, by document (family) node."""
+    if not registry:
+        return {}
+    by_file = {d.filename: d.canonical_identifier for d in documents}
+    out: dict[str, str] = {}
+    for e in registry.entries:
+        if e.issuer and (ident := e.identifier or by_file.get(e.file or "")):
+            out.setdefault(document_family_id(canonical_input_identifier(ident)), e.issuer)
+    return out
 
 
 def analyze_files(

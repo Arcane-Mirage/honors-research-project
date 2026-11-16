@@ -38,7 +38,9 @@ What it is used for:
   two (at least three words) is a word-suffix of the longer ("VW Formel Q Konkret").
   A name that matches several identifiers is left unresolved;
 * ``follows_structure_of`` and ``takes_precedence_over`` declare a delta document and a
-  precedence order (``relationships/builder.py``, ``conflicts/detector.py``).
+  precedence order (``relationships/builder.py``, ``conflicts/detector.py``);
+* ``issuer`` states who issued the document; it wins over issuer classification
+  (``extraction/issuers.py``), also for a document known only by its identifier.
 
 The registry is found next to the files (``documents.yaml`` in a file's folder or the
 folder above it) and used when ``processing.document_registry`` is on. It is user-provided
@@ -107,6 +109,7 @@ class RegistryEntry(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     follows_structure_of: str | None = Field(default=None, description="identifier of the document whose chapter numbering this one follows")
     takes_precedence_over: list[str] = Field(default_factory=list, description="identifiers this document takes precedence over")
+    issuer: str | None = Field(default=None, description="who issued the document (wins over issuer classification)")
 
     @model_validator(mode="after")
     def _identified(self) -> RegistryEntry:
@@ -314,6 +317,8 @@ def _build_document(
         takes_precedence_over=[canonical_input_identifier(x) for x in (entry.takes_precedence_over if entry else [])],
         follows_structure_of=follows,
         structure_source="registry" if follows else None,
+        issuer=entry.issuer if entry and entry.issuer else None,
+        issuer_source="registry" if entry and entry.issuer else None,
         revision=rev,
         effective_date=effective_date or parse_effective_date(text),
         format=fmt,  # type: ignore[arg-type]

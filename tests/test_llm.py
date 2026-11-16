@@ -132,5 +132,6 @@ def test_prompt_versions_include_content_hash():
         "semantic_chunking",
         "reference_merging",
         "reference_alias_check",
+        "issuer_classification",
     }
     assert all("@" in v for v in versions.values())

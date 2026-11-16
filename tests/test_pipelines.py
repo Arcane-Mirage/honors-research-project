@@ -33,7 +33,7 @@ def test_every_strategy_produces_valid_output(dataset, noisy_config, strategy):
     graph_calls = result.metadata.operational.graph_informed_calls
     assert (graph_calls > 0) == (strategy == "graph_assisted")
     if strategy == "single_pass":
-        assert result.metadata.operational.llm_calls == 1
+        assert result.metadata.operational.stage_costs["single_pass_extract"].calls == 1
 
 
 def test_runs_are_deterministic(dataset, noisy_config):
@@ -106,7 +106,7 @@ def test_malformed_output_is_retried_then_recorded(simple_docs, config):
     assert result.requirements and all(not r.reference_mentions for r in result.requirements)
     assert {r.extraction_metadata.reference_analysis_status for r in result.requirements} == {"failed"}
 
-    always_bad = ScriptedProvider(lambda *a: "no json at all")
+    always_bad = ScriptedProvider(lambda *a: "no json at all", scripts_issuers=True)
     failed = run_analysis(simple_docs, strategy="staged", config=config, provider=always_bad)
     assert failed.status == "completed_with_errors"
     assert not failed.metadata.llm_calls[0].success

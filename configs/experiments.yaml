@@ -248,6 +248,19 @@ strategies:
 
 sweeps:
   # --- real-document features ------------------------------------------------------------
+  issuer_method:
+    experiment: demo_mock
+    description: >-
+      Issuer groups: the model classifies every document (llm), the issuers' identifier patterns
+      first and the model only for the rest (hybrid), or the patterns alone (rules). Calls and
+      tokens of classify_issuers show what the patterns save; unclassified and new-issuer counts
+      show what they miss. No gold for issuers yet: counts only.
+    strategies: [staged]
+    grid:
+      options.issuer_classification.method: [llm, hybrid, rules]
+    metrics: [ops.issuer_documents, ops.issuer_unclassified, ops.issuer_new, ops.issuer_cross_links, ops.stage_calls.classify_issuers, ops.stage_tokens.classify_issuers]
+
+
   registry:
     experiment: demo_mock
     description: >-

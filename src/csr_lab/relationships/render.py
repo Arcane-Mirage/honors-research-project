@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from csr_lab.relationships.builder import GraphNode, RelationshipGraph
+from csr_lab.relationships.issuers import node_issuer, summarize_issuers
 from csr_lab.schemas import RelationshipType
 
 _REQUIREMENT_PHRASES = {
@@ -147,13 +148,34 @@ def to_llm_markdown(
     ]
     # A document known in revisions is listed per revision; the document itself only gets a
     # line when there are several revisions to put in order.
-    for node in sorted(docs, key=lambda n: n.label):
-        if graph.revisions_of(node.node_id):
-            line = _family_line(graph, node)
-            if line:
-                lines.append(line + rid(node))
-            continue
-        lines.append(_doc_line(graph, node, len(by_doc.get(node.node_id, []))) + rid(node))
+    def doc_lines(nodes: list[GraphNode]) -> list[str]:
+        out = []
+        for node in sorted(nodes, key=lambda n: n.label):
+            if graph.revisions_of(node.node_id):
+                line = _family_line(graph, node)
+                if line:
+                    out.append(line + rid(node))
+                continue
+            out.append(_doc_line(graph, node, len(by_doc.get(node.node_id, []))) + rid(node))
+        return out
+
+    issuers = summarize_issuers(graph)
+    if not issuers.has_issuers:
+        lines += doc_lines(docs)
+    else:
+        # Grouped by issuer (relationships/issuers.py); documents whose issuer is unknown come last.
+        by_issuer: dict[str | None, list[GraphNode]] = defaultdict(list)
+        for n in docs:
+            by_issuer[node_issuer(graph, n.node_id)].append(n)
+        for i, issuer in enumerate(sorted(by_issuer, key=lambda k: (k is None, (k or "").casefold()))):
+            lines += [*([""] if i else []), f"### {issuer or 'Issuer not identified'}", "", *doc_lines(by_issuer[issuer])]
+        cross = issuers.cross_links
+        lines += ["", "## References between issuer groups", ""]
+        if not cross:
+            lines.append("None: no document refers to a document of another issuer.")
+        for (a, b), pairs in sorted(cross.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            shown = ", ".join(f"{name(x)} → {name(y)}" for x, y in pairs[:4]) + (", …" if len(pairs) > 4 else "")
+            lines.append(f"- {a} → {b}: {len(pairs)} document{'s' if len(pairs) != 1 else ''} ({shown})")
 
     lines += ["", "## Requirements and the documents they refer to", ""]
     for doc_id in sorted(by_doc, key=name):

@@ -70,7 +70,7 @@ Definitions used in every task:
 
 
 def prompt_versions() -> dict[str, str]:
-    from csr_lab.prompts import baseline, chunking, conflicts, merging, references, verification
+    from csr_lab.prompts import baseline, chunking, conflicts, issuers, merging, references, verification
 
     specs = [
         baseline.SPEC,
@@ -80,5 +80,6 @@ def prompt_versions() -> dict[str, str]:
         chunking.SPEC,
         merging.MERGING_SPEC,
         merging.ALIAS_SPEC,
+        issuers.SPEC,
     ]
     return {spec.name: spec.fingerprint for spec in specs}
