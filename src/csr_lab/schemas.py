@@ -399,6 +399,15 @@ class PotentialConflict(_Model):
     )
     prevailing_document_id: str | None = Field(default=None, description="With resolved_by_precedence: the document whose text prevails.")
     precedence_basis: list[str] = Field(default_factory=list, description="The precedence statements used (documents.yaml or quoted text).")
+    # Implied by the issuers' tiers (issuers.tier_order), never stated in the documents: kept apart from
+    # precedence_status so a reader can always tell a stated precedence from an implied one.
+    issuer_tier_status: Literal["implied_by_issuer_tier", "same_tier", "not_assessed"] = Field(
+        default="not_assessed",
+        description="implied_by_issuer_tier: the two documents' issuers are in different tiers (law > customer > industry "
+        "standard); an implication for review, not a statement of the documents. not_assessed: an issuer or tier is unknown.",
+    )
+    issuer_tier_prevailing_document_id: str | None = Field(default=None, description="With implied_by_issuer_tier: the document of the higher tier.")
+    issuer_tier_basis: list[str] = Field(default_factory=list, description="Each side's document, issuer and tier.")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -466,6 +475,18 @@ class ConflictCoverage(_Model):
     notes: list[str] = Field(default_factory=list)
 
 
+class CustomerSpecificMention(_Model):
+    """A reference in unlabelled text to a document of a customer's issuer that is not the citing
+    document's issuer: the paragraph may be missing a customer label ('MAN: ...'). A hint for review."""
+
+    mention_id: str
+    unit_id: str = Field(description="The requirement or passage holding the reference.")
+    cited_document_id: str
+    cited_issuer: str
+    customers: list[str] = Field(description="The cited issuer's customers: whom the paragraph may really be for.")
+    quoted_text: str
+
+
 class ReferenceCoverage(_Model):
     """How the result's references are resolved. Needs no gold, so it works on real documents."""
 
@@ -480,6 +501,12 @@ class ReferenceCoverage(_Model):
     evidence_matches: dict[str, int] = Field(
         default_factory=dict, description="Mention evidence per match kind (exact, whitespace_normalized, artifact_normalized, not_found ...)."
     )
+    customer_specific_unlabelled: int | None = Field(
+        None,
+        description="References in unlabelled text of a document that uses customer labels, to a document of a customer's issuer "
+        "other than the citing document's issuer (possible missed label). None: customer scoping or issuer classification off.",
+    )
+    customer_specific_mentions: list[CustomerSpecificMention] = Field(default_factory=list)
     from_other_customer_blocks: int | None = Field(
         None, description="Mentions inside blocks that apply only to companies that are not customers (None: customer scoping off)."
     )

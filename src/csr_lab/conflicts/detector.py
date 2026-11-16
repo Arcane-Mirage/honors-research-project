@@ -428,6 +428,8 @@ def saved_graph_candidates(
     max_fanout: int,
     families: dict[str, str],
     follows: dict[str, str] | None = None,
+    issuers: dict[str, str] | None = None,
+    same_issuer: bool = False,
 ) -> tuple[list[CandidatePair], list[str]]:
     """Pairs (new unit, saved unit) whose documents are linked by references.
 
@@ -442,6 +444,11 @@ def saved_graph_candidates(
     follows. Each of its chapters is paired with the saved chapter of the same number (a delta
     chapter amends it), whatever the overlap; pointer chapters ('See ... No additional
     requirements') are skipped.
+
+    ``same_issuer`` (``graph.saved_same_issuer``): a pair is also linked when the new unit's document
+    and the saved unit's document have the same issuer (``issuers``: new document ID -> issuer;
+    ``SavedUnit.issuer``), so a new CVS revision meets every stored TRATON document. The topic
+    overlap and ``max_pairs`` limits still apply.
     """
     fanout: dict[str, int] = {}
     for s in saved.values():
@@ -463,6 +470,9 @@ def saved_graph_candidates(
                 selectors.append(f"saved_graph:referenced_by:{s.family_id}")
             shared = sorted(d for d in refs & s.referenced if fanout.get(d, 0) <= max_fanout)
             selectors += [f"saved_graph:shared_reference:{d}" for d in shared[:3]]
+            issuer = (issuers or {}).get(u.document_id)
+            if same_issuer and issuer and getattr(s, "issuer", None) == issuer:
+                selectors.append(f"saved_graph:same_issuer:{issuer}")
             if not selectors:
                 continue
             score = attribute_score(u.prompt_text, s.text)
@@ -574,3 +584,41 @@ def classify_conflicts(conflicts: list[PotentialConflict], unit_family: dict[str
             c.precedence_basis = ab or ba  # type: ignore[assignment]
         else:
             c.precedence_status, c.precedence_basis = "unresolved", []
+
+
+def classify_issuer_tiers(
+    conflicts: list[PotentialConflict],
+    unit_document: dict[str, str],
+    document_issuer: dict[str, str],
+    tiers: dict[str, str],
+    order: list[str],
+    labels: dict[str, str] | None = None,
+) -> None:
+    """Set ``issuer_tier_status``, ``issuer_tier_prevailing_document_id`` and ``issuer_tier_basis`` in place.
+
+    ``unit_document``: unit ID -> its document (family) node; ``document_issuer``: document -> issuer;
+    ``tiers``: issuer -> tier; ``order``: tiers, highest first. This never touches ``precedence_status``
+    (stated precedence): the two labels stay apart.
+    """
+    rank = {t: i for i, t in enumerate(order)}
+    labels = labels or {}
+    for c in conflicts:
+        docs = list(dict.fromkeys(unit_document[u] for u in c.unit_ids[:2] if u in unit_document))
+        if len(docs) != 2:
+            c.issuer_tier_status = "not_assessed"
+            continue
+        sides = []
+        for d in docs:
+            issuer = document_issuer.get(d)
+            tier = tiers.get(issuer) if issuer else None
+            sides.append((d, issuer, tier))
+        c.issuer_tier_basis = [f"{labels.get(d, d)}: {issuer or 'issuer unknown'} ({tier or 'no tier'})" for d, issuer, tier in sides]
+        if any(t not in rank for _, _, t in sides):
+            c.issuer_tier_status = "not_assessed"
+            continue
+        (da, _, ta), (db, _, tb) = sides
+        if rank[ta] == rank[tb]:
+            c.issuer_tier_status = "same_tier"
+        else:
+            c.issuer_tier_status = "implied_by_issuer_tier"
+            c.issuer_tier_prevailing_document_id = da if rank[ta] < rank[tb] else db

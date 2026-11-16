@@ -124,6 +124,7 @@ class SavedUnit:
     text: str
     start_offset: int | None = None  # in its document's extracted text
     referenced: set[str] = field(default_factory=set)  # document nodes it references (and their families)
+    issuer: str | None = None  # its document's issuer (or the document family's)
 
 
 class StoreChangeReport(BaseModel):
@@ -258,6 +259,8 @@ class GraphStore(BaseModel):
                 continue
             doc = self.nodes.get(doc_id)
             attrs = doc.attributes if doc else {}
+            fam_node = self.nodes.get(family(doc_id))
+            issuer = attrs.get("issuer") or (fam_node.attributes.get("issuer") if fam_node else None)
             for unit_id, unit_text, start in units:
                 body = text if kind == "chapter" else unit_text
                 if not body:
@@ -273,6 +276,7 @@ class GraphStore(BaseModel):
                     text=body,
                     start_offset=start,
                     referenced=refs.get(unit_id, set()),
+                    issuer=issuer,
                 )
         return out
 

@@ -183,6 +183,11 @@ class ConflictSettings(_Settings):
     precedence_classification: bool = Field(
         default=True, description="label each conflict resolved_by_precedence / mutual_precedence_claims / unresolved from stated precedence"
     )
+    issuer_tier_precedence: bool = Field(
+        default=True,
+        description="also label which side the issuers' tiers would favour (issuers.tier_order, e.g. law > customer > industry "
+        "standard); kept apart from stated precedence: an implication, never stated in the documents",
+    )
 
 
 class GraphSettings(_Settings):
@@ -216,6 +221,11 @@ class GraphSettings(_Settings):
     )
     saved_max_pairs: int = Field(default=200, ge=0, description="saved-graph conflict check: most pairs sent to the model")
     saved_min_score: float = Field(default=0.08, ge=0, description="saved-graph conflict check: least topic overlap of a linked pair")
+    saved_same_issuer: bool = Field(
+        default=False,
+        description="saved-graph conflict check: also pair new units with saved units of documents from the same issuer "
+        "(a new CVS revision against every stored TRATON document), not only with documents linked by references",
+    )
 
 
 class ChunkingSettings(_Settings):
@@ -270,18 +280,25 @@ class IssuerClassificationSettings(_Settings):
     """Who issued each document (``extraction/issuers.py``); the known issuers are ``issuers:`` in default.yaml.
 
     * ``method``: ``llm`` asks the model about every document not settled by documents.yaml or the
-      saved graph; ``hybrid`` first applies the issuers' identifier ``patterns`` and asks the model
+      saved graph; ``hybrid`` (default) first applies the issuers' identifier ``patterns`` and asks the model
       only about the rest; ``rules`` uses the patterns only (no model call).
     * ``allow_new``: the model may name an issuer that is not in the list (otherwise: unknown).
     """
 
     enabled: bool = True
-    method: Literal["llm", "hybrid", "rules"] = "llm"
+    # hybrid since 2026-11-16: on 75 labelled real documents (csr-lab issuer-eval, qwen3.5-9b) it matched llm's
+    # accuracy (68/75; every miss a label outside the list) with 57% fewer tokens.
+    method: Literal["llm", "hybrid", "rules"] = "hybrid"
     allow_new: bool = True
     batch_size: int = Field(default=40, ge=1, description="documents per model call; calls run one after another so new issuers carry over")
     header_chars: int = Field(default=400, ge=0, description="characters of an input document's first text shown to the model")
     context_chars: int = Field(default=200, ge=0, description="characters of the sentence citing a referenced document shown to the model")
     reuse_saved: bool = Field(default=True, description="with a saved graph: documents it already has an issuer for are not asked again")
+    use_registry: bool = Field(
+        default=True,
+        description="use `issuer:` from documents.yaml. False: classify those documents too (the labels stay available as "
+        "gold for `csr-lab issuer-eval`); identifiers, titles and aliases from documents.yaml are still used",
+    )
 
 
 class PipelineOptions(_Settings):
@@ -427,6 +444,7 @@ class IssuerSpec(_Settings):
     customers: list[CustomerSpec] = Field(
         default_factory=list, description="The supplier's customers that belong to this issuer (an issuer need not be a customer)."
     )
+    tier: str | None = Field(default=None, description="Precedence tier (one of issuers.tier_order); None: not assessed.")
 
     @field_validator("patterns")
     @classmethod
@@ -446,6 +464,18 @@ class IssuerCatalogSettings(_Settings):
     issuer only when none fits (``PipelineOptions.issuer_classification.allow_new``)."""
 
     known: list[IssuerSpec] = Field(default_factory=list)
+    tier_order: list[str] = Field(
+        default_factory=list,
+        description="Issuer tiers, highest first (e.g. [law, customer, industry_standard]). Used only for the "
+        "'implied by issuer tier' conflict label (conflicts.issuer_tier_precedence), never for stated precedence.",
+    )
+
+    @model_validator(mode="after")
+    def _tiers_known(self) -> IssuerCatalogSettings:
+        for spec in self.known:
+            if spec.tier is not None and spec.tier not in self.tier_order:
+                raise ValueError(f"issuer {spec.name!r} has tier {spec.tier!r}, which is not in issuers.tier_order {self.tier_order}")
+        return self
 
     @field_validator("known")
     @classmethod

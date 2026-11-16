@@ -56,6 +56,7 @@ python scripts/run_demo.py
 | `csr-lab strategies` | List strategies, including YAML-defined variants |
 | `csr-lab workflow --strategy staged_verified` | Print a strategy's LangGraph workflow as Mermaid |
 | `csr-lab generate-data [--pdf \| --incremental \| --noisy]` | Regenerate the dataset, or its PDF / saved-graph / PDF-artifact variant (same case and gold) |
+| `csr-lab issuer-eval FOLDER --llm lmstudio` | Score issuer classification (llm / hybrid / rules) against the `issuer:` labels in the folder's documents.yaml |
 | `csr-lab pdf-backends FILES_OR_FOLDER --out report.md` | Compare pypdf / pypdf_layout / pymupdf on real PDFs: artifacts, contents found, chapters, titles (no gold) |
 | `csr-lab sweep NAME` | Run an experiment over a grid of settings (`sweeps:` in `configs/experiments.yaml`) |
 | `csr-lab check-text SOURCE CHUNKS.json` | Check chunks/quotes against a source: verbatim, reworded (with the edits), missing text. No model |
@@ -132,8 +133,8 @@ one issuer to a document of another are the **cross-group references**.
   none fits (`allow_new`), or answers unknown. New names are offered to later batches and later
   bundles, so the same publisher is not named two ways.
 - **Order of sources:** `issuer:` in documents.yaml, then the saved graph (documents classified in
-  an earlier build are not asked again), then the issuers' identifier `patterns` (methods `hybrid`
-  and `rules`), then the model. One batched call per 40 documents; every revision of a document
+  an earlier build are not asked again), then the issuers' identifier `patterns` (methods `hybrid`,
+  the default, and `rules`), then the model. One batched call per 40 documents; every revision of a document
   shares one answer.
 - **Output:** `issuer` / `issuer_source` on input and referenced documents and on graph nodes;
   `issuers` in the result (groups, cross-group links, how each document was classified); the
@@ -141,8 +142,38 @@ one issuer to a document of another are the **cross-group references**.
   section; the `.overview.mmd` view draws one box per issuer; `build_report.md` has an issuer table
   per bundle and for the saved graph.
 - **Knobs** (strategy options `issuer_classification.*`): `enabled`, `method` (`llm` / `hybrid` /
-  `rules`), `allow_new`, `batch_size`, `header_chars`, `context_chars`, `reuse_saved`. Sweep
-  `issuer_method` compares the methods' calls and tokens against what they leave unclassified.
+  `rules`), `allow_new`, `batch_size`, `header_chars`, `context_chars`, `reuse_saved`,
+  `use_registry`. Sweep `issuer_method` compares the methods' calls and tokens on the synthetic
+  case (its publishers are fictional, so it measures cost, not accuracy).
+- **Accuracy against your labels:** `csr-lab issuer-eval FOLDER --llm NAME` runs only the issuer
+  stage for each method with `use_registry: false` (the documents.yaml labels are hidden from the
+  model and used as gold; identifiers and titles are still used) and writes `report.md` and
+  `rows.csv` to `outputs/issuer_eval/`. Documents known only by identifier are shown with the
+  sentence that cites them. On the 75 labelled documents of the real CSR folder (2026-11-16,
+  qwen3.5-9b) all three methods got every document whose label is a configured issuer (68/68);
+  the 7 misses were the AIG-REACH files, labelled TF-REACH, which is not in the list (llm said AIAG,
+  hybrid named a new issuer "ACEA", rules left them unclassified). hybrid used 19k tokens, llm 44k,
+  so hybrid is the default. The patterns were written while looking at these documents, so the rules
+  figure is optimistic; the llm figure is the independent check.
+
+**Uses of the issuer groups** (each can be switched off):
+
+- **Possible missed customer labels** (`coverage.references.customer_specific_unlabelled`, with each
+  case in `customer_specific_mentions`; needs `customer_scoping` tag/filter): a reference in
+  unlabelled text of a document that uses customer labels, to a document of a customer's issuer
+  other than the citing document's issuer ("Standard MAN 239" in a paragraph without "MAN:"). A
+  hint for review; also in `build_report.md` and the experiment metric `ops.possible_missed_labels`.
+- **Saved-graph check by issuer** (`graph.saved_same_issuer`, off by default): new units are also
+  paired with stored units of documents from the same issuer (a new CVS revision against every
+  stored TRATON document), not only with documents linked by references. Topic overlap
+  (`saved_min_score`) and `saved_max_pairs` still apply.
+- **Precedence implied by issuer tier** (`conflicts.issuer_tier_precedence`): each issuer has a
+  `tier`, ordered by `issuers.tier_order` (law > customer > industry standard; ISO/IEC and EN/DIN
+  count as industry standards, and the order matches CVS10's stated order CVS10 > Formel Q > IATF
+  16949 / ISO 9001). A conflict between documents of different tiers gets
+  `issuer_tier_status: implied_by_issuer_tier` and `issuer_tier_prevailing_document_id`. This is an
+  implication, never stated in the documents, and is kept apart from `precedence_status`
+  (precedence the documents state), so the two can always be told apart.
 
 ```yaml
 # documents.yaml: an issuer you state yourself always wins
@@ -152,6 +183,9 @@ documents:
   - identifier: MPAPS-B-50        # a document you do not have
     issuer: International Motors
 ```
+
+`issuer:` also works in `documents.yaml` entries that give a file without a printed identifier its
+real one (`identifier: 2000/53/EC`), so citations ("Directive 2000/53/EC") reach the loaded file.
 
 ## Running it on your documents
 

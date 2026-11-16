@@ -15,7 +15,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 
-from csr_lab.conflicts.detector import classify_conflicts, precedence_facts
+from csr_lab.conflicts.detector import classify_conflicts, classify_issuer_tiers, precedence_facts
 from csr_lab.drafts import ConflictDraft, MentionDraft, RequirementDraft
 from csr_lab.extraction.fidelity import FidelityReport, source_gaps, summarize
 from csr_lab.extraction.merging import merge_spacing_variants
@@ -36,6 +36,7 @@ from csr_lab.schemas import (
     Coverage,
     CoverageLimitation,
     CustomerScopeCoverage,
+    CustomerSpecificMention,
     DocumentCoverage,
     DocumentPassage,
     DocumentType,
@@ -339,6 +340,68 @@ def classify_precedence(conflicts: list[PotentialConflict], documents: list[Inpu
     classify_conflicts(conflicts, unit_family, precedence_facts(documents, requirements))
 
 
+def classify_tiers(conflicts: list[PotentialConflict], documents: list[InputDocument], units: list[RequirementDraft], assignments: list[IssuerAssignment], ctx) -> None:
+    """The 'implied by issuer tier' label (``conflicts.detector.classify_issuer_tiers``); separate from stated precedence."""
+    docs = DocumentIndex(documents)
+    unit_document = {u.requirement_id: docs.family_of(u.document_id) for u in units}
+    unit_document |= {uid: u.family_id for uid, u in ctx.saved_units.items()}
+    issuer_of = {i: a.issuer for a in assignments if a.issuer for i in a.document_ids}
+    issuer_of |= {u.family_id: u.issuer for u in ctx.saved_units.values() if u.issuer and u.family_id not in issuer_of}
+    tiers = {s.name: s.tier for s in ctx.config.issuers.known if s.tier}
+    labels = {docs.family_of(d.document_id): d.canonical_identifier or d.filename for d in documents}
+    labels |= {u.family_id: u.identifier or u.family_id for u in ctx.saved_units.values()}
+    classify_issuer_tiers(conflicts, unit_document, issuer_of, tiers, ctx.config.issuers.tier_order, labels)
+
+
+def with_customer_specific(
+    cov: ReferenceCoverage,
+    units: list[RequirementDraft],
+    mentions: list[MentionDraft],
+    applies_to: dict[str, list[str]],
+    documents: list[InputDocument],
+    referenced: list[ReferencedDocument],
+    ctx,
+    *,
+    enabled: bool,
+) -> ReferenceCoverage:
+    """Flag references in unlabelled text to a document of a customer's issuer other than the citing
+    document's issuer (``ReferenceCoverage.customer_specific_unlabelled``): a possible missed label.
+
+    Only documents that use customer labels somewhere are checked (others have nothing to miss)."""
+    if not enabled:
+        return cov
+    customers_of: dict[str, list[str]] = {}
+    for c in ctx.config.system_prompt.customers:
+        if c.issuer:
+            customers_of.setdefault(c.issuer, []).append(c.name)
+    issuer_of = {d.document_id: d.issuer for d in documents if d.issuer}
+    issuer_of |= {r.document_id: r.issuer for r in referenced if r.issuer}
+    by_unit = {u.requirement_id: u for u in units}
+    labelled_docs = {u.document_id for u in units if u.scope_blocks}
+    flagged = []
+    for m in mentions:
+        unit = by_unit.get(m.requirement_id)
+        if not m.active or unit is None or unit.document_id not in labelled_docs or m.mention_id in applies_to:
+            continue
+        cited = issuer_of.get(m.document_id)
+        own = issuer_of.get(unit.document_id)
+        if not cited or cited == own or cited not in customers_of:
+            continue
+        flagged.append(
+            CustomerSpecificMention(
+                mention_id=m.mention_id,
+                unit_id=m.requirement_id,
+                cited_document_id=m.document_id,
+                cited_issuer=cited,
+                customers=customers_of[cited],
+                quoted_text=m.evidence.quoted_text,
+            )
+        )
+    cov.customer_specific_unlabelled = len(flagged)
+    cov.customer_specific_mentions = flagged
+    return cov
+
+
 def reference_coverage(
     documents: list[InputDocument], units: list[RequirementDraft], mentions: list[MentionDraft], from_other_customers: int | None = None
 ) -> ReferenceCoverage:
@@ -544,6 +607,8 @@ def assemble(state: dict, ctx) -> AnalysisResult:
     conflicts = conflict_records(state.get("conflicts", []), edge_ids, kinds)
     if options.conflicts.precedence_classification:
         classify_precedence(conflicts, documents, reqs, requirements, ctx)
+    if options.conflicts.issuer_tier_precedence and assignments is not None:
+        classify_tiers(conflicts, documents, requirements, assignments, ctx)
     graph_report = validate_graph(graph)
 
     errors = [f"[{e.stage}] {e.message}" for e in state.get("errors", [])]
@@ -634,7 +699,10 @@ def assemble(state: dict, ctx) -> AnalysisResult:
             len(conflicts),
             state.get("limitations", []),
             fatal,
-            reference_coverage(documents, requirements, mentions, from_other_customers if options.customer_scoping != "off" else None),
+            with_customer_specific(
+                reference_coverage(documents, requirements, mentions, from_other_customers if options.customer_scoping != "off" else None),
+                requirements, mentions, applies_to, documents, referenced, ctx, enabled=options.customer_scoping != "off" and assignments is not None,
+            ),
             scope_coverage(requirements, ctx),
         ),
         metadata=metadata,

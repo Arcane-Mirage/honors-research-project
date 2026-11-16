@@ -144,6 +144,8 @@ def real_document_summary(result) -> dict[str, Any]:
         "chapter_refs": kinds.count("references_chapter"),
         "resolved_by_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "resolved_by_precedence"),
         "mutual_precedence": sum(1 for c in result.potential_conflicts if c.precedence_status == "mutual_precedence_claims"),
+        "implied_by_tier": sum(1 for c in result.potential_conflicts if c.issuer_tier_status == "implied_by_issuer_tier"),
+        "possible_missed_labels": rc.customer_specific_unlabelled,
         "issuers": issuer_summary(result),
     }
 
@@ -175,8 +177,13 @@ def format_real_document_summary(s: dict[str, Any]) -> str:
         f"customer scope ({s['scope_mode']}): {s['other_customer_blocks']} other-customer blocks, {other}"
         + (f", {s['chars_hidden']} chars hidden" if s["chars_hidden"] else ""),
         f"structure: {'; '.join(s['follows']) or 'no delta document'}; {s['inherits_from']} inherits_from, {s['amends']} amends, {s['chapter_refs']} chapter references",
-        f"precedence: {s['resolved_by_precedence']} conflicts resolved by precedence, {s['mutual_precedence']} with mutual claims",
+        (
+            f"precedence: {s['resolved_by_precedence']} conflicts resolved by stated precedence, {s['mutual_precedence']} with mutual claims; "
+            f"{s.get('implied_by_tier', 0)} with a precedence implied by issuer tier (not stated)"
+        ),
     ]
+    if s.get("possible_missed_labels") is not None:
+        parts.append(f"possible missed customer labels: {s['possible_missed_labels']} references in unlabelled text to another customer's documents")
     if (i := s.get("issuers")) and i["enabled"]:
         new = f", new: {', '.join(i['new'])}" if i["new"] else ""
         parts.append(
@@ -371,16 +378,18 @@ def _report(s: dict[str, Any]) -> str:
             "",
             "## Real-document checks (no gold needed)",
             "",
-            "| Bundle | References | To loaded docs | Via documents.yaml | Name-only | Artifact-matched quotes | Quotes not found | Other-customer refs | Hidden chars | inherits / amends / chapter refs | Resolved by precedence |",
-            "|---|---|---|---|---|---|---|---|---|---|---|",
+            "| Bundle | References | To loaded docs | Via documents.yaml | Name-only | Artifact-matched quotes | Quotes not found | Non-customer refs | Possible missed labels | Hidden chars | inherits / amends / chapter refs | Resolved by stated precedence | Implied by issuer tier |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for r in checked:
             x = r["real_document"]
             rate = "–" if x["refs_to_loaded_rate"] is None else f"{x['refs_to_loaded']} ({x['refs_to_loaded_rate']:.0%})"
             other = "–" if x["other_customer_refs"] is None else x["other_customer_refs"]
+            missed = "–" if x.get("possible_missed_labels") is None else x["possible_missed_labels"]
             lines.append(
                 f"| {r['bundle']} | {x['mentions']} | {rate} | {x['registry_resolved']} | {x['name_only_refs']} | {x['artifact_quotes']} | "
-                f"{x['quotes_not_found']} | {other} | {x['chars_hidden']} | {x['inherits_from']} / {x['amends']} / {x['chapter_refs']} | {x['resolved_by_precedence']} |"
+                f"{x['quotes_not_found']} | {other} | {missed} | {x['chars_hidden']} | {x['inherits_from']} / {x['amends']} / {x['chapter_refs']} | "
+                f"{x['resolved_by_precedence']} | {x.get('implied_by_tier', 0)} |"
             )
         follows = [f for r in checked for f in r["real_document"]["follows"]]
         if follows:

@@ -660,6 +660,8 @@ def check_saved_conflicts(state: PipelineState, runtime: Runtime[PipelineContext
         max_fanout=gs.max_shared_reference_fanout,
         families=families,
         follows=follows,
+        issuers={i: a.issuer for a in state.get("issuer_assignments") or [] if a.issuer for i in a.document_ids},
+        same_issuer=gs.saved_same_issuer,
     )
     stats = dict(state.get("conflict_stats", {}))
     stats["saved_graph_units"] = len(saved)

@@ -411,6 +411,33 @@ def cmd_pdf_backends(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_issuer_eval(args: argparse.Namespace) -> int:
+    """Issuer classification (llm / hybrid / rules) scored against documents.yaml `issuer:` labels."""
+    from datetime import datetime
+
+    from csr_lab.evaluation.issuers import METHODS, evaluate_issuers, report_markdown, result_rows
+    from csr_lab.evaluation.reporting import write_csv
+
+    methods = args.methods.split(",") if args.methods else list(METHODS)
+    if unknown := [m for m in methods if m not in METHODS]:
+        print(f"error: unknown method(s) {unknown}; choose from {list(METHODS)}", file=sys.stderr)
+        return 1
+    try:
+        config = _load(args)
+        results, info = evaluate_issuers(args.inputs, config=config, methods=methods, run_seed=args.seed)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    out_dir = Path(args.out_dir or config.resolve_path(config.output_dir) / "issuer_eval" / datetime.now().astimezone().strftime("%Y%m%dT%H%M%S"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    text = report_markdown(results, info)
+    (out_dir / "report.md").write_text(text, encoding="utf-8")
+    write_csv(out_dir / "rows.csv", result_rows(results))
+    print(text)
+    print(f"wrote {out_dir / 'report.md'} and rows.csv")
+    return 0
+
+
 def cmd_check_text(args: argparse.Namespace) -> int:
     from csr_lab.extraction.fidelity import check_fragments, format_report
     from csr_lab.ingestion.loader import load_document, processing_load_options
@@ -755,6 +782,15 @@ def build_parser() -> argparse.ArgumentParser:
     llm_args(p)
     common(p)
     p.set_defaults(func=cmd_build_graph)
+
+    p = sub.add_parser("issuer-eval", help="score issuer classification (llm / hybrid / rules) against the issuer: labels in documents.yaml")
+    p.add_argument("inputs", nargs="+", help="files or folders of one bundle, with a documents.yaml that has issuer: labels")
+    p.add_argument("--methods", help="comma-separated (default: llm,hybrid,rules)")
+    p.add_argument("--out-dir", help="where report.md and rows.csv go (default: outputs/issuer_eval/<time>/)")
+    p.add_argument("--seed", type=int)
+    llm_args(p)
+    common(p)
+    p.set_defaults(func=cmd_issuer_eval)
 
     p = sub.add_parser("pdf-backends", help="compare PDF text backends on real files: artifacts, contents found, chapters (no gold)")
     p.add_argument("inputs", nargs="+", help="PDF files or folders")

@@ -72,8 +72,13 @@ system_prompt:
 # the model; `patterns` (case-insensitive regular expressions on identifiers and names) are not.
 # An `issuer:` entry in documents.yaml always wins.
 issuers:
+  # Tiers, highest first, for the "implied by issuer tier" conflict label only (strategy option
+  # conflicts.issuer_tier_precedence). It is an implication, kept apart from precedence the documents
+  # state. An issuer without a tier (e.g. one added by the model or documents.yaml) is not assessed.
+  tier_order: [law, customer, industry_standard]   # ISO/IEC and EN/DIN count as industry standards
   known:
     - name: TRATON
+      tier: customer
       description: TRATON Group Commercial Vehicle Standards (CVS) shared by MAN, Scania, International/Navistar and VW Truck & Bus
       examples: [CVS10, CVS168, CVS55, CVS92]
       aliases: [TRATON Group, TRATON SE, Shared CVS standards]
@@ -82,6 +87,7 @@ issuers:
         - name: VWTB
           aliases: [VW T&B, VW Truck & Bus, Volkswagen Truck & Bus, Volkswagen Truck and Bus Ltda]
     - name: International Motors
+      tier: customer
       description: International Motors, LLC (formerly Navistar), a TRATON company; ISQ procedures and forms, IW warranty terms, MPAPS material specifications
       examples: [ISQ-011-PR, ISQ-018-FO, IW-001-SWR, MPAPS B-50]
       aliases: [Navistar, Navistar International Corporation, International Motors LLC]
@@ -91,6 +97,7 @@ issuers:
           aliases: [International, International Motors, International Motors LLC, International Motors Inc., Navistar International Corporation, Navistar Inc.]
           ambiguous_aliases: [International]   # also an ordinary word
     - name: MAN
+      tier: customer
       description: MAN Truck & Bus own standards
       examples: [M 3335, M 3212, MAN 239-1]
       aliases: [MAN Truck & Bus, MAN Truck & Bus SE]
@@ -99,6 +106,7 @@ issuers:
         - name: MAN
           aliases: [MAN Truck & Bus, MAN Truck & Bus SE]
     - name: Scania
+      tier: customer
       description: Scania CV AB own standards
       examples: [STD3868, STD4158, STD4457]
       aliases: [Scania CV AB]
@@ -107,6 +115,7 @@ issuers:
         - name: Scania
           aliases: [Scania CV AB]
     - name: Volkswagen Group
+      tier: customer
       description: Volkswagen AG and its group companies (Audi, Porsche, ŠKODA, SEAT, Bentley), e.g. Formel Q and VW norms
       examples: [Formel Q Konkret, Formel Q Capability, VW 50156, VW 99000]
       aliases: [Volkswagen AG, VW Group]
@@ -124,31 +133,37 @@ issuers:
           aliases: [Bentley Motors]
         - name: SEAT
     - name: VDA
+      tier: industry_standard
       description: Verband der Automobilindustrie (German automotive industry association), VDA volumes
       examples: [VDA 6.3, VDA 6.5, VDA Volume 2]
       aliases: [Verband der Automobilindustrie, VDA QMC]
       patterns: ['^VDA\b']
     - name: AIAG
+      tier: industry_standard
       description: Automotive Industry Action Group (North America), core-tool manuals and CQI assessments
       examples: [PPAP, APQP, CQI-9]
       aliases: [Automotive Industry Action Group]
       patterns: ['^AIAG\b', '^CQI[\s-]*\d', '^(PPAP|APQP|MSA|SPC)([\s-]+(reference[\s-]+)?manual)?$']
     - name: IATF
+      tier: industry_standard
       description: International Automotive Task Force
       examples: [IATF 16949]
       aliases: [International Automotive Task Force]
       patterns: ['^IATF\b']
     - name: ISO/IEC
+      tier: industry_standard
       description: International standards of ISO and IEC, including joint ISO/IEC, ISO/SAE and ISO/TS documents
       examples: [ISO 9001, ISO 14001, ISO/IEC 17025, ISO/SAE 21434]
       aliases: [ISO, IEC, International Organization for Standardization, International Electrotechnical Commission]
       patterns: ['^(ISO|IEC)\b']
     - name: European Standards (EN/DIN)
+      tier: industry_standard
       description: European standards (EN, from CEN/CENELEC) and German DIN standards, including national editions such as DIN EN ISO
       examples: [EN 61340, DIN EN ISO 9001]
       aliases: [European Standards, EN, DIN, CEN, CENELEC, EN/DIN]
       patterns: ['^(EN|DIN|CEN|CENELEC)\b']
     - name: EU Legislation
+      tier: law
       description: Acts of the European Union, i.e. Regulations, Directives and Decisions (REACH, RoHS, ELV, WEEE, POPs)
       examples: [Regulation (EC) No 1907/2006 (REACH), Directive 2000/53/EC (ELV), Directive 2011/65/EU (RoHS)]
       aliases: [EU, European Union, European Commission, EU Regulation]
@@ -160,11 +175,13 @@ issuers:
         - '^(REACH|RoHS|ELV|WEEE|CLP|SCIP)\b'
         - 'european[\s-]+parliament'
     - name: US Legislation
+      tier: law
       description: US federal and state law and regulations (e.g. TSCA, EPA and CARB rules, FMVSS, California Proposition 65)
       examples: [40 CFR 751, FMVSS 121, TSCA, Proposition 65]
       aliases: [US, United States, US federal law]
       patterns: ['\bCFR\b', '^(FMVSS|TSCA|OSHA|EPA|CARB)\b', 'prop(osition)?[\s-]*65', '\bU\.?S\.?C\.?\b']
     - name: International Treaties
+      tier: law
       description: International conventions and protocols between states (Stockholm Convention on POPs, Montreal Protocol, Basel Convention)
       examples: [Stockholm Convention, Montreal Protocol]
       aliases: [Treaties, International conventions]
