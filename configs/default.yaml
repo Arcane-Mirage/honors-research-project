@@ -46,30 +46,23 @@ llm:
     seed: 0
 
 # Extra system-prompt text: who the documents are read for (edit the wording in
-# src/csr_lab/prompts/system_prompt.py). Used by `analyze` and `build-graph`; experiments
-# switch it off (the synthetic cases have other customers). `--no-system-prompt` compares.
+# src/csr_lab/prompts/system_prompt.py). Used by `analyze` and `build-graph`; experiments use
+# their dataset's reader instead. `--no-system-prompt` compares.
+#
+# Bendix's customers are listed under their issuers below (`issuers.known[*].customers`), so every
+# customer is also an issuer; an issuer need not be a customer. The list is not complete: a company
+# that is not listed is never treated as a non-customer. All customers are treated alike: text
+# labelled for any of them ("MAN: ...", "Scania/Navistar: ...") is analysed and tagged with the
+# customers it applies to. Only companies you list in `non_customer_names` are treated as
+# non-customers. Customer scoping (strategy option customer_scoping) recognises a label line only
+# when every name before the colon is a customer name or alias, or a name in `non_customer_names`;
+# names match from the start of a part, word by word. A label it does not recognise is read as
+# text that applies to everyone.
 system_prompt:
   enabled: true
   supplier: Bendix
-  customer: Navistar
-  customer_aliases: [International, International Motors, International Motors LLC, International Motors Inc., Navistar International Corporation, Navistar Inc.]
-  ambiguous_aliases: [International]   # also an ordinary word
-  other_customers: skip                # skip | keep text that applies only to other customers
-  # Other customers that share the standards, with their other names. Customer scoping
-  # (strategy option customer_scoping: off | tag | filter) recognises a label line such as
-  # "MAN: ..." or "Scania/Navistar: ..." only when every name before the colon is listed here
-  # or is the customer above. Names match from the start of a part, word by word.
-  other_customers_names:
-    MAN: [MAN Truck & Bus, MAN Truck & Bus SE]
-    Scania: [Scania CV AB]
-    VWTB: [VW T&B, VW Truck & Bus, Volkswagen Truck & Bus]
-    TRATON: [TRATON Group, TRATON SE, RIO]
-    Audi: [AUDI AG, AUDI HUNGARIA]
-    Porsche: [Dr. Ing. h.c. F. Porsche AG]
-    ŠKODA AUTO: [SKODA AUTO, Skoda]
-    Bentley: [Bentley Motors]
-    SEAT: []
-    Volkswagen: [VW, Volkswagen AG, Volkswagen Passenger Cars, VW Passenger Cars, VW PKW, VW Commercial Vehicles, VW Components]
+  non_customers: skip        # skip | keep text that applies only to the companies in non_customer_names
+  non_customer_names: {}     # companies you know are not customers, with their other names; none listed
 
 # Who issued each document (input and referenced). Documents are grouped by issuer in the result
 # (`issuers`), the saved graph and its views. The model picks from this list first and names a
@@ -85,21 +78,51 @@ issuers:
       examples: [CVS10, CVS168, CVS55, CVS92]
       aliases: [TRATON Group, TRATON SE, Shared CVS standards]
       patterns: ['^CVS[\s-]*\d']
+      customers:
+        - name: VWTB
+          aliases: [VW T&B, VW Truck & Bus, Volkswagen Truck & Bus, Volkswagen Truck and Bus Ltda]
+    - name: International Motors
+      description: International Motors, LLC (formerly Navistar), a TRATON company; ISQ procedures and forms, IW warranty terms, MPAPS material specifications
+      examples: [ISQ-011-PR, ISQ-018-FO, IW-001-SWR, MPAPS B-50]
+      aliases: [Navistar, Navistar International Corporation, International Motors LLC]
+      patterns: ['^(ISQ|IW)[\s-]*\d', '^MPAPS\b']
+      customers:
+        - name: Navistar
+          aliases: [International, International Motors, International Motors LLC, International Motors Inc., Navistar International Corporation, Navistar Inc.]
+          ambiguous_aliases: [International]   # also an ordinary word
     - name: MAN
       description: MAN Truck & Bus own standards
       examples: [M 3335, M 3212, MAN 239-1]
       aliases: [MAN Truck & Bus, MAN Truck & Bus SE]
       patterns: ['^M[\s-]*3\d{3}\b', '^MAN[\s-]*\d']
+      customers:
+        - name: MAN
+          aliases: [MAN Truck & Bus, MAN Truck & Bus SE]
     - name: Scania
       description: Scania CV AB own standards
       examples: [STD3868, STD4158, STD4457]
       aliases: [Scania CV AB]
       patterns: ['^STD[\s-]*\d{4}\b']
+      customers:
+        - name: Scania
+          aliases: [Scania CV AB]
     - name: Volkswagen Group
       description: Volkswagen AG and its group companies (Audi, Porsche, ŠKODA, SEAT, Bentley), e.g. Formel Q and VW norms
       examples: [Formel Q Konkret, Formel Q Capability, VW 50156, VW 99000]
-      aliases: [Volkswagen, Volkswagen AG, VW, VW Group]
+      aliases: [Volkswagen AG, VW Group]
       patterns: ['^VW[\s-]*\d', 'formel[\s-]*q']
+      customers:
+        - name: Volkswagen
+          aliases: [VW, Volkswagen AG, Volkswagen Passenger Cars, VW Passenger Cars, VW PKW, VW Commercial Vehicles, VW Components]
+        - name: Audi
+          aliases: [AUDI AG, AUDI HUNGARIA]
+        - name: Porsche
+          aliases: [Dr. Ing. h.c. F. Porsche AG]
+        - name: ŠKODA AUTO
+          aliases: [SKODA AUTO, Skoda]
+        - name: Bentley
+          aliases: [Bentley Motors]
+        - name: SEAT
     - name: VDA
       description: Verband der Automobilindustrie (German automotive industry association), VDA volumes
       examples: [VDA 6.3, VDA 6.5, VDA Volume 2]

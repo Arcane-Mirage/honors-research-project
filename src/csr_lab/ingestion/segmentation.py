@@ -265,8 +265,8 @@ def segment_document(doc: InputDocument) -> list[Segment]:
 # capital letter or a bullet. Ending a block early is the safe error: the rest is treated as
 # applying to everyone, so in ``filter`` mode it is kept.
 #
-# A label line is recognised only when *every* name before the colon is a known customer
-# (``system_prompt.customer`` / ``customer_aliases`` and ``system_prompt.other_customers_names``),
+# A label line is recognised only when *every* name before the colon is a known company
+# (a customer in ``system_prompt.customers``, or ``system_prompt.non_customer_names``),
 # matched on whole words from the start ("MAN Truck & BUS" is MAN, "International Motors LLC."
 # is the customer when "International" is one of its names). Words after a known name must be
 # capitalised name words ("Volkswagen (VW) Group After Sales"), at most five, so "International
@@ -278,8 +278,8 @@ def segment_document(doc: InputDocument) -> list[Segment]:
 # * ``tag``: blocks are found and recorded (``Requirement.customer_scope``); every reference
 #   says which customers it applies to (``ReferenceMention.applies_to``); the model sees the
 #   full text. ``coverage.references.from_other_customer_blocks`` counts references the model
-#   took from blocks that apply only to other customers;
-# * ``filter``: as ``tag``, and blocks that apply only to other customers are replaced by a short
+#   took from blocks that apply only to companies that are not customers;
+# * ``filter``: as ``tag``, and blocks that apply only to non-customers are replaced by a short
 #   marker in the text the model sees (``RequirementDraft.model_text``). The exported requirement
 #   text stays verbatim, and quotes are still located in the full source text.
 
@@ -295,24 +295,29 @@ _NAME_JOINERS = {"and", "of", "for", "&", "de", "e"}
 
 @dataclass
 class CustomerMatcher:
-    """Known customer names -> canonical customer name; the target is the customer read for."""
+    """Known company names -> canonical name. ``targets``: the supplier's customers (all alike);
+    other known names are companies that are not customers."""
 
-    target: str
-    names: dict[str, str] = field(default_factory=dict)  # match key -> canonical customer
+    targets: set[str]
+    names: dict[str, str] = field(default_factory=dict)  # match key -> canonical company
 
     @classmethod
     def from_settings(cls, settings) -> CustomerMatcher | None:
-        """From ``SystemPromptSettings``; None when no other customer is configured."""
-        others = settings.other_customers_names
-        if not others:
+        """From ``SystemPromptSettings``; None when no company name is configured at all."""
+        if not settings.customers and not settings.non_customer_names:
             return None
-        matcher = cls(target=settings.customer)
-        for name in [settings.customer, *settings.customer_aliases]:
-            matcher._add(name, settings.customer)
-        for customer, aliases in others.items():
-            for name in [customer, *(aliases or [])]:
-                matcher._add(name, customer)
+        matcher = cls(targets=set(settings.customer_names))
+        for c in settings.customers:
+            for name in [c.name, *c.aliases]:
+                matcher._add(name, c.name)
+        for company, aliases in settings.non_customer_names.items():
+            for name in [company, *(aliases or [])]:
+                matcher._add(name, company)
         return matcher
+
+    def applies(self, customers: list[str]) -> bool:
+        """True when one of the supplier's customers is among ``customers``."""
+        return any(c in self.targets for c in customers)
 
     def _add(self, name: str, customer: str) -> None:
         key = name_match_key(_PARENS_RE.sub(" ", name))
@@ -356,7 +361,7 @@ def find_blocks(text: str, offset: int, matcher: CustomerMatcher, title: str | N
     """Scope blocks of one unit's text. ``offset``: where the text starts in its document."""
     end_of_text = len(text.rstrip())
     if title and (whole := matcher.label_customers(title)):
-        return [CustomerBlock(start_offset=offset, end_offset=offset + end_of_text, customers=whole, label=title, applies_to_target=matcher.target in whole)]
+        return [CustomerBlock(start_offset=offset, end_offset=offset + end_of_text, customers=whole, label=title, applies_to_target=matcher.applies(whole))]
     lines = line_spans(text)
     blocks: list[CustomerBlock] = []
     current: tuple[int, list[str], str] | None = None  # (start, customers, label)
@@ -368,7 +373,7 @@ def find_blocks(text: str, offset: int, matcher: CustomerMatcher, title: str | N
             start, customers, label = current
             stop = len(text[:end].rstrip())
             if stop > start:
-                blocks.append(CustomerBlock(start_offset=offset + start, end_offset=offset + stop, customers=customers, label=label, applies_to_target=matcher.target in customers))
+                blocks.append(CustomerBlock(start_offset=offset + start, end_offset=offset + stop, customers=customers, label=label, applies_to_target=matcher.applies(customers)))
         current = None
 
     for i, (start, end, content) in enumerate(lines):
@@ -394,7 +399,7 @@ def find_blocks(text: str, offset: int, matcher: CustomerMatcher, title: str | N
 
 
 def hide_other_customers(text: str, offset: int, blocks: list[CustomerBlock]) -> str:
-    """The text with blocks for other customers replaced by a marker."""
+    """The text with blocks for non-customers replaced by a marker."""
     out, pos = [], 0
     for b in sorted(blocks, key=lambda b: b.start_offset):
         if b.applies_to_target:

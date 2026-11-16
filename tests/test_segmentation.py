@@ -139,7 +139,9 @@ def test_label_parts_must_all_be_customers(matcher):
     assert matcher.label_customers("MAN Truck & BUS / Scania / VW T&B / International Motors LLC.") == ["MAN", "Scania", "VWTB", "Navistar"]
     assert matcher.label_customers("International Motors IMDS account") is None  # not a customer name
     assert matcher.label_customers("Field claims") is None
-    assert CustomerMatcher.from_settings(SystemPromptSettings(customer="Navistar")) is None  # no other customers: scoping off
+    assert CustomerMatcher.from_settings(SystemPromptSettings()) is None  # no company names at all: scoping off
+    only = CustomerMatcher.from_settings(SystemPromptSettings(customer="Navistar"))  # customers only: labels tagged, all apply
+    assert only.label_customers("Navistar") == ["Navistar"] and only.applies(["Navistar"])
 
 
 def test_blocks_and_their_extent(matcher):

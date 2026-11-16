@@ -100,7 +100,8 @@ def mention_scope(units: list[RequirementDraft], mentions: list[MentionDraft]) -
 
 def scope_coverage(units: list[RequirementDraft], ctx) -> CustomerScopeCoverage:
     mode = ctx.options.customer_scoping
-    cov = CustomerScopeCoverage(mode=mode, target=ctx.config.system_prompt.customer if mode != "off" else None)
+    names = ctx.config.system_prompt.customer_names
+    cov = CustomerScopeCoverage(mode=mode, target=", ".join(names) if mode != "off" and names else None)
     for u in units:
         if u.scope_blocks:
             cov.units_with_blocks += 1

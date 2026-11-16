@@ -54,7 +54,7 @@ class RequirementDraft(BaseModel):
 
     @property
     def prompt_text(self) -> str:
-        """What the model is shown: ``text``, or ``model_text`` with other customers' blocks hidden."""
+        """What the model is shown: ``text``, or ``model_text`` with non-customers' blocks hidden."""
         return self.model_text if self.model_text is not None else self.text
 
     @property

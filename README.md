@@ -96,14 +96,28 @@ from the document node, with the passage IDs and quotes as evidence.
 
 `system_prompt:` in [configs/default.yaml](configs/default.yaml) adds a few sentences to the
 reference, verification, conflict and single-pass prompts: the documents are read for **Bendix, a
-direct supplier to Navistar**, only Bendix's own obligations count, and "International" means
-Navistar only when it names the company. The wording lives in
+direct supplier to every customer listed**, all customers are treated alike, only Bendix's own
+obligations count, and "International" means Navistar only when it names the company.
+
+**Customers are issuers.** The customers are listed under their issuer in `issuers.known`
+(below): Navistar under International Motors, VWTB under TRATON, MAN and Scania under their own
+issuers, and Volkswagen, Audi, Porsche, ŠKODA AUTO, Bentley and SEAT under Volkswagen Group. So
+every customer is an issuer, while an issuer need not be a customer (TRATON, VDA, ISO/IEC, the EU).
+A customer's names also mean its issuer when documents are classified ("Audi" -> Volkswagen Group).
+
+The customer list is not complete (documents for further customers can be added later), so a
+company that is not listed is never treated as a non-customer, and the prompt says so. Text
+labelled for any customer ("MAN: ...", "Scania/Navistar: ...") is analysed and tagged with the
+customers it applies to (`customer_scoping: tag`); a label naming an unlisted company is read as
+text for everyone. Only text labelled solely for companies you list in `non_customer_names` is
+skipped (`non_customers: skip|keep`) or, with `customer_scoping: filter`, hidden from the model.
+None are listed for Bendix. The wording lives in
 [prompts/system_prompt.py](src/csr_lab/prompts/system_prompt.py) as named variables with
-`{supplier}`, `{customer}`, `{aliases}` and `{ambiguous}` placeholders; edit the sentences there
-and the names in the config. `other_customers: skip|keep` picks how text for other customers is
-handled. The text's fingerprint is stored in `metadata.prompt_versions.system_prompt`. `analyze`
-and `build-graph` use it (`--no-system-prompt` to compare without); experiments use the reader
-their dataset names in its `manifest.json` instead.
+`{supplier}`, `{customers}`, `{customer}`, `{aliases}` and `{ambiguous}` placeholders. The text's
+fingerprint is stored in `metadata.prompt_versions.system_prompt`. `analyze` and `build-graph`
+use it (`--no-system-prompt` to compare without); experiments use the reader their dataset names
+in its `manifest.json` instead (the synthetic datasets: one customer, Global Motors, with Brennic
+and Ostra as non-customers; a reader's customer that is not an issuer yet is added as one).
 
 ## Issuer groups: who published each document
 
@@ -112,9 +126,9 @@ and referenced document, and the documents are grouped by issuer. References fro
 one issuer to a document of another are the **cross-group references**.
 
 - **Known issuers first.** `issuers.known` in [configs/default.yaml](configs/default.yaml) lists
-  TRATON (shared CVS standards), MAN, Scania, Volkswagen Group, VDA, AIAG, IATF, ISO/IEC, European
-  Standards (EN/DIN), EU Legislation, US Legislation and International Treaties, each with a short
-  description and examples for the model. The model picks one of them, names a new issuer only when
+  TRATON (shared CVS standards), International Motors, MAN, Scania, Volkswagen Group, VDA, AIAG,
+  IATF, ISO/IEC, European Standards (EN/DIN), EU Legislation, US Legislation and International
+  Treaties, each with a short description, examples and (for customers) the customers it covers. The model picks one of them, names a new issuer only when
   none fits (`allow_new`), or answers unknown. New names are offered to later batches and later
   bundles, so the same publisher is not named two ways.
 - **Order of sources:** `issuer:` in documents.yaml, then the saved graph (documents classified in
@@ -168,8 +182,8 @@ documents:
     title: Other Standard
 ```
 
-**Settings.** Who the documents are read for (supplier, customer, other customers that share the
-standards) is set under `system_prompt:` in [configs/default.yaml](configs/default.yaml).
+**Settings.** Who the documents are read for is set under `system_prompt:` (supplier,
+non-customers) and `issuers.known[*].customers` (the customers) in [configs/default.yaml](configs/default.yaml).
 
 ## Experimental conditions
 
@@ -219,7 +233,7 @@ with the mock model, or with a real model by overriding `llm:`.
 | `merging_mock`, sweep `merge_errors` | Model-only vs guarded (hybrid) reference merging | reference errors by cause, merges applied/rejected |
 | `pdf_mock`, sweeps `pdf_preprocessing`, `text_vs_pdf` | PDF reader and header/footer removal | requirement verbatim/location accuracy, spurious references |
 | sweep `registry` | What `documents.yaml` adds on name-only documents | refs to loaded docs, unresolved-alias errors, chapter-link F1 |
-| `customer_scoping_mock`, sweep `customer_scoping` | Hiding other customers' paragraphs from the model | other-customer errors, precision, extract_references tokens |
+| `customer_scoping_mock`, sweep `customer_scoping` | Hiding non-customers' paragraphs from the model (synthetic: Brennic, Ostra) | other-customer errors, precision, extract_references tokens |
 | sweep `pdf_noise`, `noisy_mock` | PDF artifacts, with and without artifact-insensitive quote matching | artifact-matched quotes, conflict evidence validity |
 | sweep `structure` | Delta-document links and precedence labels | chapter-link F1, precedence accuracy |
 | sweep `issuer_method` | Issuer patterns vs the model (llm / hybrid / rules) | classify_issuers calls and tokens, unclassified, new issuers |

@@ -256,7 +256,7 @@ class CustomerBlock(_Model):
     end_offset: int
     customers: list[str]
     label: str = Field(description="The label as printed ('Scania/Navistar') or the chapter title.")
-    applies_to_target: bool = Field(description="True when the customer the documents are read for is among the customers.")
+    applies_to_target: bool = Field(description="True when one of the supplier's customers is among the customers (false: only companies that are not customers).")
 
 
 class ReferenceMention(_Model):
@@ -481,17 +481,17 @@ class ReferenceCoverage(_Model):
         default_factory=dict, description="Mention evidence per match kind (exact, whitespace_normalized, artifact_normalized, not_found ...)."
     )
     from_other_customer_blocks: int | None = Field(
-        None, description="Mentions inside blocks that apply only to other customers (None: customer scoping off)."
+        None, description="Mentions inside blocks that apply only to companies that are not customers (None: customer scoping off)."
     )
 
 
 class CustomerScopeCoverage(_Model):
     mode: Literal["off", "tag", "filter"] = "off"
-    target: str | None = None
+    target: str | None = Field(default=None, description="The supplier's customers, comma-separated (all treated alike).")
     units_with_blocks: int = 0
     blocks: int = 0
-    other_customer_blocks: int = 0
-    chars_hidden: int = Field(0, description="Characters of other-customer blocks the model did not see (filter mode).")
+    other_customer_blocks: int = Field(0, description="Blocks that apply only to companies that are not customers (system_prompt.non_customer_names).")
+    chars_hidden: int = Field(0, description="Characters of non-customer blocks the model did not see (filter mode).")
 
 
 class Coverage(_Model):

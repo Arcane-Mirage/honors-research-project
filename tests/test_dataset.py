@@ -141,7 +141,7 @@ def test_error_free_model_scores_perfectly_on_structure():
     perfect = {"reference_miss_rate": 0, "hallucination_rate": 0, "quote_paraphrase_rate": 0, "conflict_miss_rate": 0, "conflict_false_positive_rate": 0}
     experiment = ExperimentConfig(name="t", dataset="data/synthetic/text/manifest.json", split="all", llm={"provider": "mock", "mock": perfect})
     cfg = apply_experiment(load_config(), experiment)
-    assert (cfg.system_prompt.customer, cfg.evaluation.customer) == ("Global Motors", "Global Motors")  # the dataset's reader
+    assert (cfg.system_prompt.customer_names, cfg.evaluation.customer) == (["Global Motors"], "Global Motors")  # the dataset's reader
     (case,) = load_dataset(DATA / "text" / "manifest.json").cases
     docs, registry = load_inputs(list(case.document_paths), cfg)
     result = run_analysis(docs, strategy="graph_assisted", config=cfg, registry=registry)

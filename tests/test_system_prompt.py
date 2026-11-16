@@ -22,18 +22,33 @@ NAVISTAR = SystemPromptSettings(
 
 def test_placeholders_and_options():
     text = system_prompt.render(NAVISTAR)
-    assert text.splitlines()[0] == "- You read these documents for Bendix, a direct supplier to Navistar."
+    assert text.splitlines()[0] == "- You read these documents for Bendix, a direct supplier. Its customers include Navistar."
     assert '- Navistar is also called "International".' in text
     assert '"International" means Navistar only when it names the company' in text
     assert "{" not in text and "brand" not in text.lower()
-    assert "Ignore text that applies only to customers other than Navistar." in text
-    keep = system_prompt.render(NAVISTAR.model_copy(update={"other_customers": "keep"}))
-    assert "Analyse text for other customers too" in keep and "Ignore text" not in keep
-    plain = system_prompt.render(NAVISTAR.model_copy(update={"customer_aliases": [], "ambiguous_aliases": []}))
+    assert "alike" not in text  # one customer: nothing to treat alike
+    # The customer list is not complete: nothing is skipped unless a company is listed as a non-customer.
+    assert "Other companies may also be customers of Bendix" in text and "Ignore text" not in text
+    listed = NAVISTAR.model_copy(update={"non_customer_names": {"Brennic": []}})
+    assert "Ignore text that applies only to Brennic; they are not customers of Bendix." in system_prompt.render(listed)
+    keep = system_prompt.render(listed.model_copy(update={"non_customers": "keep"}))
+    assert "Analyse text for Brennic too" in keep and "Ignore text" not in keep
+    plain = system_prompt.render(SystemPromptSettings(enabled=True, supplier="Bendix", customer="Navistar"))
     assert "also called" not in plain and "ordinary word" not in plain
     assert system_prompt.render(NAVISTAR.model_copy(update={"enabled": False})) is None
     assert system_prompt.fingerprint(NAVISTAR.model_copy(update={"enabled": False})) == "off"
-    assert system_prompt.fingerprint(NAVISTAR) != system_prompt.fingerprint(NAVISTAR.model_copy(update={"other_customers": "keep"}))
+    assert system_prompt.fingerprint(listed) != system_prompt.fingerprint(listed.model_copy(update={"non_customers": "keep"}))
+
+
+def test_every_customer_is_named_and_treated_alike():
+    text = system_prompt.render(load_config().system_prompt)
+    first = text.splitlines()[0]
+    for name in ("Navistar", "MAN", "Scania", "VWTB", "Volkswagen", "Audi", "Porsche", "ŠKODA AUTO", "Bentley", "SEAT"):
+        assert name in first
+    assert "TRATON" not in first  # an issuer, not a customer
+    assert "Treat every one of these customers alike" in text
+    assert '"International" means Navistar only when it names the company' in text
+    assert "other customers" not in text and "Ignore text" not in text  # no company is assumed not to be a customer
 
 
 def test_text_goes_only_to_the_listed_tasks(config):
@@ -54,7 +69,8 @@ def test_recorded_in_results_and_off_in_experiments(simple_docs, config):
     assert b.metadata.prompt_versions["system_prompt"] == "off"
     assert a.analysis_id != b.analysis_id
     # default.yaml reads for Bendix; experiments read for the dataset's reader (its manifest)
-    assert load_config().system_prompt.customer == "Navistar"
+    assert "Navistar" in load_config().system_prompt.customer_names
     experiment = apply_experiment(load_config(), load_experiment("demo_mock"))
-    assert experiment.system_prompt.enabled and experiment.system_prompt.customer == "Global Motors"
+    assert experiment.system_prompt.enabled and experiment.system_prompt.customer_names == ["Global Motors"]
+    assert experiment.system_prompt.non_customer_names == {"Brennic": ["Brennic Trucks"], "Ostra": ["Ostra AB"]}
     assert experiment.evaluation.customer == "Global Motors"

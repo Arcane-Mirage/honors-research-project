@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "default.yaml"
@@ -294,7 +294,7 @@ class PipelineOptions(_Settings):
     customer_scoping: Literal["off", "tag", "filter"] = Field(
         default="tag",
         description="customer-labelled blocks ('MAN: ...'): off; tag (record which customers each block and reference "
-        "applies to); filter (also hide blocks for other customers from the model). See ingestion/segmentation.py (Customer scoping).",
+        "applies to); filter (also hide blocks for non-customers from the model). See ingestion/segmentation.py (Customer scoping).",
     )
     reference_batch_size: int = Field(default=8, ge=1)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
@@ -344,30 +344,69 @@ class EvaluationSettings(_Settings):
     )
 
 
+class CustomerSpec(_Settings):
+    """One customer of the supplier. Every customer belongs to an issuer (``issuer``): customers are
+    listed under their issuer in ``issuers.known``, so being a customer makes the company an issuer.
+
+    * ``aliases``: other names (also used to recognise label lines such as 'Navistar: ...');
+    * ``ambiguous_aliases``: aliases that are also ordinary words ('International'), which get an
+      extra sentence in the system prompt.
+    """
+
+    name: str = Field(min_length=1)
+    aliases: list[str] = Field(default_factory=list)
+    ambiguous_aliases: list[str] = Field(default_factory=list)
+    issuer: str | None = Field(default=None, description="Set from the issuer the customer is listed under; None: its own name.")
+
+
 class SystemPromptSettings(_Settings):
     """Extra system-prompt text: who the documents are read for (``prompts/system_prompt.py``).
 
     * ``enabled``: append it to the reference, verification, conflict and single-pass prompts.
-    * ``supplier`` / ``customer``: the company the documents are read for, and its customer.
-    * ``customer_aliases``: other names of the customer; ``ambiguous_aliases``: those that are
-      also ordinary words ('International'), which get an extra sentence.
-    * ``other_customers``: ``skip`` or ``keep`` text that applies only to other customers.
+    * ``supplier``: the company the documents are read for.
+    * ``customers``: the supplier's known customers, all treated alike; not a complete list, so a
+      company that is not listed is never treated as a non-customer. Empty in default.yaml: they
+      are taken from ``issuers.known[*].customers`` (``AppConfig``). A dataset's reader sets its own.
+    * ``non_customer_names``: companies stated to be non-customers, with their other names, so
+      their label lines ('Brennic: ...') are recognised by customer scoping; ``non_customers``:
+      ``skip`` or ``keep`` text that applies only to them. Nothing else counts as a non-customer.
 
     ``analyze`` and ``build-graph`` use these settings. Experiments use the dataset's own reader
-    instead (``reader`` in its manifest, see ``apply_experiment``).
+    instead (``reader`` in its manifest, see ``apply_experiment``). The older single-customer form
+    (``customer``, ``customer_aliases``, ``ambiguous_aliases``, ``other_customers``,
+    ``other_customers_names``), still written by the synthetic manifests, is read as one customer.
     """
 
     enabled: bool = False
     supplier: str = "the supplier"
-    customer: str = "the customer"
-    customer_aliases: list[str] = Field(default_factory=list)
-    ambiguous_aliases: list[str] = Field(default_factory=list)
-    other_customers: Literal["skip", "keep"] = "skip"
-    other_customers_names: dict[str, list[str]] = Field(
+    customers: list[CustomerSpec] = Field(default_factory=list)
+    non_customers: Literal["skip", "keep"] = "skip"
+    non_customer_names: dict[str, list[str]] = Field(
         default_factory=dict,
-        description="Other customers that share the standards, with their other names. Lines labelled only with them "
-        "('MAN: ...') are found by customer scoping (PipelineOptions.customer_scoping).",
+        description="Companies stated to be non-customers (never inferred), with their other names. Lines labelled only with them "
+        "('Brennic: ...') are found by customer scoping (PipelineOptions.customer_scoping).",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _single_customer_form(cls, data: Any) -> Any:
+        if not isinstance(data, dict) or not ({"customer", "customer_aliases", "ambiguous_aliases", "other_customers", "other_customers_names"} & set(data)):
+            return data
+        data = dict(data)
+        name = data.pop("customer", None)
+        aliases = data.pop("customer_aliases", None) or []
+        ambiguous = data.pop("ambiguous_aliases", None) or []
+        if name and not data.get("customers"):
+            data["customers"] = [{"name": name, "aliases": aliases, "ambiguous_aliases": ambiguous}]
+        if "other_customers" in data:  # the older names win: whoever wrote them meant them
+            data["non_customers"] = data.pop("other_customers")
+        if "other_customers_names" in data:
+            data["non_customer_names"] = data.pop("other_customers_names") or {}
+        return data
+
+    @property
+    def customer_names(self) -> list[str]:
+        return [c.name for c in self.customers]
 
 
 class IssuerSpec(_Settings):
@@ -376,7 +415,8 @@ class IssuerSpec(_Settings):
     ``description`` and ``examples`` are shown to the model; ``aliases`` are other spellings of the
     issuer's name that are mapped back to ``name``; ``patterns`` (regular expressions, case-insensitive)
     are matched against identifiers and names by the ``rules`` and ``hybrid`` methods and are not
-    shown to the model.
+    shown to the model. ``customers``: the supplier's customers that belong to this issuer; their
+    names also map back to it ('Audi' -> Volkswagen Group).
     """
 
     name: str = Field(min_length=1)
@@ -384,6 +424,9 @@ class IssuerSpec(_Settings):
     examples: list[str] = Field(default_factory=list)
     aliases: list[str] = Field(default_factory=list)
     patterns: list[str] = Field(default_factory=list)
+    customers: list[CustomerSpec] = Field(
+        default_factory=list, description="The supplier's customers that belong to this issuer (an issuer need not be a customer)."
+    )
 
     @field_validator("patterns")
     @classmethod
@@ -432,6 +475,30 @@ class AppConfig(_Settings):
     )
     output_dir: str = "outputs"
     database_path: str = "outputs/experiments.sqlite"
+
+    @model_validator(mode="after")
+    def _customers_are_issuers(self) -> AppConfig:
+        """Customers and issuers are one list: the customers come from ``issuers.known[*].customers``
+        unless the system prompt names its own (a dataset reader); every customer's issuer is in
+        ``issuers.known`` (added, named after the customer, when it is missing)."""
+        sp = self.system_prompt
+        if not sp.customers:
+            sp.customers = [c.model_copy(update={"issuer": i.name}) for i in self.issuers.known for c in i.customers]
+        known = {i.name.casefold(): i for i in self.issuers.known}
+        for spec in self.issuers.known:
+            for c in spec.customers:
+                known.setdefault(c.name.casefold(), spec)
+        for c in sp.customers:
+            owner = known.get((c.issuer or c.name).casefold())
+            if owner is None:
+                owner = IssuerSpec(name=c.issuer or c.name, description=f"customer {c.name}", aliases=[a for a in c.aliases if a not in c.ambiguous_aliases])
+                self.issuers.known.append(owner)
+                known[owner.name.casefold()] = owner
+            c.issuer = owner.name
+        names = [c.name.casefold() for c in sp.customers]
+        if len(set(names)) != len(names):
+            raise ValueError("customer names must be unique (system_prompt.customers / issuers.known[*].customers)")
+        return self
 
     def resolve_path(self, value: str) -> Path:
         """A configured path: '~' is the home folder; relative paths are relative to the project."""
